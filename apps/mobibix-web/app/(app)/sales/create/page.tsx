@@ -375,7 +375,7 @@ export default function CreateInvoicePage() {
         try {
           await redeemVoucher(appliedVoucher.voucherCode, selectedShopId!, invoice.id);
         } catch {
-          console.warn("Voucher redemption failed after invoice creation");
+
         }
       }
 

@@ -53,7 +53,7 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
     });
 
     s.on('connect', () => {
-      console.log('Inbox WebSocket connected');
+
     });
 
     s.on('connect_error', (error) => {

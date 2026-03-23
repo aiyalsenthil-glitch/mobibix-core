@@ -220,8 +220,6 @@ export class AuthService {
             role,
           })
           .catch((err) =>
-            console.warn('⚠️  Firebase Claims Sync Failed:', err.message),
-          );
       }
 
       const isDistributor = !!distRecordForToken;
@@ -310,9 +308,6 @@ export class AuthService {
       (await this.prisma.userTenant.findFirst({ where: { userId } }))?.tenantId;
 
     if (!tenantId) {
-      console.warn(
-        `[sendVerificationEmail] User ${userId} has no associated tenant context for EmailLog.`,
-      );
     }
 
     // Generate link directly via Firebase Admin

@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
  * Solution: Normalize all event types to use underscores
  */
 async function fixEventTypeNaming() {
-  console.log('🔧 Fixing WhatsApp Automation eventType naming...\n');
+
 
   // Map of incorrect → correct event types
   const eventTypeMapping: Record<string, string> = {
@@ -43,7 +43,7 @@ async function fixEventTypeNaming() {
   );
 
   if (automations.length === 0) {
-    console.log('✅ No fixes needed - all event types already use underscores');
+
     return;
   }
 
@@ -57,7 +57,7 @@ async function fixEventTypeNaming() {
     );
   }
 
-  console.log('\n🚀 Applying fixes...\n');
+
 
   // Update each automation
   let updatedCount = 0;
@@ -72,10 +72,10 @@ async function fixEventTypeNaming() {
     });
 
     updatedCount++;
-    console.log(`  ✅ Updated: ${automation.templateKey} → ${correctedType}`);
+
   }
 
-  console.log(`\n✅ Successfully updated ${updatedCount} automations!`);
+
 }
 
 fixEventTypeNaming()

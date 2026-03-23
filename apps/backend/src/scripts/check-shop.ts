@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 async function checkShop() {
   const shopId = 'cmknvruqv0003jwle69rbb7h0';
-  console.log(`Checking shop: ${shopId}`);
+
 
   const shop = await prisma.shop.findUnique({
     where: { id: shopId },
@@ -18,7 +18,7 @@ async function checkShop() {
     },
   });
 
-  console.log('Shop:', shop);
+
 
   if (shop) {
     // Check if there are other tenants
@@ -26,7 +26,7 @@ async function checkShop() {
       take: 5,
       select: { id: true, name: true, tenantId: true },
     });
-    console.log('Other Shops Sample:', otherShops);
+
   }
 }
 

@@ -145,7 +145,7 @@ async function verify() {
     const ledgerAfterSale = await prisma.stockLedger.findMany({
       where: { tenantId: tenant.id },
     });
-    console.log('DEBUG: Ledger After Sale:', ledgerAfterSale);
+
   } catch (e) {
     logger.error('Sales Verification Failed', e);
     console.error(e);
@@ -193,7 +193,7 @@ async function verify() {
     const allLedger = await prisma.stockLedger.findMany({
       where: { tenantId: tenant.id },
     });
-    console.log('DEBUG: StockLedger Entries:', allLedger);
+
 
     // Verify Stock
     const stockAfterRepairOut = await stockService.getCurrentStock(

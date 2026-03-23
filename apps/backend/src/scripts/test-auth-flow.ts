@@ -45,8 +45,8 @@ function buildCookieHeader(jar: CookieJar): string {
 }
 
 async function runSmokeTest() {
-  console.log('🔥 Auth Flow Smoke Test\n');
-  console.log(`API Base: ${API_BASE_URL}\n`);
+
+
 
   const jar: CookieJar = {};
 
@@ -60,10 +60,10 @@ async function runSmokeTest() {
   console.log('   Skipping exchange test (manual step required).\n');
 
   // For demonstration: pretend we already have cookies from browser login
-  console.log('   📝 To test login manually:');
-  console.log('      1. Open browser console on your frontend');
-  console.log('      2. Run: document.cookie');
-  console.log('      3. Copy accessToken, refreshToken, csrfToken values\n');
+
+
+
+
 
   const mockJar: CookieJar = {
     accessToken: '<paste-from-browser>',
@@ -78,7 +78,7 @@ async function runSmokeTest() {
     jar.accessToken = process.env.TEST_ACCESS_TOKEN;
     jar.refreshToken = process.env.TEST_REFRESH_TOKEN;
     jar.csrfToken = process.env.TEST_CSRF_TOKEN;
-    console.log('   ✅ Using real cookies from environment variables\n');
+
   } else {
     console.log(
       '   ⏭️  Skipping automated login (set TEST_ACCESS_TOKEN, TEST_CSRF_TOKEN, TEST_REFRESH_TOKEN to enable)\n',
@@ -101,24 +101,24 @@ async function runSmokeTest() {
 
     if (meResponse.ok) {
       const user = await meResponse.json();
-      console.log(`   ✅ Cookie auth successful`);
+
       console.log(`   User: ${user.email} (${user.role})`);
-      console.log(`   Tenant: ${user.tenantId || 'none'}\n`);
+
     } else {
-      console.log(`   ❌ Cookie auth failed: HTTP ${meResponse.status}`);
+
       const error = await meResponse.text();
-      console.log(`   Error: ${error}\n`);
+
       process.exit(1);
     }
   } catch (err: any) {
-    console.log(`   ❌ Network error: ${err.message}\n`);
+
     process.exit(1);
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Step 3: POST to protected endpoint with CSRF header
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  console.log('3️⃣  Testing POST with CSRF protection...');
+
 
   try {
     // Use a safe endpoint like PATCH /users/me
@@ -133,16 +133,16 @@ async function runSmokeTest() {
     });
 
     if (updateResponse.ok) {
-      console.log(`   ✅ CSRF protection passed`);
-      console.log(`   Update successful\n`);
+
+
     } else {
-      console.log(`   ❌ CSRF check failed: HTTP ${updateResponse.status}`);
+
       const error = await updateResponse.text();
-      console.log(`   Error: ${error}\n`);
+
       process.exit(1);
     }
   } catch (err: any) {
-    console.log(`   ❌ Network error: ${err.message}\n`);
+
     process.exit(1);
   }
 
@@ -163,20 +163,20 @@ async function runSmokeTest() {
     });
 
     if (noCsrfResponse.status === 403) {
-      console.log(`   ✅ CSRF guard correctly rejected request`);
-      console.log(`   HTTP 403 Forbidden\n`);
+
+
     } else {
-      console.log(`   ⚠️  Expected 403, got ${noCsrfResponse.status}`);
-      console.log(`   CSRF guard may not be enforcing correctly\n`);
+
+
     }
   } catch (err: any) {
-    console.log(`   ❌ Network error: ${err.message}\n`);
+
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Step 5: Test Token Refresh
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  console.log('5️⃣  Testing POST /auth/refresh...');
+
 
   try {
     const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -192,7 +192,7 @@ async function runSmokeTest() {
       const newCookies = parseCookies(
         refreshResponse.headers.raw()['set-cookie'] || [],
       );
-      console.log(`   ✅ Token refresh successful`);
+
       console.log(
         `   New accessToken: ${newCookies.accessToken ? 'SET' : 'NOT SET'}`,
       );
@@ -204,18 +204,18 @@ async function runSmokeTest() {
       if (newCookies.accessToken) jar.accessToken = newCookies.accessToken;
       if (newCookies.csrfToken) jar.csrfToken = newCookies.csrfToken;
     } else {
-      console.log(`   ❌ Refresh failed: HTTP ${refreshResponse.status}`);
+
       const error = await refreshResponse.text();
-      console.log(`   Error: ${error}\n`);
+
     }
   } catch (err: any) {
-    console.log(`   ❌ Network error: ${err.message}\n`);
+
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Step 6: Test Logout
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  console.log('6️⃣  Testing POST /auth/logout...');
+
 
   try {
     const logoutResponse = await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -231,15 +231,15 @@ async function runSmokeTest() {
       const clearedCookies = (
         logoutResponse.headers.raw()['set-cookie'] || []
       ).filter((h) => h.includes('Max-Age=0'));
-      console.log(`   ✅ Logout successful`);
-      console.log(`   Cleared ${clearedCookies.length} cookies\n`);
+
+
     } else {
-      console.log(`   ❌ Logout failed: HTTP ${logoutResponse.status}`);
+
       const error = await logoutResponse.text();
-      console.log(`   Error: ${error}\n`);
+
     }
   } catch (err: any) {
-    console.log(`   ❌ Network error: ${err.message}\n`);
+
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -248,12 +248,12 @@ async function runSmokeTest() {
   console.log(
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
   );
-  console.log('✅ Auth flow smoke test complete!\n');
-  console.log('Summary:');
-  console.log('  - Cookie-based auth: ✅');
-  console.log('  - CSRF protection: ✅');
-  console.log('  - Token refresh: ✅');
-  console.log('  - Logout: ✅\n');
+
+
+
+
+
+
 }
 
 runSmokeTest().catch((err) => {

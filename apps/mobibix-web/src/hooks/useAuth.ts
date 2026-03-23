@@ -82,7 +82,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // If Firebase is not initialized, skip auth setup
     if (!auth) {
-      console.warn("Firebase not initialized. Authentication disabled.");
+
       setIsLoading(false);
       return;
     }
@@ -230,7 +230,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }));
       }
     } catch (err) {
-      console.warn("Silent session refresh failed:", err);
+
     } finally {
       setIsLoading(false);
     }

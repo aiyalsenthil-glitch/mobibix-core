@@ -10,7 +10,7 @@ async function bootstrap() {
   const phoneService = app.get(WhatsAppPhoneNumbersService);
   const prisma = app.get(PrismaService);
 
-  console.log('🚀 Starting Inbox Backend Verification...');
+
 
   // 1. Setup Data
   const tenantCode = `INBOX_TEST_${Date.now()}`;
@@ -21,7 +21,7 @@ async function bootstrap() {
       tenantType: 'MOBILE_SHOP',
     },
   });
-  console.log(`Created Tenant: ${tenant.id}`);
+
 
   // Create 2 Numbers
   const num1 = await phoneService.createPhoneNumber({
@@ -68,7 +68,7 @@ async function bootstrap() {
   });
 
   // 2. Verify getNumbers
-  console.log('\n--- Test 1: getNumbers ---');
+
   const numbers = await userService.getNumbers(tenant.id);
   console.table(
     numbers.map((n) => ({ id: n.id, label: n.label, isDefault: n.isDefault })),
@@ -77,19 +77,19 @@ async function bootstrap() {
   if (numbers.length !== 2) throw new Error('Expected 2 numbers');
   if (numbers[0].id !== num1.id)
     throw new Error('Expected default number first');
-  console.log('✅ getNumbers passed');
+
 
   // 3. Verify getLogs filtering
-  console.log('\n--- Test 2: getLogs Filtering ---');
+
 
   const logsAll = await userService.getLogs(tenant.id, {});
-  console.log(`All Logs: ${logsAll.data.length}`);
+
   if (logsAll.data.length !== 2) throw new Error('Expected 2 logs total');
 
   const logsNum1 = await userService.getLogs(tenant.id, {
     whatsAppNumberId: num1.id,
   });
-  console.log(`Logs for Num 1: ${logsNum1.data.length}`);
+
   if (logsNum1.data.length !== 1) throw new Error('Expected 1 log for Num 1');
   if (logsNum1.data[0].whatsAppNumberId !== num1.id)
     throw new Error('Log mismatch');
@@ -97,16 +97,16 @@ async function bootstrap() {
   const logsNum2 = await userService.getLogs(tenant.id, {
     whatsAppNumberId: num2.id,
   });
-  console.log(`Logs for Num 2: ${logsNum2.data.length}`);
+
   if (logsNum2.data.length !== 1) throw new Error('Expected 1 log for Num 2');
 
-  console.log('✅ getLogs filtering passed');
+
 
   // Cleanup
   await prisma.tenant.delete({ where: { id: tenant.id } });
 
   await app.close();
-  console.log('Done.');
+
 }
 
 bootstrap().catch(console.error);

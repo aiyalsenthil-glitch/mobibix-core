@@ -13,11 +13,11 @@ async function bootstrap() {
   const phoneService = app.get(WhatsAppPhoneNumbersService);
   const webhook = app.get(WhatsAppWebhookController);
 
-  console.log('🚀 Starting Verification...');
+
 
   // 1. Setup Test Tenant
   const tenantCode = 'VERIFY_MULTI_' + Date.now();
-  console.log(`Creating Tenant: ${tenantCode}`);
+
 
   const tenant = await prisma.tenant.create({
     data: {
@@ -31,7 +31,7 @@ async function bootstrap() {
 
   try {
     // 2. Add Two WhatsApp Numbers
-    console.log('Adding Phone Numbers...');
+
     const num1 = await prisma.whatsAppNumber.create({
       data: {
         tenantId: tenant.id,
@@ -59,16 +59,16 @@ async function bootstrap() {
 
     // 3. Verify Sending Logic (Mocking the actual API call via console log in sender if possible,
     //    or just checking if it resolves the config correctly)
-    console.log('\n--- Test 1: Resolve Number by ID ---');
+
     const resolvedNum1 = await phoneService.getPhoneNumberById(num1.id);
     if (resolvedNum1?.id === num1.id) {
-      console.log('✅ Resolved Number 1 correctly.');
+
     } else {
       console.error('❌ Failed to resolve Number 1.');
     }
 
     // 4. Verify Webhook Ingestion
-    console.log('\n--- Test 2: Webhook Ingestion ---');
+
     // Mock Request/Response
     const mockReq = {
       headers: { 'x-hub-signature-256': 'mock_sig' }, // We might strictly validate sig, so we might need to bypass or generate valid sig
@@ -127,7 +127,7 @@ async function bootstrap() {
     }
     mockReq.headers['x-hub-signature-256'] = signature;
 
-    console.log(`Generated Signature: ${signature}`);
+
 
     await webhook.handleWebhook(mockReq, mockRes);
 
@@ -141,8 +141,8 @@ async function bootstrap() {
     });
 
     if (log) {
-      console.log(`✅ Webhook success! Log created for Number 2: ${log.id}`);
-      console.log(`   Routed to WhatsAppNumber: ${log.whatsAppNumberId}`);
+
+
     } else {
       console.log(
         '⚠️ No log found. Signature check probably blocked it or routing failed.',
@@ -152,7 +152,7 @@ async function bootstrap() {
     console.error('Verification Failed:', error);
   } finally {
     // Cleanup
-    console.log('Cleaning up...');
+
     await prisma.whatsAppNumber.deleteMany({ where: { tenantId: tenant.id } });
     await prisma.tenant.delete({ where: { id: tenant.id } });
     await app.close();

@@ -49,7 +49,7 @@ export async function fetchCountries(): Promise<CountryOption[]> {
     const data = await res.json();
     return Array.isArray(data) ? data : COUNTRY_FALLBACK;
   } catch (err) {
-    console.warn("[CountryAPI] Falling back to static list:", err);
+
     return COUNTRY_FALLBACK;
   }
 }

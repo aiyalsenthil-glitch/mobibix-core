@@ -62,7 +62,7 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
   private async handleIncomingMessage(message: string) {
     try {
       const payload = JSON.parse(message);
-      console.log('--- [WHATSAPP_INBOX_VERSION_NEW] ---');
+
       const { 
         tenantId, 
         senderPhone, 
@@ -77,7 +77,7 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
       } = payload;
       
       const conversationId = payloadConvId || jid || senderPhone || 'unknown';
-      console.log(`[INBOX_RECV] tenant: ${tenantId}, conv: ${conversationId}, phone: ${senderPhone}, msgId: ${messageId}`);
+
 
       // Handle Sync Status instead of Message if present
       if (syncStatus) {

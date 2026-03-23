@@ -13,7 +13,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🚀 Starting Plan & Feature Update...');
+
 
   // Feature Sets
   const FEATURES_BASIC = [
@@ -115,7 +115,7 @@ async function main() {
           level: p.level,
         },
       });
-      console.log(`✅ Updated Plan: ${p.name}`);
+
     } else {
       const created = await prisma.plan.create({
         data: {
@@ -127,7 +127,7 @@ async function main() {
         },
       });
       planId = created.id;
-      console.log(`✅ Created Plan: ${p.name}`);
+
     }
 
     if (planId) {
@@ -144,12 +144,12 @@ async function main() {
             feature: f as any,
           })),
         });
-        console.log(`   - Synced ${p.features.length} features for ${p.name}`);
+
       }
     }
   }
 
-  console.log('✅ Plan Update Complete!');
+
 }
 
 main()

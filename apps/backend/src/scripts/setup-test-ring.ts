@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function createTestTenants() {
-  console.log('🚀 Setting up Production Test Ring...');
+
 
   const testTenants = [
     {
@@ -102,7 +102,7 @@ async function createTestTenants() {
     );
   }
 
-  console.log('\n🎉 Production Test Ring setup complete!');
+
 }
 
 createTestTenants()

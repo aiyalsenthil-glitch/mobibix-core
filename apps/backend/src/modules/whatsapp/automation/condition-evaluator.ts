@@ -31,18 +31,18 @@ export function evaluateConditions(
 ): boolean {
   const matrix = EVENT_FIELD_MATRIX[event];
   if (!matrix) {
-    console.warn(`[ConditionEval] Unknown event: ${event}`);
+
     return false;
   }
   for (const cond of conditions) {
     const fieldType: EventFieldType | undefined = matrix.fields[cond.field];
     if (!fieldType) {
-      console.warn(`[ConditionEval] Field not allowed: ${cond.field}`);
+
       return false;
     }
     const value = context[cond.field];
     if (value === undefined || value === null) {
-      console.warn(`[ConditionEval] Field missing in context: ${cond.field}`);
+
       return false;
     }
     // Validate operator
@@ -65,16 +65,13 @@ export function evaluateConditions(
         break;
     }
     if (!validOps.includes(cond.operator)) {
-      console.warn(`[ConditionEval] Invalid operator for field: ${cond.field}`);
+
       return false;
     }
     // Type check value
     switch (fieldType) {
       case 'number':
         if (typeof cond.value !== 'number') {
-          console.warn(
-            `[ConditionEval] Invalid value type for number: ${cond.field}`,
-          );
           return false;
         }
         switch (cond.operator) {
@@ -97,18 +94,12 @@ export function evaluateConditions(
         break;
       case 'boolean':
         if (typeof cond.value !== 'boolean') {
-          console.warn(
-            `[ConditionEval] Invalid value type for boolean: ${cond.field}`,
-          );
           return false;
         }
         if (cond.operator === '=' && value !== cond.value) return false;
         break;
       case 'date':
         if (typeof cond.value !== 'number') {
-          console.warn(
-            `[ConditionEval] Invalid value type for date op: ${cond.field}`,
-          );
           return false;
         }
         const today = new Date();
@@ -124,7 +115,7 @@ export function evaluateConditions(
         if (cond.operator === '=' && value !== cond.value) return false;
         break;
       default:
-        console.warn(`[ConditionEval] Unsupported field type: ${fieldType}`);
+
         return false;
     }
   }

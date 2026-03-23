@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 async function main() {
   const prisma = new PrismaClient();
-  console.log('📋 Listing all Plans in Database...');
+
 
   try {
     const plans = await prisma.plan.findMany({
@@ -15,9 +15,9 @@ async function main() {
       }
     });
 
-    console.log(`📊 Found ${plans.length} plans total.`);
+
     plans.forEach(p => {
-      console.log(`- [${p.id}] CODE: ${p.code} | NAME: ${p.name} | ACTIVE: ${p.isActive} | PUBLIC: ${p.isPublic}`);
+
     });
 
   } catch (error) {

@@ -81,7 +81,7 @@ export default function WhatsAppRetailInbox({
         (err.message.includes("PLAN_REQUIRED") ||
           err.message.includes("upgrade"))
       ) {
-        console.warn("WhatsApp logs access restricted:", err.message);
+
       } else {
         console.error("Failed to load WhatsApp logs", err);
       }

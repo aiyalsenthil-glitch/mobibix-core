@@ -576,7 +576,7 @@ export const roleTemplates = [
 ];
 
 export async function runPermissionSeed(prisma: PrismaClient) {
-  console.log('🌱 Seeding Permissions Dictionary...');
+
   for (const mod of RESOURCE_DICTIONARY) {
     for (const res of mod.resources) {
       const dbResource = await prisma.resource.upsert({
@@ -616,7 +616,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
     }
   }
 
-  console.log('🚀 Seeding Role Templates...');
+
   for (const template of roleTemplates) {
     // Find global system role
     let role = await prisma.role.findFirst({
@@ -665,8 +665,6 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         expandedPerms.add(p);
       }
     }
-
-    console.log(`  Processing role: ${template.roleName} (Module: ${template.module})`);
     for (const permName of expandedPerms) {
       const parts = permName.split('.');
       let modSearch: ModuleType | undefined;
@@ -741,6 +739,6 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       });
     }
 
-    console.log(`  Synced ${validPermissionIds.length} permissions for ${template.roleName}`);
+
   }
 }

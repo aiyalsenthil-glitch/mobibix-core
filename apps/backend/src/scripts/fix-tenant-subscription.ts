@@ -39,7 +39,7 @@ async function main() {
   const tenantId = 'cml1wr3e30003v4lehu8sbd5b';
   const planName = 'ULTIMATE';
 
-  console.log(`Fixing subscription for Tenant: ${tenantId}`);
+
 
   // 1. Find Plan
   const plan = await prisma.plan.findFirst({
@@ -57,7 +57,7 @@ async function main() {
   });
 
   if (existing) {
-    console.log('Active subscription already exists:', existing.id);
+
   } else {
     // 3. Create Subscription
     const sub = await prisma.tenantSubscription.create({
@@ -69,7 +69,7 @@ async function main() {
         endDate: new Date('2099-12-31'), // Lifetime
       },
     });
-    console.log('✅ Created Active Subscription:', sub.id);
+
   }
 
   // 4. Debug Plan Features

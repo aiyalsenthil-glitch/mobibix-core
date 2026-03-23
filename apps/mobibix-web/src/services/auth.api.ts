@@ -80,7 +80,7 @@ export async function setAccessToken(token: string | null) {
       body: JSON.stringify({ token }),
     });
   } catch (err) {
-    console.warn("Failed to sync session cookie:", err);
+
   }
 }
 

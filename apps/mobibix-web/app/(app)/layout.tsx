@@ -45,7 +45,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         const data = await getSubscription();
         setSubscription(data.current);
       } catch (err) {
-        console.warn("Failed to fetch subscription for banner", err);
+
       }
     };
     fetchSub();

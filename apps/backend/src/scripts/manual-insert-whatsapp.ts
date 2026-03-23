@@ -29,10 +29,10 @@ async function main() {
   const prisma = new PrismaClient();
 
   try {
-    console.log(`Encrypting token for Tenant: ${TENANT_ID}...`);
+
     const accessTokenValue = encrypt(ACCESS_TOKEN);
 
-    console.log(`Upserting WhatsApp Configuration...`);
+
     // Using 'any' cast because TS might complain about the generated types in a script context
     const result = await (prisma as any).whatsAppNumber.upsert({
       where: {
@@ -58,8 +58,8 @@ async function main() {
       },
     });
 
-    console.log('✅ Configuration Saved Successfully!');
-    console.log(result);
+
+
   } catch (e) {
     console.error(e);
   } finally {

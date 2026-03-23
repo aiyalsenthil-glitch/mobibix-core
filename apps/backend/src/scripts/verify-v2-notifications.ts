@@ -8,7 +8,7 @@ async function bootstrap() {
   const orchestrator = app.get(NotificationOrchestrator);
   const prisma = app.get(PrismaService);
 
-  console.log('🚀 Starting Notification System Verification...');
+
 
   // 1. Mock a tenant and user for testing if none exist
   let tenant = await prisma.tenant.findFirst();
@@ -25,7 +25,7 @@ async function bootstrap() {
   }
 
   // 2. Test Subscription Suspended Event
-  console.log('--- Testing Dispatch: subscription.suspended ---');
+
   await orchestrator.dispatch({
     tenantId: tenant.id,
     eventId: 'subscription.suspended',
@@ -41,16 +41,16 @@ async function bootstrap() {
   });
 
   if (recentLog) {
-    console.log('✅ Notification Log created successfully!');
-    console.log(`   ID: ${recentLog.id}`);
-    console.log(`   Status: ${recentLog.status}`);
-    console.log(`   Recipient: ${recentLog.recipient}`);
+
+
+
+
   } else {
     console.error('❌ Notification Log NOT found!');
   }
 
   // 4. Test Deletion Requested Event
-  console.log('--- Testing Dispatch: tenant.deletion.requested ---');
+
   await orchestrator.dispatch({
     tenantId: tenant.id,
     eventId: 'tenant.deletion.requested',
@@ -65,13 +65,13 @@ async function bootstrap() {
   });
 
   if (delLog) {
-    console.log('✅ Deletion Request Notification Log created!');
+
   } else {
     console.error('❌ Deletion Request Notification Log NOT found!');
   }
 
   await app.close();
-  console.log('🏁 Verification complete.');
+
 }
 
 bootstrap().catch(err => {

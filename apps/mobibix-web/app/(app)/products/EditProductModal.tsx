@@ -57,7 +57,7 @@ export function EditProductModal({
         setHsnResults(results);
         setShowHsnDropdown(true);
       } catch {
-        console.warn("HSN search unavailable, using manual entry");
+
         setShowHsnDropdown(false);
       }
     } else {

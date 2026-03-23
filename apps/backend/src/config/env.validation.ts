@@ -217,7 +217,7 @@ export function validateEnv(): EnvConfig {
     return validatedEnv;
   }
 
-  console.log('🔍 Validating environment variables...');
+
 
   const result = envSchema.safeParse(process.env);
 
@@ -249,35 +249,10 @@ export function validateEnv(): EnvConfig {
   }
 
   validatedEnv = result.data;
-  console.log('✅ Environment validation passed');
+
 
   // Log non-sensitive config for debugging
   if (validatedEnv.NODE_ENV !== 'production') {
-    console.log('📋 Configuration:');
-    console.log(`   - Environment: ${validatedEnv.NODE_ENV}`);
-    console.log(`   - Port: ${validatedEnv.PORT}`);
-    console.log(
-      `   - Database: ${validatedEnv.DATABASE_URL.replace(/:[^:@]+@/, ':****@')}`,
-    ); // Mask password
-    console.log(`   - WhatsApp API: ${validatedEnv.WHATSAPP_API_VERSION}`);
-    console.log(`   - JWT Expiration: ${validatedEnv.JWT_EXPIRES_IN}`);
-  }
-
-  return validatedEnv;
-}
-
-/**
- * Get validated environment configuration
- * Must call validateEnv() first (usually in main.ts)
- *
- * @returns Validated environment configuration
- * @throws Error if validateEnv() has not been called yet
- */
-export function getEnv(): EnvConfig {
-  if (!validatedEnv) {
-    throw new Error(
-      'Environment not validated! Call validateEnv() in main.ts before accessing env config.',
-    );
   }
   return validatedEnv;
 }

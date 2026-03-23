@@ -6,7 +6,7 @@ import { PrismaService } from '../core/prisma/prisma.service';
 import { AuthService } from '../core/auth/auth.service';
 
 async function bootstrap() {
-  console.log('Bootstrapping Nest context for Phase 3 tests...');
+
   const app = await NestFactory.createApplicationContext(AppModule);
 
   const prisma = app.get(PrismaService);
@@ -35,7 +35,7 @@ async function bootstrap() {
         3, // daysLeft
       );
 
-      console.log('Emiting subscription.trial.expiring event...');
+
       await eventEmitter.emitAsync('subscription.trial.expiring', event);
       console.log(
         '✅ Trial Expiry Warning Event processed! (Check your console/inbox)',
@@ -56,7 +56,7 @@ async function bootstrap() {
       console.log(
         `Found user ${user.fullName} (${user.id}), Email: ${user.email}`,
       );
-      console.log('Triggering authService.sendVerificationEmail...');
+
       try {
         await authService.sendVerificationEmail(user.id);
         console.log(
@@ -69,7 +69,7 @@ async function bootstrap() {
         );
       }
     } else {
-      console.log('⚠️ Could not find a suitable user with an email. Skipping.');
+
     }
   } catch (error) {
     console.error('❌ Test failed:', error);

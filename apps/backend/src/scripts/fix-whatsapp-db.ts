@@ -8,7 +8,7 @@ async function fixWhatsAppNumber() {
   const phoneNumberId = '879797545226831';
   const tenantType = 'MOBILE_SHOP';
 
-  console.log('🔍 Checking for tenant with MOBILE_SHOP...');
+
 
   const tenant = await prisma.tenant.findFirst({
     where: {
@@ -23,7 +23,7 @@ async function fixWhatsAppNumber() {
 
   console.log(`✅ Found tenant: ${tenant.name} (${tenant.id})`);
 
-  console.log(`🛠 Upserting WhatsAppPhoneNumber for ${phoneNumberId}...`);
+
 
   await prisma.whatsAppNumber.upsert({
     where: {
@@ -44,11 +44,11 @@ async function fixWhatsAppNumber() {
     },
   });
 
-  console.log('✅ WhatsAppPhoneNumber record fixed!');
+
 
   // Also verify WhatsAppLog existence for test
   const logCount = await prisma.whatsAppLog.count();
-  console.log(`📊 Total WhatsApp Logs: ${logCount}`);
+
 }
 
 fixWhatsAppNumber()

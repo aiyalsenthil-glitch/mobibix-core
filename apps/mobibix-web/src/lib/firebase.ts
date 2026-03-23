@@ -36,7 +36,7 @@ if (isFirebaseConfigured) {
 
     // Set persistence to LOCAL so sessions survive page refreshes
     setPersistence(auth, browserLocalPersistence).catch((error) => {
-      console.warn("Firebase persistence error:", error);
+
     });
 
     // Initialize Google Auth Provider

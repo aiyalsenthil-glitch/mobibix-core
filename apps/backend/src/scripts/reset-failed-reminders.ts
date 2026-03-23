@@ -40,18 +40,18 @@ async function main() {
   );
 
   for (const reminder of failedReminders) {
-    console.log(`ID: ${reminder.id}`);
+
     console.log(
       `  Tenant: ${reminder.tenant?.name} (${reminder.tenant?.tenantType})`,
     );
     console.log(
       `  Customer: ${reminder.customer?.name} - ${reminder.customer?.phone}`,
     );
-    console.log(`  Template: ${reminder.templateKey}`);
-    console.log(`  Status: ${reminder.status}`);
-    console.log(`  Created: ${reminder.createdAt}`);
-    console.log(`  Updated: ${reminder.updatedAt}`);
-    console.log('');
+
+
+
+
+
   }
 
   // Ask to reset one reminder to SCHEDULED for testing
@@ -70,8 +70,8 @@ async function main() {
       },
     });
 
-    console.log(`✅ Reminder ${reminderToReset.id} reset to SCHEDULED`);
-    console.log(`   Will be processed in ~5 seconds by the cron job`);
+
+
     console.log(
       `   Watch the logs for: [DEBUG] Reminder ${reminderToReset.id}`,
     );

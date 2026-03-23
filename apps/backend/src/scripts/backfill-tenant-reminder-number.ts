@@ -89,7 +89,7 @@ async function backfillTenantReminderNumbers() {
   });
 
   if (totalMissing === 0) {
-    console.log('✅ No tenants missing whatsappReminderNumberId.');
+
     return;
   }
 
@@ -127,17 +127,17 @@ async function backfillTenantReminderNumbers() {
     });
 
     totalUpdated += 1;
-    console.log(`✅ Set reminder number for tenant ${tenantId}.`);
+
   }
 
   const remaining = await prisma.tenant.count({
     where: { whatsappReminderNumberId: null },
   });
 
-  console.log('---');
-  console.log(`✅ Total updated: ${totalUpdated}`);
-  console.log(`⚠️  Tenants skipped: ${skippedTenants}`);
-  console.log(`🔎 Remaining missing: ${remaining}`);
+
+
+
+
 }
 
 backfillTenantReminderNumbers()

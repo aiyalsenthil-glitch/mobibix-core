@@ -8,7 +8,7 @@ async function bootstrap() {
   const prisma = app.get(PrismaService);
   const eventEmitter = app.get(EventEmitter2);
 
-  console.log('🧪 Starting Functional Verification System...');
+
 
   // 1. SETUP: Create/Find a tenant for test
   let tenant = await prisma.tenant.findFirst({ where: { name: 'Functional Test Gym' } });
@@ -26,7 +26,7 @@ async function bootstrap() {
   (prisma as any).setTenantId(tid); // Set context for multi-tenant models
 
   // 2. TRIGGER: Emit a subscription.suspended event
-  console.log('--- Step 1: Emitting subscription.suspended ---');
+
   await eventEmitter.emitAsync('subscription.suspended', {
     tenantId: tid,
     module: 'GYM',
@@ -34,7 +34,7 @@ async function bootstrap() {
   });
 
   // 3. VERIFY: Notification Log
-  console.log('--- Step 2: Verifying NotificationLog ---');
+
   setTimeout(async () => {
     const log = await prisma.notificationLog.findFirst({
       where: { tenantId: tid, eventId: 'subscription.suspended' },
@@ -50,11 +50,11 @@ async function bootstrap() {
         tenantName: log.tenant.name
       });
     } else {
-      console.log('❌ Log not found!');
+
     }
 
     // 4. TEST: Compliance Flow
-    console.log('--- Step 3: Testing Deletion Lifecycle ---');
+
     const existingReq = await prisma.deletionRequest.findFirst({ where: { tenantId: tid } });
     let rid = existingReq?.id;
     if (!rid) {
@@ -71,17 +71,17 @@ async function bootstrap() {
 
     // Capture initial status
     const initialT = await prisma.tenant.findUnique({ where: { id: tid } });
-    console.log(`   Initial Tenant Status: ${initialT?.status}`);
+
 
     // Update status to PENDING_DELETION (Simulate request effect)
     await prisma.tenant.update({ where: { id: tid }, data: { status: 'PENDING_DELETION' } });
 
     // 5. TEST: Stats fetch
     const statsRes = await prisma.tenantSubscription.count({ where: { status: 'PAST_DUE' } });
-    console.log(`--- Step 4: Revenue Stats Check ---`);
-    console.log(`   Past Due Count in DB: ${statsRes}`);
 
-    console.log('🏁 Verification complete.');
+
+
+
     await app.close();
   }, 2000); // Give time for event bus
 }

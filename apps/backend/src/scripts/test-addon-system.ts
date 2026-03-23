@@ -5,7 +5,7 @@ import { SubscriptionStatus, BillingCycle } from '@prisma/client';
 import axios from 'axios';
 
 async function testAddonSystem() {
-  console.log('🚀 Initializing NestJS App Context...');
+
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
   });
@@ -15,7 +15,7 @@ async function testAddonSystem() {
     const API_URL = 'http://localhost_REPLACED:3000/api';
     const JWT_TOKEN = process.env.TEST_JWT_TOKEN;
 
-    console.log('🧪 Starting Add-on System Verification...');
+
 
     // 1. Find a test tenant with an active subscription
     const tenant = await prisma.tenant.findFirst({
@@ -55,7 +55,7 @@ async function testAddonSystem() {
 
     // 3. Test generic buyAddon endpoint (via Axios)
     if (JWT_TOKEN) {
-      console.log('🚀 Testing POST /billing/subscription/addons...');
+
       try {
         const buyRes = await axios.post(
           `${API_URL}/billing/subscription/addons`,
@@ -68,7 +68,7 @@ async function testAddonSystem() {
             headers: { Authorization: `Bearer ${JWT_TOKEN}` },
           },
         );
-        console.log('✅ buyAddon response:', buyRes.data);
+
       } catch (e: any) {
         console.log(
           '⚠️ buyAddon failed (maybe already active):',
@@ -76,7 +76,7 @@ async function testAddonSystem() {
         );
       }
     } else {
-      console.warn('⚠️ Skipping Axios tests: TEST_JWT_TOKEN not set');
+
     }
 
     // 4. Verify in DB
@@ -85,11 +85,11 @@ async function testAddonSystem() {
     });
 
     if (addonRecord) {
-      console.log('✅ Addon record found in DB:', addonRecord);
+
       if (addonRecord.endDate.getTime() !== sub.endDate.getTime()) {
         console.error('❌ Co-terminus logic failed! End dates do not match.');
       } else {
-        console.log('✅ Co-terminus logic verified: End dates match.');
+
       }
     }
 
@@ -106,7 +106,7 @@ async function testAddonSystem() {
       );
 
       const mergedFeatures = currentRes.data.current.features;
-      console.log('✅ Merged features:', mergedFeatures);
+
 
       // Check if addon features are included
       const addonFeatures = await prisma.planFeature.findMany({
@@ -119,7 +119,7 @@ async function testAddonSystem() {
             `❌ Feature ${f.feature} from addon missing in response!`,
           );
         } else {
-          console.log(`✅ Feature ${f.feature} merging verified.`);
+
         }
       }
     }

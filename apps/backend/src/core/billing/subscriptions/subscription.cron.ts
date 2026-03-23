@@ -109,10 +109,5 @@ export class SubscriptionCron {
         reason: 'ABANDONED_AUTOPAY',
       });
     }
-
-    console.log(
-      `[CRON][Expiry][${now.toISOString()}] ` +
-        `Trials: ${trials.length} | Manual: ${manualExpired.length} | Autopay: ${autopayExpired.length} | Stale: ${staleAutoRenew.length}`,
-    );
   }
 }

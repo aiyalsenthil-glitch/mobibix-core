@@ -499,10 +499,6 @@ export class WhatsAppRemindersService {
           const res = resolvedMap.get(key);
           return res?.formatted || '';
         });
-
-        console.log(
-          `[WhatsAppReminders] Resolved Parameters: ${JSON.stringify(parameters)}`,
-        );
       } else {
         // Fallback for manually seeded templates or missing definitions
         // Use the old hardcoded logic as fail-safe

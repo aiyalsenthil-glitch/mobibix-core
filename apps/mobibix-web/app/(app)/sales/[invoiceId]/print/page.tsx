@@ -68,7 +68,7 @@ export default function PrintInvoicePage() {
             // Don't fail the whole page if aux data fails, but log it
           }
         } else {
-          console.warn("No shopId in invoice data");
+
         }
       } catch (err: any) {
         console.error("Fatal load error:", err);

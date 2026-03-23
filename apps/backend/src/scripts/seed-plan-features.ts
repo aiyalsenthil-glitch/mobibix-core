@@ -68,12 +68,12 @@ async function main() {
       });
 
       if (existing) {
-        console.log(`- [SKIP] ${feature} already exists.`);
+
       } else {
         await prisma.planFeature.create({
           data: { planId: plan.id, feature: feature as any },
         });
-        console.log(`- [ADD] ${feature} added.`);
+
       }
     }
   }

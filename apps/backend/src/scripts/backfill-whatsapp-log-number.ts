@@ -74,7 +74,7 @@ async function backfillWhatsAppLogNumberIds() {
   });
 
   if (totalMissing === 0) {
-    console.log('✅ No WhatsAppLog records missing whatsAppNumberId.');
+
     return;
   }
 
@@ -116,17 +116,17 @@ async function backfillWhatsAppLogNumberIds() {
     });
 
     totalUpdated += result.count;
-    console.log(`✅ Backfilled ${result.count} logs for tenant ${tenantId}.`);
+
   }
 
   const remaining = await prisma.whatsAppLog.count({
     where: { whatsAppNumberId: undefined },
   });
 
-  console.log('---');
-  console.log(`✅ Total updated: ${totalUpdated}`);
-  console.log(`⚠️  Tenants skipped: ${skippedTenants}`);
-  console.log(`🔎 Remaining missing: ${remaining}`);
+
+
+
+
 }
 
 backfillWhatsAppLogNumberIds()

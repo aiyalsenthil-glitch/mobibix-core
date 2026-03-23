@@ -5,14 +5,14 @@ const prisma = new PrismaClient();
 async function main() {
   const tenantId = 'cml27zxln000094le74zxiqvs'; // User's tenant ID
 
-  console.log(`Checking for Tenant: ${tenantId}`);
+
 
   // 1. Check Tenant Details
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: { id: true, name: true, tenantType: true },
   });
-  console.log('Tenant:', tenant);
+
 
   if (!tenant) return;
 
@@ -40,7 +40,7 @@ async function main() {
   );
 
   // 3. Simulate Resolution Logic
-  console.log('--- Resolution Simulation ---');
+
 
   // A. Tenant Specific (REMINDER)
   const tSpecific = allPhones.find(
@@ -52,7 +52,7 @@ async function main() {
   const tDefault = allPhones.find(
     (p) => p.tenantId === tenantId && p.isDefault && p.isEnabled,
   );
-  console.log('Tenant Default:', tDefault ? 'FOUND' : 'NOT FOUND');
+
 
   // C. Module Specific (REMINDER)
   const mSpecific = allPhones.find(
@@ -72,7 +72,7 @@ async function main() {
       p.isDefault &&
       p.isEnabled,
   );
-  console.log('Module Default:', mDefault ? 'FOUND' : 'NOT FOUND');
+
 }
 
 main()

@@ -193,10 +193,6 @@ export class PrismaService
             } finally {
               const duration = Date.now() - start;
               if (duration > 500) {
-                console.warn(
-                  `⚠️ Slow DB Query: ${model}.${operation} took ${duration}ms`,
-                  JSON.stringify(args).slice(0, 200),
-                );
               }
             }
           },

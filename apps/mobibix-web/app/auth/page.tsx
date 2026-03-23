@@ -169,13 +169,6 @@ export default function AuthPage({ mode }: AuthPageProps) {
         await updateProfile(res.user, { displayName: fullName });
       }
       
-      // QA Bypass Check: If it's a mobibix.test account, skip verify step.
-      if (email.endsWith("@mobibix.test")) {
-        await exchangeToken(res.user);
-        // Redirect will happen via useEffect
-        return;
-      }
-
       // Send verification email
       await sendVerificationEmail(res.user);
       setFirebaseUser(res.user);

@@ -1365,9 +1365,6 @@ export class JobCardsService {
     });
 
     if (existingInvoice) {
-      console.log(
-        `⚠️ Job ${job.jobNumber} already has invoice, skipping auto-creation`,
-      );
       return;
     }
 
@@ -1532,11 +1529,6 @@ export class JobCardsService {
       },
       tx,
     );
-
-    console.log(
-      `✅ Auto-invoice ${invoice.invoiceNumber} created for Job ${job.jobNumber}`,
-    );
-
     // 4. 🛡️ LINK ADVANCE RECEIPTS & UPDATE BALANCE
     // Fetch all advances linked to this JobCard
     const advanceReceipts = await prisma.receipt.findMany({
@@ -1575,10 +1567,6 @@ export class JobCardsService {
         });
       }
     }
-
-    console.log(
-      `✅ Auto-created DRAFT/PAID invoice ${invoice.invoiceNumber} (${invoiceType}) for job ${job.jobNumber}`,
-    );
   }
 
   /**
@@ -1618,10 +1606,6 @@ export class JobCardsService {
         where: { linkedInvoiceId: invoice.id },
         data: { linkedInvoiceId: null },
       });
-
-      console.log(
-        `🗑️ VOIDED invoice ${invoice.invoiceNumber} for ${reason} job`,
-      );
     }
   }
 
@@ -1859,11 +1843,6 @@ export class JobCardsService {
       where: { id: jobId },
       data: { statusHistory },
     });
-
-    console.log(
-      `♻️ Reopened job ${job.jobNumber} (cancelled at ${cancelStage} stage)`,
-    );
-
     return finalJob;
   }
 
@@ -1906,11 +1885,6 @@ export class JobCardsService {
         ...(consentSignatureUrl && { consentSignatureUrl }),
       },
     });
-
-    console.log(
-      `✅ Recorded consent for job ${job.jobNumber}: nonRefundable=${consentNonRefundable}`,
-    );
-
     return updatedJob;
   }
 

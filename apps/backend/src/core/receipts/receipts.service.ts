@@ -91,7 +91,9 @@ export class ReceiptsService {
           amount: this.toPaisa(createReceiptDto.amount),
           paymentMethod: createReceiptDto.paymentMethod,
           transactionRef: createReceiptDto.transactionRef,
-          customerId: null, // TODO: Link to Customer model when available
+          customerId: createReceiptDto.customerPhone
+            ? ((await this.prisma.party.findFirst({ where: { tenantId, phone: createReceiptDto.customerPhone }, select: { id: true } }))?.id ?? null)
+            : null,
           customerName: createReceiptDto.customerName,
           customerPhone: createReceiptDto.customerPhone,
           linkedInvoiceId: createReceiptDto.linkedInvoiceId || null,

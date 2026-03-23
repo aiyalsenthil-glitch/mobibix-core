@@ -5,7 +5,7 @@ import { SubscriptionsService } from '../core/billing/subscriptions/subscription
 import { SubscriptionStatus, BillingCycle } from '@prisma/client';
 
 async function verifyServiceLogic() {
-  console.log('🚀 Initializing NestJS App Context...');
+
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
   });
@@ -14,7 +14,7 @@ async function verifyServiceLogic() {
     const prisma = app.get(PrismaService);
     const subscriptionsService = app.get(SubscriptionsService);
 
-    console.log('🧪 Verifying SubscriptionsService Add-on Logic...');
+
 
     // 1. Find a test tenant
     const tenant = await prisma.tenant.findFirst({
@@ -52,7 +52,7 @@ async function verifyServiceLogic() {
     }
 
     // 3. Test buyAddon
-    console.log(`🚀 Calling buyAddon for ${addonPlan.name}...`);
+
     const result = await subscriptionsService.buyAddon({
       subscriptionId: sub.id,
       addonPlanId: addonPlan.id,
@@ -60,7 +60,7 @@ async function verifyServiceLogic() {
       autoRenew: true,
     });
 
-    console.log('✅ buyAddon result:', result);
+
 
     if (result.endDate.getTime() === sub.endDate.getTime()) {
       console.log(
@@ -85,7 +85,7 @@ async function verifyServiceLogic() {
         where: { id: tenant.id },
       });
       if (updatedTenant?.whatsappCrmEnabled) {
-        console.log('✅ Legacy whatsappCrmEnabled flag verified.');
+
       } else {
         console.error('❌ Legacy flag NOT set!');
       }

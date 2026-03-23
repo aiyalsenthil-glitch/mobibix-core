@@ -15,7 +15,7 @@ async function main() {
   const content = fs.readFileSync(csvFilePath, 'utf8');
   const lines = content.split('\n').filter(line => line.trim() && !line.startsWith('group_name'));
 
-  console.log(`Analyzing ${lines.length} compatibility records...`);
+
 
   const uniqueBrands = new Set<string>();
   const uniqueModels = new Map<string, string>(); // fullName -> brandName
@@ -38,12 +38,12 @@ async function main() {
     relations.push({ groupName, modelFullName: phoneModelStr });
   }
 
-  console.log(`Found ${uniqueBrands.size} brands, ${uniqueModels.size} models, and ${uniqueGroups.size} groups.`);
+
 
   const startTime = Date.now();
 
   // 1. Bulk Upsert Brands
-  console.log('Seeding Brands...');
+
   for (const brandName of uniqueBrands) {
     await prisma.brand.upsert({
       where: { name: brandName },
@@ -57,7 +57,7 @@ async function main() {
   allBrands.forEach(b => brandDict.set(b.name, b.id));
 
   // 2. Bulk Upsert Models
-  console.log('Seeding Models...');
+
   const modelEntries = Array.from(uniqueModels.entries());
   for (let i = 0; i < modelEntries.length; i += 50) {
       // Small batches for Models to avoid unique constraint race but still be faster
@@ -76,14 +76,14 @@ async function main() {
       }));
       process.stdout.write(`\rModels: ${Math.min(i + 50, modelEntries.length)}/${modelEntries.length}`);
   }
-  console.log('\nModels seeded.');
+
 
   const modelDict = new Map<string, string>();
   const allModels = await prisma.phoneModel.findMany({ include: { brand: true } });
   allModels.forEach(m => modelDict.set(`${m.brand.name} ${m.modelName}`, m.id));
 
   // 3. Bulk Upsert Groups
-  console.log('Seeding Groups...');
+
   const groupEntries = Array.from(uniqueGroups.entries());
   for (let i = 0; i < groupEntries.length; i += 50) {
       const batch = groupEntries.slice(i, i + 50);
@@ -96,14 +96,14 @@ async function main() {
       }));
       process.stdout.write(`\rGroups: ${Math.min(i + 50, groupEntries.length)}/${groupEntries.length}`);
   }
-  console.log('\nGroups seeded.');
+
 
   const groupDict = new Map<string, string>();
   const allGroups = await prisma.compatibilityGroup.findMany();
   allGroups.forEach(g => groupDict.set(g.name, g.id));
 
   // 4. Bulk Insert Junctions (createMany with skipDuplicates)
-  console.log('Seeding Junctions...');
+
   const junctionData = relations.map(rel => ({
       groupId: groupDict.get(rel.groupName)!,
       phoneModelId: modelDict.get(rel.modelFullName)!

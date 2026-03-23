@@ -5,7 +5,7 @@ import { PERMISSION_INHERITANCE } from '../../security/permission-inheritance';
 const prisma = new PrismaClient();
 
 async function migrate() {
-  console.log('🚀 Starting RBAC Migration...');
+
 
   const roles = await prisma.role.findMany({
     where: { deletedAt: null },
@@ -21,7 +21,7 @@ async function migrate() {
   });
 
   for (const role of roles) {
-    console.log(`Checking role: ${role.name}`);
+
     
     const currentPerms = role.rolePermissions.map((rp: any) => 
       `${rp.permission.resource.name}.${rp.permission.action}`
@@ -47,7 +47,7 @@ async function migrate() {
     }
 
     if (toAdd.size > 0) {
-      console.log(`  Updating role: ${role.name}...`);
+
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // 1. Add new base permissions
         for (const baseStr of toAdd) {
@@ -58,7 +58,7 @@ async function migrate() {
           });
 
           if (!resource) {
-            console.warn(`    Warning: Resource ${resName} not found for base permission ${baseStr}`);
+
             continue;
           }
 
@@ -67,7 +67,7 @@ async function migrate() {
           });
 
           if (!permission) {
-            console.warn(`    Warning: Permission ${actName} not found for resource ${resName}`);
+
             continue;
           }
 
@@ -79,7 +79,7 @@ async function migrate() {
              await tx.rolePermission.create({
               data: { roleId: role.id, permissionId: permission.id }
             });
-            console.log(`    + Added base perm: ${baseStr}`);
+
           }
         }
 
@@ -100,13 +100,13 @@ async function migrate() {
                permissionId: { in: permsToRemove.map((p: any) => p.id) }
              }
            });
-           console.log(`    - Cleaned up ${deletedCount.count} redundant granular permissions`);
+
         }
       });
     }
   }
 
-  console.log('✅ Migration complete!');
+
 }
 
 migrate()

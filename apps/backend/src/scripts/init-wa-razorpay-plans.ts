@@ -99,18 +99,18 @@ async function main() {
       });
 
       if (!planPrice) {
-        console.warn(`⚠️  PlanPrice for ${plan.code}/${cycle} not found — skipping`);
+
         continue;
       }
 
       if (planPrice.REMOVED_PAYMENT_INFRAPlanId) {
-        console.log(`✅  ${plan.code}/${cycle} already has Razorpay plan: ${planPrice.REMOVED_PAYMENT_INFRAPlanId}`);
+
         summary.push({ planCode: plan.code, cycle, rzpPlanId: planPrice.REMOVED_PAYMENT_INFRAPlanId, status: 'already_exists' });
         continue;
       }
 
       // Create Razorpay plan
-      console.log(`🔧  Creating Razorpay plan for ${plan.code}/${cycle} — ₹${paise / 100}...`);
+
       let rzpPlan: any;
 
       try {
@@ -136,21 +136,21 @@ async function main() {
         data:  { REMOVED_PAYMENT_INFRAPlanId: rzpPlan.id },
       });
 
-      console.log(`   → Created: ${rzpPlan.id}`);
+
       summary.push({ planCode: plan.code, cycle, rzpPlanId: rzpPlan.id, status: 'created' });
     }
   }
 
   // Print results table
-  console.log('\n─────────────────────────────────────────────────────');
-  console.log('  WhatsApp Razorpay Plan Initialization — Summary');
-  console.log('─────────────────────────────────────────────────────');
+
+
+
   console.table(summary);
-  console.log('\n✅  Done! Update seed.ts V1_PRICING with the Razorpay plan IDs above.');
-  console.log('    Example:');
+
+
   for (const row of summary.filter((r) => r.status === 'created')) {
     const key = row.cycle === 'MONTHLY' ? 'RAZORPAY_MONTHLY' : 'RAZORPAY_YEARLY';
-    console.log(`    ${row.planCode}: { ..., ${key}: '${row.rzpPlanId}' }`);
+
   }
 
   await prisma.$disconnect();

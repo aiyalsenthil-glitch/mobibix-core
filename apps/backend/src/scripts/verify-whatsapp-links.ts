@@ -14,7 +14,7 @@ async function verify() {
   const resolver = new WhatsAppVariableResolver(prisma as any, mockConfigService as any);
 
   try {
-    console.log('🚀 Starting WhatsApp Link Resolution Verification...\n');
+
 
     // 1. Fetch a real Invoice
     const invoice = await prisma.invoice.findFirst({
@@ -35,12 +35,12 @@ async function verify() {
         ['invoiceLink', 'invoice_link'],
         context,
       );
-      console.log('--- Invoice Link Resolution ---');
+
       console.log('invoiceLink:', result.get('invoiceLink')?.value);
       console.log('invoice_link:', result.get('invoice_link')?.value);
-      console.log('');
+
     } else {
-      console.log('⚠️ No invoices found in database.');
+
     }
 
     // 2. Fetch a real JobCard
@@ -62,15 +62,15 @@ async function verify() {
         ['jobTrackingLink', 'job_tracking_link'],
         context,
       );
-      console.log('--- Job Tracking Link Resolution ---');
+
       console.log('jobTrackingLink:', result.get('jobTrackingLink')?.value);
       console.log('job_tracking_link:', result.get('job_tracking_link')?.value);
-      console.log('');
+
     } else {
-      console.log('⚠️ No job cards found in database.');
+
     }
 
-    console.log('🏁 Verification Complete.');
+
   } catch (error) {
     console.error('❌ Verification failed:', error);
   } finally {

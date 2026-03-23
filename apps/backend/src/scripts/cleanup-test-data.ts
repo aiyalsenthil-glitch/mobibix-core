@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🚀 Starting Test Data Cleanup...');
+
 
   try {
     // 1. Transactional delete for referential integrity
@@ -77,8 +77,8 @@ async function main() {
       prisma.loyaltyAdjustment.deleteMany(),
     ]);
 
-    console.log('✅ Cleanup successful! All user data removed.');
-    console.log('ℹ️  Preserved: Tenants, Users, Plans, AdminRoles, Templates, and BusinessCategories.');
+
+
   } catch (error) {
     console.error('❌ Cleanup failed:', error);
   } finally {

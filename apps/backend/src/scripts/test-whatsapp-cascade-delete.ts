@@ -102,18 +102,18 @@ async function testCascadeDelete() {
 async function main() {
   const result = await testCascadeDelete();
 
-  console.log('--- WhatsAppNumber Cascade Delete Test ---');
-  console.log(`Delete result: ${result.deleteResult}`);
+
+
   if (result.logCountBefore !== undefined) {
-    console.log(`Logs before delete: ${result.logCountBefore}`);
+
   }
   if (result.logCountAfter !== undefined) {
-    console.log(`Logs after delete: ${result.logCountAfter}`);
+
   }
   if (result.errorMessage) {
-    console.log(`Delete error: ${result.errorMessage}`);
+
   }
-  console.log('Note: Test data was cleaned up after the run.');
+
 }
 
 main()

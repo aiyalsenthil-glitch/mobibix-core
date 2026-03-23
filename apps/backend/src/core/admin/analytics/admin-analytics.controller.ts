@@ -41,19 +41,21 @@ export class AdminAnalyticsController {
         },
       },
       include: {
-        plan: true,
+        plan: {
+          include: { planPrices: true },
+        },
       },
     });
 
     const mrr = activeSubs.reduce((sum, sub) => {
-      // Very basic MRR calc: Price / Billing Cycle duration
-      // For now, assuming monthly price is stored or derived
-      // Schema doesn't have direct price on Plan, assuming it's in Plan or we use a static map for now
-      // TODO: Fetch actual price from PriceSnapshot or Plan
-      // Fallback to 0 if no price found (Plan model might need price field update or check schema)
-      return (
-        sum + (sub.priceSnapshot ? (sub.priceSnapshot as any).price || 0 : 0)
+      // Use priceSnapshot first (locked at purchase time), fallback to PlanPrice MONTHLY
+      if (sub.priceSnapshot) {
+        return sum + ((sub.priceSnapshot as any).price || 0);
+      }
+      const monthlyPrice = sub.plan?.planPrices?.find(
+        (p) => p.billingCycle === 'MONTHLY' && p.isActive,
       );
+      return sum + (monthlyPrice?.price || 0);
     }, 0);
 
     // 4. Churn Rate (Tenants cancelled this month / Total Tenants at start of month)
