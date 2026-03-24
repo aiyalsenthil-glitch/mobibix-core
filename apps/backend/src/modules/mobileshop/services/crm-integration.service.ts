@@ -31,7 +31,7 @@ export class CrmIntegrationService {
         this.http.get(`/api/core/dashboard/metrics`, {
           headers,
           params,
-        }),
+        }) as any,
       );
       return response.data;
     } catch {
@@ -47,7 +47,7 @@ export class CrmIntegrationService {
   async getMyFollowUps(headers: Record<string, string>) {
     try {
       const response: any = await firstValueFrom(
-        this.http.get('/api/core/follow-ups/my', { headers }),
+        this.http.get('/api/core/follow-ups/my', { headers }) as any,
       );
       return response.data;
     } catch (error) {
@@ -62,7 +62,7 @@ export class CrmIntegrationService {
   async getFollowUpCounts(headers: Record<string, string>) {
     try {
       const response: any = await firstValueFrom(
-        this.http.get('/api/core/follow-ups/counts', { headers }),
+        this.http.get('/api/core/follow-ups/counts', { headers }) as any,
       );
       return response.data;
     } catch (error) {
@@ -77,7 +77,7 @@ export class CrmIntegrationService {
   async createFollowUp(headers: Record<string, string>, dto: any) {
     try {
       const response: any = await firstValueFrom(
-        this.http.post('/api/core/follow-ups', dto, { headers }),
+        this.http.post('/api/core/follow-ups', dto, { headers }) as any,
       );
       return response.data;
     } catch (error) {
@@ -96,7 +96,7 @@ export class CrmIntegrationService {
   ) {
     try {
       const response: any = await firstValueFrom(
-        this.http.put(`/api/core/follow-ups/${followUpId}`, dto, { headers }),
+        this.http.put(`/api/core/follow-ups/${followUpId}`, dto, { headers }) as any,
       );
       return response.data;
     } catch (error) {
@@ -119,7 +119,7 @@ export class CrmIntegrationService {
           `/api/core/follow-ups/${followUpId}/status`,
           { status },
           { headers },
-        ),
+        ) as any,
       );
 
       this.logger.log(`Follow-up ${followUpId} status changed to ${status}`);
@@ -150,7 +150,7 @@ export class CrmIntegrationService {
         this.http.get(`/api/core/customer-timeline/${customerId}`, {
           headers,
           params,
-        }),
+        }) as any,
       );
 
       return response.data;
@@ -190,7 +190,7 @@ export class CrmIntegrationService {
       };
 
       const response: any = await firstValueFrom(
-        this.http.post('/api/modules/whatsapp/send', payload, { headers }),
+        this.http.post('/api/modules/whatsapp/send', payload, { headers }) as any,
       );
 
       this.logger.log(
@@ -273,7 +273,7 @@ export class CrmIntegrationService {
       if (customerId) params.customerId = customerId;
 
       const response: any = await firstValueFrom(
-        this.http.get('/api/modules/whatsapp/logs', { headers, params }),
+        this.http.get('/api/modules/whatsapp/logs', { headers, params }) as any,
       );
 
       return response.data;
@@ -297,7 +297,7 @@ export class CrmIntegrationService {
       // Assuming /api/core/health exists or we can ping root.
       // For now, simple ping.
       await firstValueFrom(
-        this.http.get('/api/core/health', { headers }),
+        this.http.get('/api/core/health', { headers }) as any,
       );
       // If 404, we might assume core is reachable but route missing.
       // But let's assume valid route.
