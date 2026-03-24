@@ -101,9 +101,15 @@ function fmtDate(d: string | Date) {
 
 function calcItemTotals(
   item: CreateQuotationItemDto,
+  taxInclusive = false,
 ): CreateQuotationItemDto {
-  const base = item.quantity * item.price;
-  const gst = Math.round(base * ((item.gstRate ?? 0) / 100));
+  const gstRate = item.gstRate ?? 0;
+  let basePrice = item.price;
+  if (taxInclusive && gstRate > 0) {
+    basePrice = Math.round(item.price / (1 + gstRate / 100));
+  }
+  const base = item.quantity * basePrice;
+  const gst = Math.round(base * (gstRate / 100));
   return { ...item, gstAmount: gst, lineTotal: base, totalAmount: base + gst };
 }
 
@@ -134,6 +140,10 @@ export default function QuotationsPage() {
 
   // Create form
   const [taxInclusive, setTaxInclusive] = useState(false);
+  function toggleTaxInclusive(val: boolean) {
+    setTaxInclusive(val);
+    setForm((f) => ({ ...f, items: f.items.map(it => calcItemTotals(it, val)) }));
+  }
   const [form, setForm] = useState<CreateQuotationDto>({
     customerName: "",
     customerPhone: "",
@@ -214,7 +224,7 @@ export default function QuotationsPage() {
   function updateItem(idx: number, patch: Partial<CreateQuotationItemDto>) {
     setForm((f) => {
       const items = [...f.items];
-      items[idx] = calcItemTotals({ ...items[idx], ...patch });
+      items[idx] = calcItemTotals({ ...items[idx], ...patch }, taxInclusive);
       return { ...f, items };
     });
   }
@@ -776,7 +786,7 @@ export default function QuotationsPage() {
                 <input
                   type="checkbox"
                   checked={taxInclusive}
-                  onChange={e => setTaxInclusive(e.target.checked)}
+                  onChange={e => toggleTaxInclusive(e.target.checked)}
                   className="w-4 h-4 accent-teal-500"
                 />
                 <span className={isDark ? "text-gray-300" : "text-gray-700"}>Prices include GST (tax-inclusive)</span>
@@ -1046,8 +1056,9 @@ export default function QuotationsPage() {
                   <input
                     type="number"
                     min={0}
-                    value={qpForm.gstRate}
-                    onChange={(e) => setQpForm((f) => ({ ...f, gstRate: Number(e.target.value) }))}
+                    value={qpForm.gstRate === 0 ? "" : qpForm.gstRate}
+                    placeholder="0"
+                    onChange={(e) => setQpForm((f) => ({ ...f, gstRate: e.target.value === "" ? 0 : Number(e.target.value) }))}
                     className={input}
                   />
                 </div>
@@ -1058,8 +1069,9 @@ export default function QuotationsPage() {
                   type="number"
                   min={0}
                   required
-                  value={qpForm.salePrice}
-                  onChange={(e) => setQpForm((f) => ({ ...f, salePrice: Number(e.target.value) }))}
+                  value={qpForm.salePrice === 0 ? "" : qpForm.salePrice}
+                  placeholder="0"
+                  onChange={(e) => setQpForm((f) => ({ ...f, salePrice: e.target.value === "" ? 0 : Number(e.target.value) }))}
                   className={input}
                 />
               </div>

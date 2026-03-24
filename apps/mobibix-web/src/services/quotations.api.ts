@@ -67,7 +67,7 @@ export interface CreateQuotationItemDto {
   gstRate?: number;
   gstAmount?: number;
   lineTotal?: number;
-  totalAmount: number;
+  totalAmount?: number;
 }
 
 export interface CreateQuotationDto {

@@ -76,7 +76,13 @@ export default function DistributorDashboard() {
   if (isNotRegistered) {
     return (
       <div className="flex flex-col items-center justify-center py-20 animate-in fade-in slide-in-from-bottom-5 duration-700">
-        <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-2xl border border-indigo-100 dark:border-indigo-900/40 text-center space-y-8">
+        <div className="max-w-md w-full space-y-4">
+          {/* Info banner */}
+          <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span>Your account is not registered as a distributor. Set up your distributor hub below to start connecting with retailers.</span>
+          </div>
+        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-2xl border border-indigo-100 dark:border-indigo-900/40 text-center space-y-8">
           <div className="mx-auto w-20 h-20 bg-indigo-100 dark:bg-indigo-950/50 rounded-3xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
             <Network size={40} />
           </div>
@@ -105,12 +111,16 @@ export default function DistributorDashboard() {
               }
               setIsRegistering(true);
               try {
-                const res = await fetch('/api/distributor/admin/register', {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/distributor/register`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
                   body: JSON.stringify({ name: registerForm.name, referralCode: registerForm.code })
                 });
-                if (!res.ok) throw new Error("Registration failed");
+                if (!res.ok) {
+                  const body = await res.json().catch(() => ({}));
+                  throw new Error(body?.message || "Registration failed");
+                }
                 toast({ title: "Welcome Aboard! 🚀", description: "You are now a verified MobiBix Distributor." });
                 window.location.reload();
               } catch (err) {
@@ -122,6 +132,7 @@ export default function DistributorDashboard() {
           >
             {isRegistering ? "Registering..." : "Activate Hub Now"}
           </Button>
+        </div>
         </div>
       </div>
     );
