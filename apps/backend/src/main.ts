@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config(); // load .env before any module imports read process.env
+
 import { NestFactory } from '@nestjs/core';
 
 // Handle BigInt serialization for JSON.stringify (used by Express/NestJS)
