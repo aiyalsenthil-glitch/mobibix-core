@@ -96,6 +96,7 @@ type LoggerRequest = {
         }
         return {
           connection,
+          skipVersionCheck: true, // suppress Upstash eviction policy warning
           defaultJobOptions: { removeOnComplete: 100, removeOnFail: 200 },
           stalledInterval: 300000,
           maxStalledCount: 2,
