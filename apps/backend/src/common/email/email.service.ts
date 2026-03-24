@@ -39,6 +39,7 @@ import { JobcardCompletedEmail } from './templates/customer/jobcard-completed';
 
 import { EmailVerificationEmail } from './templates/system/email-verification';
 import { DeletionRequestAdminEmail } from './templates/admin/deletion-request';
+import { CustomEmail } from './templates/general/custom';
 
 import { ModuleType } from '@prisma/client';
 import { EmailTemplateType } from './email-template-types';
@@ -102,17 +103,20 @@ export class EmailService {
     }
 
     // 2️⃣ IDEMPOTENCY CHECK (Database Guard)
-    const existingLog = await this.prisma.emailLog.findUnique({
-      where: {
-        idempotency_key: {
-          tenantId,
-          recipientType: recipientType as any,
-          emailType,
-          referenceId,
-          module,
+    let existingLog: any = null;
+    if (tenantId) {
+      existingLog = await this.prisma.emailLog.findUnique({
+        where: {
+          idempotency_key: {
+            tenantId,
+            recipientType: recipientType as any,
+            emailType,
+            referenceId,
+            module,
+          },
         },
-      },
-    });
+      });
+    }
 
     if (existingLog && existingLog.status === 'SENT') {
       this.logger.log(
@@ -154,7 +158,7 @@ export class EmailService {
       }
 
       // 5️⃣ SEND VIA RESEND
-      const fromAddress = this.getSenderAddress(module, emailType);
+      const fromAddress = this.getSenderAddress(module, emailType, options.senderPrefix);
       
       this.logger.log(`📧 [ROUTING] Account: ${resendInstance === this.resendMobiBix ? 'MobiBix' : resendInstance === this.resendGymPilot ? 'GymPilot' : 'Default'}`);
       this.logger.log(`📧 [ROUTING] From: ${fromAddress}`);
@@ -416,6 +420,12 @@ export class EmailService {
           >),
         });
 
+      case 'CUSTOM_EMAIL':
+        return CustomEmail({
+          module,
+          ...(payload as Omit<Parameters<typeof CustomEmail>[0], 'module'>),
+        });
+
       default:
         this.logger.warn(`Unknown email template type: ${String(type)}`);
         return null;
@@ -429,6 +439,12 @@ export class EmailService {
   ) {
     const { tenantId, recipientType, emailType, referenceId, module, to } =
       options;
+
+    // Skip DB logging if no tenant context is available (Platform Admin system-level email)
+    if (!tenantId) {
+      this.logger.log(`[EMAIL RESULT] ${status} for ${to} (Skipping DB log for platform-level email)`);
+      return;
+    }
 
     await this.prisma.emailLog.upsert({
       where: {
@@ -462,11 +478,19 @@ export class EmailService {
     });
   }
 
-  private getSenderAddress(module: ModuleType, type: string): string {
+  private getSenderAddress(module: ModuleType, type: string, senderPrefix?: string): string {
     const isMobiBix = module === 'MOBILE_SHOP' || module === 'MOBILE_REPAIR';
     const isLedger = (module as string) === 'DIGITAL_LEDGER';
     const domain = isMobiBix ? 'REMOVED_DOMAIN' : isLedger ? 'mobibix.in' : 'mobibix.in';
     const brandName = isMobiBix ? 'MobiBix' : isLedger ? 'DigitalLedger' : 'GymPilot';
+
+    // 0. Manual Priority Override
+    if (senderPrefix) {
+      const displayName = senderPrefix.toLowerCase() === 'support' ? `${brandName} Support` : 
+                        senderPrefix.toLowerCase() === 'billing' ? `${brandName} Billing` :
+                        senderPrefix.toLowerCase() === 'team' ? `${brandName} Team` : brandName;
+      return `${displayName} <${senderPrefix.toLowerCase()}@${domain}>`;
+    }
 
     // 1. BILLING EMAILS
     const billingTypes = [

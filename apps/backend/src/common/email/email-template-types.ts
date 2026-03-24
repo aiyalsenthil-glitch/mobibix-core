@@ -26,7 +26,8 @@ export type EmailTemplateType =
   | 'JOBCARD_STATUS_UPDATED'
   | 'JOBCARD_COMPLETED'
   | 'EMAIL_VERIFICATION'
-  | 'DELETION_REQUEST';
+  | 'DELETION_REQUEST'
+  | 'CUSTOM_EMAIL';
 
 export interface EmailTemplateProps {
   // Tenant
@@ -157,5 +158,10 @@ export interface EmailTemplateProps {
     ownerPhone: string;
     requestedAt: string;
     reason: string;
+  };
+  CUSTOM_EMAIL: {
+    subject: string;
+    body: string;
+    preview?: string;
   };
 }

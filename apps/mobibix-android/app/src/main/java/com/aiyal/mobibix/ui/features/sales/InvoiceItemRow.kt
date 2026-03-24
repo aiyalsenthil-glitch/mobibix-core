@@ -9,13 +9,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,15 +37,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.aiyal.mobibix.data.network.ShopProduct
 import com.aiyal.mobibix.util.CurrencyUtils
 
 data class InvoiceItemUi(
     var productId: String? = null,
     var productName: String? = null,
     var quantity: Int = 1,
-    var rate: Double = 0.0,          // Rate in RUPEES (salePrice / 100) — NOT Paisa
-    var gstRate: Double = 0.0,       // GST rate as percentage from product (not hardcoded)
+    var rate: Double = 0.0,
+    var gstRate: Double = 0.0,
     var customGstRate: Double? = null,
     var imeis: List<String> = emptyList(),
     var isSerialized: Boolean = false
@@ -48,14 +54,10 @@ data class InvoiceItemUi(
 @Composable
 fun InvoiceItemRow(
     item: InvoiceItemUi,
-    products: List<ShopProduct>,
     onRemove: () -> Unit,
     onItemChange: (InvoiceItemUi) -> Unit,
     gstEnabled: Boolean
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedProduct = products.find { it.id == item.productId }
-
     val appliedGstRate = if (item.gstRate == -1.0) item.customGstRate ?: 0.0 else item.gstRate
     val lineBase: Double = item.quantity * item.rate
     val gstAmount: Double = lineBase * appliedGstRate / 100.0
@@ -64,96 +66,135 @@ fun InvoiceItemRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 6.dp)
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
             .padding(12.dp)
     ) {
-        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-            OutlinedTextField(
-                value = selectedProduct?.name ?: "Select Product",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Product") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                modifier = Modifier.menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+        // Product name header + remove
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = item.productName ?: "Unknown Product",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
             )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                products.forEach { product ->
-                    DropdownMenuItem(
-                        text = { Text("${product.name} (Stock: ${product.stockQty})") },
-                        onClick = {
-                            onItemChange(item.copy(
-                                productId = product.id,
-                                productName = product.name,
-                                // A1 FIX: salePrice is in Paisa — divide by 100 to get Rupees for backend
-                                rate = (product.salePrice ?: 0) / 100.0,
-                                // A8 FIX: use product-specific gstRate, fallback to 0 if not set
-                                gstRate = product.gstRate ?: 0.0,
-                                customGstRate = null,
-                                isSerialized = product.isSerialized,
-                                imeis = if (product.isSerialized) List(item.quantity) { "" } else emptyList()
-                            ))
-                            expanded = false
-                        }
-                    )
-                }
+            TextButton(onClick = onRemove) {
+                Text("Remove", color = MaterialTheme.colorScheme.error)
             }
         }
+
         Spacer(Modifier.height(8.dp))
-        Row {
+
+        // Qty stepper + Rate field
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Qty stepper
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 4.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        val newQty = (item.quantity - 1).coerceAtLeast(1)
+                        onItemChange(item.copy(
+                            quantity = newQty,
+                            imeis = if (item.isSerialized) item.imeis.take(newQty) else emptyList()
+                        ))
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+                }
+                Text(
+                    text = item.quantity.toString(),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                IconButton(
+                    onClick = {
+                        val newQty = item.quantity + 1
+                        onItemChange(item.copy(
+                            quantity = newQty,
+                            imeis = if (item.isSerialized) {
+                                item.imeis + List(newQty - item.imeis.size) { "" }
+                            } else emptyList()
+                        ))
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
             OutlinedTextField(
-                value = item.quantity.toString(), 
-                onValueChange = { 
-                    val newQty = it.toIntOrNull()?.coerceAtLeast(1) ?: 1
-                    onItemChange(item.copy(
-                        quantity = newQty,
-                        imeis = if (item.isSerialized) {
-                            val current = item.imeis.toMutableList()
-                            if (newQty > current.size) {
-                                current.addAll(List(newQty - current.size) { "" })
-                            } else if (newQty < current.size) {
-                                current.subList(0, newQty)
-                            }
-                            current
-                        } else emptyList()
-                    )) 
-                }, 
-                label = { Text("Qty") }, 
-                modifier = Modifier.weight(1f), 
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                value = item.rate.toString(),
+                onValueChange = {
+                    onItemChange(item.copy(rate = it.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0))
+                },
+                label = { Text("Rate (₹)") },
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
             )
-            Spacer(Modifier.width(8.dp))
-            OutlinedTextField(value = item.rate.toString(), onValueChange = { onItemChange(item.copy(rate = it.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0)) }, label = { Text("Rate (₹)") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
         }
 
+        // IMEI fields for serialized products
         if (item.isSerialized) {
             Spacer(Modifier.height(8.dp))
-            Text("Enter IMEI/Serial Numbers", style = MaterialTheme.typography.labelMedium)
-            item.imeis.forEachIndexed { imeiIndex, imeiValue ->
+            Text("IMEI / Serial Numbers", style = MaterialTheme.typography.labelMedium)
+            item.imeis.forEachIndexed { index, imeiValue ->
                 OutlinedTextField(
                     value = imeiValue,
                     onValueChange = { newValue ->
                         val newImeis = item.imeis.toMutableList()
-                        newImeis[imeiIndex] = newValue
+                        newImeis[index] = newValue
                         onItemChange(item.copy(imeis = newImeis))
                     },
-                    label = { Text("Serial #${imeiIndex + 1}") },
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    label = { Text("Serial #${index + 1}") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                     singleLine = true
                 )
             }
         }
+
+        // GST selector
         if (gstEnabled) {
             Spacer(Modifier.height(8.dp))
             GstSelector(item = item, onItemChange = onItemChange)
         }
-        Spacer(Modifier.height(12.dp))
+
+        Spacer(Modifier.height(10.dp))
+
+        // Total line
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Total: ${CurrencyUtils.formatRupees(lineTotal)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onRemove) {
-                Text("Remove")
+            if (gstEnabled && appliedGstRate > 0.0) {
+                Text(
+                    "GST ${appliedGstRate}%: +${CurrencyUtils.formatRupees(gstAmount)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.weight(1f))
+            } else {
+                Spacer(Modifier.weight(1f))
             }
+            Text(
+                "Total: ${CurrencyUtils.formatRupees(lineTotal)}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -181,7 +222,9 @@ private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Un
                     readOnly = true,
                     label = { Text("GST Rate") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier.menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                    modifier = Modifier
+                        .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     gstOptions.forEach { label ->
@@ -194,7 +237,7 @@ private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Un
                                     "12%" -> 12.0
                                     "18%" -> 18.0
                                     "28%" -> 28.0
-                                    else  -> -1.0  // "Other" sentinel
+                                    else  -> -1.0
                                 }
                                 onItemChange(item.copy(gstRate = newGstRate))
                                 expanded = false
@@ -211,7 +254,8 @@ private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Un
                 onValueChange = { onItemChange(item.copy(customGstRate = it.toDoubleOrNull())) },
                 label = { Text("Custom %") },
                 modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
             )
         }
     }

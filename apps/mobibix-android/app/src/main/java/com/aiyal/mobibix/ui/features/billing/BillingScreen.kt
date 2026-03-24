@@ -448,7 +448,7 @@ fun InvoiceItem(invoice: BillingInvoice, formatter: NumberFormat) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(invoice.date, fontWeight = FontWeight.Bold)
+                Text(invoice.date ?: "", fontWeight = FontWeight.Bold)
                 Text(invoice.status, style = MaterialTheme.typography.bodySmall)
             }
             Text(formatter.format(invoice.amount), fontWeight = FontWeight.Bold)

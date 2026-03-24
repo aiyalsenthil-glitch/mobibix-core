@@ -84,6 +84,11 @@ export const PERMISSIONS = {
       VIEW: { module: ModuleType.CORE, resource: 'notification', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.CORE, resource: 'notification', action: 'manage' } as Permission,
     },
+    EMAIL: {
+      VIEW: { module: ModuleType.CORE, resource: 'email', action: 'view' } as Permission,
+      SEND: { module: ModuleType.CORE, resource: 'email', action: 'send' } as Permission,
+      MANAGE: { module: ModuleType.CORE, resource: 'email', action: 'manage' } as Permission,
+    },
     DAILY_CLOSING: {
       VIEW: { module: ModuleType.CORE, resource: 'daily_closing', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.CORE, resource: 'daily_closing', action: 'manage' } as Permission,
