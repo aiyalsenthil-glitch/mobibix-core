@@ -774,7 +774,7 @@ export default function QuotationsPage() {
                         </div>
                       </div>
                       <div className={`text-right text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                        {fmt(item.lineTotal || 0)} + GST {fmt(item.gstAmount || 0)} = <span className="font-semibold">{fmt(item.totalAmount)}</span>
+                        {fmt(item.lineTotal || 0)} + GST {fmt(item.gstAmount || 0)} = <span className="font-semibold">{fmt(item.totalAmount || 0)}</span>
                       </div>
                     </div>
                   ))}
