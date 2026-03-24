@@ -1046,8 +1046,9 @@ export default function QuotationsPage() {
                   <input
                     type="number"
                     min={0}
-                    value={qpForm.gstRate}
-                    onChange={(e) => setQpForm((f) => ({ ...f, gstRate: Number(e.target.value) }))}
+                    value={qpForm.gstRate === 0 ? "" : qpForm.gstRate}
+                    placeholder="0"
+                    onChange={(e) => setQpForm((f) => ({ ...f, gstRate: e.target.value === "" ? 0 : Number(e.target.value) }))}
                     className={input}
                   />
                 </div>
@@ -1058,8 +1059,9 @@ export default function QuotationsPage() {
                   type="number"
                   min={0}
                   required
-                  value={qpForm.salePrice}
-                  onChange={(e) => setQpForm((f) => ({ ...f, salePrice: Number(e.target.value) }))}
+                  value={qpForm.salePrice === 0 ? "" : qpForm.salePrice}
+                  placeholder="0"
+                  onChange={(e) => setQpForm((f) => ({ ...f, salePrice: e.target.value === "" ? 0 : Number(e.target.value) }))}
                   className={input}
                 />
               </div>
