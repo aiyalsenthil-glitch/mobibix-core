@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config({ override: true });
+
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -68,28 +71,37 @@ type LoggerRequest = {
     // 🚀 BullMQ Redis Connection
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: () => ({
-        connection: (process.env.REDIS_URL || {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: process.env.REDIS_PORT
-            ? parseInt(process.env.REDIS_PORT)
-            : 6379,
-          password: process.env.REDIS_PASSWORD || undefined,
-          tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
-          connectTimeout: 5000,
-          maxRetriesPerRequest: 0,
-        }) as any,
-        // Reduce Redis command rate for Upstash free-tier compatibility
-        defaultJobOptions: {
-          removeOnComplete: 100,
-          removeOnFail: 200,
-        },
-        // ⚡ Reduce BullMQ Redis polling frequency
-        // Default stalledInterval=30s → bumped to 5min (reduces ZRANGEBYSCORE polls)
-        stalledInterval: 300000,
-        maxStalledCount: 2,
-        lockDuration: 60000,
-      }),
+      useFactory: () => {
+        const url = process.env.REDIS_URL;
+        let connection: any;
+        if (url) {
+          const parsed = new URL(url);
+          connection = {
+            host: parsed.hostname,
+            port: parseInt(parsed.port || '6379'),
+            password: parsed.password || undefined,
+            tls: parsed.protocol === 'rediss:' ? {} : undefined,
+            connectTimeout: 5000,
+            maxRetriesPerRequest: 0,
+          };
+        } else {
+          connection = {
+            host: process.env.REDIS_HOST || 'localhost',
+            port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+            password: process.env.REDIS_PASSWORD || undefined,
+            tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
+            connectTimeout: 5000,
+            maxRetriesPerRequest: 0,
+          };
+        }
+        return {
+          connection,
+          defaultJobOptions: { removeOnComplete: 100, removeOnFail: 200 },
+          stalledInterval: 300000,
+          maxStalledCount: 2,
+          lockDuration: 60000,
+        };
+      },
     }),
 
     // 🔬 Distributed Systems Observability (Structured JSON Logs)
@@ -182,19 +194,28 @@ type LoggerRequest = {
       imports: [ConfigModule],
       useFactory: () => {
         const url = process.env.REDIS_URL;
+        let redisOptions: any;
+        if (url) {
+          // Parse URL to extract host/port/password/tls for cache-manager-ioredis
+          const parsed = new URL(url);
+          redisOptions = {
+            host: parsed.hostname,
+            port: parseInt(parsed.port || '6379'),
+            password: parsed.password || undefined,
+            tls: parsed.protocol === 'rediss:' ? {} : undefined,
+          };
+        } else {
+          redisOptions = {
+            host: process.env.REDIS_HOST || 'localhost',
+            port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+            password: process.env.REDIS_PASSWORD || undefined,
+          };
+        }
         return {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           store: require('cache-manager-ioredis'),
-          ...(url
-            ? { url }
-            : {
-                host: process.env.REDIS_HOST || 'localhost',
-                port: process.env.REDIS_PORT
-                  ? parseInt(process.env.REDIS_PORT)
-                  : 6379,
-                password: process.env.REDIS_PASSWORD || undefined,
-              }),
-          ttl: 300, // 5 minutes — reduces SET/EXPIRE churn vs previous 60s
+          ...redisOptions,
+          ttl: 300,
         } as any;
       },
     }),
