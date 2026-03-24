@@ -55,7 +55,17 @@ const DEV_ORIGINS = [
   'http://localhost_REPLACED:3003',
   'http://localhost_REPLACED:3004',
   'http://localhost_REPLACED:3005',
+  'http://localhost_REPLACED:3006',
+  'http://localhost_REPLACED:3007',
+  'http://localhost_REPLACED:3008',
+  'http://localhost_REPLACED:3009',
   'http://localhost_REPLACED:5200',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  'http://127.0.0.1:3002',
+  'http://127.0.0.1:3003',
+  'http://127.0.0.1:3004',
+  'http://127.0.0.1:3005',
   'http://10.0.2.2:3000',
 ];
 
@@ -79,7 +89,11 @@ async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
     await prisma.corsAllowedOrigin.createMany({
       data: FALLBACK_ORIGINS.map((origin) => ({
         origin,
-        label: origin.startsWith('http://localhost') ? 'Local Dev' : 'Default',
+        label:
+          origin.startsWith('http://localhost') ||
+          origin.startsWith('http://127.0.0.1')
+            ? 'Local Dev'
+            : 'Default',
         isEnabled: true,
       })),
       skipDuplicates: true,
@@ -147,7 +161,7 @@ async function bootstrap() {
   );
 
   server.use(
-    /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook|webhook\/whatsapp)$/,
+    /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook|webhook\/whatsapp|webhooks\/resend\/inbound)$/,
     bodyParser.json({
       verify: (req: any, _res, buf) => {
         req.rawBody = buf;
@@ -178,7 +192,11 @@ async function bootstrap() {
           return callback(null, true);
         }
         // Check regex patterns (handles Vercel preview URLs like gym-saas-abc123-....vercel.app)
-        if (DYNAMIC_ORIGIN_PATTERNS.some((pattern) => pattern.test(requestOrigin))) {
+        if (
+          DYNAMIC_ORIGIN_PATTERNS.some((pattern) =>
+            pattern.test(requestOrigin),
+          )
+        ) {
           return callback(null, true);
         }
         callback(new Error(`CORS: origin '${requestOrigin}' not allowed`));
@@ -189,6 +207,8 @@ async function bootstrap() {
         'Content-Type',
         'Accept',
         'X-CSRF-Token',
+        'x-module-type',
+        'x-tenant-id',
       ],
       credentials: true,
     }),

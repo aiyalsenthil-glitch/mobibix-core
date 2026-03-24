@@ -6,13 +6,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 // ─── Module-level caches (survive across requests) ───────────────────────────
 
-// TTL cache: userId → { tokenVersion, expiresAt }
-const tokenVersionCache = new Map<string, { tokenVersion: number; expiresAt: number }>();
+// TTL cache: userId → { tokenVersion, role, expiresAt }
+const tokenVersionCache = new Map<string, { tokenVersion: number; role: string; expiresAt: number }>();
 const CACHE_TTL_MS = 30_000; // 30s — revoked tokens invalidate within this window
 
 // Deduplication: userId → in-flight DB promise
-// Prevents thundering herd when N parallel requests hit simultaneously on a cold cache
-const pendingFetches = new Map<string, Promise<number | null>>(); 
+const pendingFetches = new Map<string, Promise<{ tokenVersion: number; role: string } | null>>(); 
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -40,12 +39,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid JWT payload');
     }
 
-    let tokenVersion: number | null = null;
+    let userData: { tokenVersion: number; role: string } | null = null;
     const cached = tokenVersionCache.get(payload.sub);
 
     if (cached && cached.expiresAt > Date.now()) {
       // ✅ Cache hit — zero DB cost
-      tokenVersion = cached.tokenVersion;
+      userData = { tokenVersion: cached.tokenVersion, role: cached.role };
     } else {
       // Cache miss — deduplicate simultaneous fetches for the same userId
       let pending = pendingFetches.get(payload.sub);
@@ -53,25 +52,25 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         pending = this.prisma.user
           .findUnique({
             where: { id: payload.sub, deletedAt: null },
-            select: { tokenVersion: true },
+            select: { tokenVersion: true, role: true },
           })
           .then((user) => {
             if (!user) return null;
             tokenVersionCache.set(payload.sub, {
               tokenVersion: user.tokenVersion,
+              role: user.role,
               expiresAt: Date.now() + CACHE_TTL_MS,
             });
-            return user.tokenVersion;
+            return { tokenVersion: user.tokenVersion, role: user.role };
           })
           .finally(() => pendingFetches.delete(payload.sub));
 
         pendingFetches.set(payload.sub, pending);
       }
-      // All concurrent callers await the same promise — only 1 DB call made
-      tokenVersion = await pending;
+      userData = await pending;
     }
 
-    if (tokenVersion === null || tokenVersion !== payload.tokenVersion) {
+    if (userData === null || userData.tokenVersion !== payload.tokenVersion) {
       tokenVersionCache.delete(payload.sub);
       return null;
     }
@@ -83,10 +82,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       tenantId: payload.tenantId ?? null,
       shopId: payload.shopId ?? null,
       userTenantId: payload.userTenantId ?? null,
-      role: payload.role,
+      role: userData.role, // 🛡️ Use current role from DB (cached) instead of stale role in JWT
       isSystemOwner: payload.isSystemOwner ?? false,
       isDistributor: payload.isDistributor ?? false,
-      tokenVersion,
+      tokenVersion: userData.tokenVersion,
       permissions: payload.permissions ?? [],
     };
   }

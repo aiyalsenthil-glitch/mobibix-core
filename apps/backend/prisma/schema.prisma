@@ -136,6 +136,7 @@ model Tenant {
   milestoneEarnings        MilestoneEarning[]
   automationRules          AutomationRule[]
   automationLogs           AutomationLog[]
+  inboundEmails            InboundEmail[]
 }
 
 model DeletionRequest {
@@ -4435,3 +4436,34 @@ enum AutomationAction {
   CREATE_FOLLOW_UP
   NOTIFY_STAFF
 }
+
+model InboundEmail {
+  id              String             @id @default(cuid())
+  tenantId        String?
+  fromAddress     String
+  fromName        String?
+  toAddress       String
+  subject         String?
+  bodyHtml        String?
+  bodyText        String?
+  resendMessageId String             @unique
+  receivedAt      DateTime           @default(now())
+  metadata        Json?
+  status          InboundEmailStatus @default(RECEIVED)
+  tenant          Tenant?            @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([fromAddress])
+  @@index([receivedAt])
+  @@map("mb_inbound_email")
+}
+
+enum InboundEmailStatus {
+  RECEIVED
+  READ
+  REPLIED
+  ARCHIVED
+}
+
+// Turbo
+
