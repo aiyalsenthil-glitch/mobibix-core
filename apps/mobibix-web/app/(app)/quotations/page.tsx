@@ -133,6 +133,7 @@ export default function QuotationsPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(null);
 
   // Create form
+  const [taxInclusive, setTaxInclusive] = useState(false);
   const [form, setForm] = useState<CreateQuotationDto>({
     customerName: "",
     customerPhone: "",
@@ -240,6 +241,7 @@ export default function QuotationsPage() {
     try {
       await createQuotation(shopId, {
         ...form,
+        taxInclusive,
         customerId: selectedCustomer?.id,
         customerName: selectedCustomer?.name || form.customerName,
         customerPhone: selectedCustomer?.phone || form.customerPhone,
@@ -249,10 +251,10 @@ export default function QuotationsPage() {
           quantity: it.quantity,
           price: it.price,
           gstRate: it.gstRate,
-          totalAmount: it.quantity * it.price,
         })),
       });
       setShowCreate(false);
+      setTaxInclusive(false);
       setForm({ customerName: "", customerPhone: "", validityDays: 30, notes: "", quotationDate: new Date().toISOString().slice(0, 10), items: [{ ...EMPTY_ITEM }] });
       setSelectedCustomer(null);
       setProductSearch({});
@@ -768,6 +770,17 @@ export default function QuotationsPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Tax mode toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                <input
+                  type="checkbox"
+                  checked={taxInclusive}
+                  onChange={e => setTaxInclusive(e.target.checked)}
+                  className="w-4 h-4 accent-teal-500"
+                />
+                <span className={isDark ? "text-gray-300" : "text-gray-700"}>Prices include GST (tax-inclusive)</span>
+              </label>
 
               {/* Totals */}
               <div className={`rounded-xl p-4 border ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
