@@ -27,14 +27,14 @@ export class CrmIntegrationService {
       const params: any = { preset };
       if (shopId) params.shopId = shopId;
 
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.get(`/api/core/dashboard/metrics`, {
           headers,
           params,
         }),
       );
       return response.data;
-    } catch (error) {
+    } catch {
       // Graceful fallback
       return { totalRevenue: 0, pendingJobs: 0, lowStock: 0 };
     }
@@ -46,7 +46,7 @@ export class CrmIntegrationService {
 
   async getMyFollowUps(headers: Record<string, string>) {
     try {
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.get('/api/core/follow-ups/my', { headers }),
       );
       return response.data;
@@ -61,7 +61,7 @@ export class CrmIntegrationService {
 
   async getFollowUpCounts(headers: Record<string, string>) {
     try {
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.get('/api/core/follow-ups/counts', { headers }),
       );
       return response.data;
@@ -76,7 +76,7 @@ export class CrmIntegrationService {
 
   async createFollowUp(headers: Record<string, string>, dto: any) {
     try {
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.post('/api/core/follow-ups', dto, { headers }),
       );
       return response.data;
@@ -95,7 +95,7 @@ export class CrmIntegrationService {
     dto: any,
   ) {
     try {
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.put(`/api/core/follow-ups/${followUpId}`, dto, { headers }),
       );
       return response.data;
@@ -114,7 +114,7 @@ export class CrmIntegrationService {
     status: 'PENDING' | 'DONE' | 'CANCELLED',
   ) {
     try {
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.patch(
           `/api/core/follow-ups/${followUpId}/status`,
           { status },
@@ -146,7 +146,7 @@ export class CrmIntegrationService {
       const params: Record<string, string> = {};
       if (sources) params.sources = sources;
 
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.get(`/api/core/customer-timeline/${customerId}`, {
           headers,
           params,
@@ -189,7 +189,7 @@ export class CrmIntegrationService {
         channel: data.channel || 'WHATSAPP',
       };
 
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.post('/api/modules/whatsapp/send', payload, { headers }),
       );
 
@@ -272,7 +272,7 @@ export class CrmIntegrationService {
       const params: Record<string, any> = { limit };
       if (customerId) params.customerId = customerId;
 
-      const response = await firstValueFrom(
+      const response: any = await firstValueFrom(
         this.http.get('/api/modules/whatsapp/logs', { headers, params }),
       );
 
@@ -296,13 +296,13 @@ export class CrmIntegrationService {
       // Using dashboard metrics with no data as a lightweight check, or use dedicated health if exists.
       // Assuming /api/core/health exists or we can ping root.
       // For now, simple ping.
-      const response = await firstValueFrom(
+      await firstValueFrom(
         this.http.get('/api/core/health', { headers }),
       );
       // If 404, we might assume core is reachable but route missing.
       // But let's assume valid route.
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   }
