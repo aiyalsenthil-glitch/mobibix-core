@@ -167,6 +167,25 @@ export class CustomersController {
   }
 
   @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
+  @Get(':customerId/logs')
+  async getLogs(
+    @Req() req,
+    @Param('customerId') customerId: string,
+    @Query('type') type?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('product') product?: string,
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.service.getCustomerLogs(tenantId, customerId, {
+      type: type as any,
+      startDate,
+      endDate,
+      product,
+    });
+  }
+
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get(':customerId')
   async getOne(@Req() req, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;

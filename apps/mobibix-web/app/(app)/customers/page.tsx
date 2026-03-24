@@ -265,7 +265,7 @@ export default function CustomersPage() {
                             {customer.name?.charAt(0)?.toUpperCase() || "?"}
                           </div>
                           <Link
-                            href={`/dashboard/customers/${customer.id}`}
+                            href={`/customers/${customer.id}`}
                             className={`font-medium hover:text-teal-500 transition-colors ${
                               !customer.isActive
                                 ? isDark

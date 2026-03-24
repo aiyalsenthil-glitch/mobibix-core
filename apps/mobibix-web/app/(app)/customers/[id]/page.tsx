@@ -6,8 +6,10 @@ import Link from "next/link";
 import {
   getCustomer,
   getCustomerStats,
+  getCustomerLogs,
   type Customer,
   type CustomerStats,
+  type CustomerLogItem,
 } from "@/services/customers.api";
 import { CustomerTimeline, CustomerNotes } from "@/components/crm";
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
@@ -23,9 +25,14 @@ import {
   TrendingUp,
   AlertCircle,
   Calendar,
+  Search,
+  ShoppingBag,
+  Wrench,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
-type Tab = "overview" | "timeline" | "follow-ups" | "notes";
+type Tab = "overview" | "timeline" | "follow-ups" | "notes" | "logs";
 
 const LIFECYCLE_STYLES: Record<
   string,
@@ -57,6 +64,14 @@ export default function CustomerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
 
+  // Logs state
+  const [logs, setLogs] = useState<CustomerLogItem[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logType, setLogType] = useState<"ALL" | "PURCHASE" | "REPAIR">("ALL");
+  const [logStartDate, setLogStartDate] = useState("");
+  const [logEndDate, setLogEndDate] = useState("");
+  const [logProduct, setLogProduct] = useState("");
+
   useEffect(() => {
     Promise.all([getCustomer(customerId), getCustomerStats(customerId)])
       .then(([c, s]) => {
@@ -65,6 +80,19 @@ export default function CustomerProfilePage() {
       })
       .finally(() => setLoading(false));
   }, [customerId]);
+
+  useEffect(() => {
+    if (tab !== "logs") return;
+    setLogsLoading(true);
+    getCustomerLogs(customerId, {
+      type: logType,
+      startDate: logStartDate || undefined,
+      endDate: logEndDate || undefined,
+      product: logProduct || undefined,
+    })
+      .then((r) => setLogs(r.data))
+      .finally(() => setLogsLoading(false));
+  }, [customerId, tab, logType, logStartDate, logEndDate, logProduct]);
 
   if (loading) {
     return (
@@ -104,7 +132,7 @@ export default function CustomerProfilePage() {
       <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-2xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-teal-100 dark:bg-teal-500/15 flex items-center justify-center text-xl font-bold text-teal-600 dark:text-teal-400 flex-shrink-0">
+            <div className="w-14 h-14 rounded-full bg-teal-100 dark:bg-teal-500/15 flex items-center justify-center text-xl font-bold text-teal-600 dark:text-teal-400 shrink-0">
               {customer.name.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -152,7 +180,7 @@ export default function CustomerProfilePage() {
           </div>
           <button
             onClick={() => setShowFollowUpModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-medium transition-colors flex-shrink-0"
+            className="flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-medium transition-colors shrink-0"
           >
             <PhoneCall className="w-4 h-4" />
             Add Follow-up
@@ -190,7 +218,7 @@ export default function CustomerProfilePage() {
       {/* Next follow-up banner */}
       {stats?.nextFollowUp && (
         <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3">
-          <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
+          <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
           <div className="text-sm">
             <span className="font-medium text-blue-700 dark:text-blue-300">
               Next follow-up:
@@ -206,7 +234,7 @@ export default function CustomerProfilePage() {
       {/* Tabs */}
       <div className="border-b dark:border-gray-800">
         <div className="flex gap-1">
-          {(["overview", "timeline", "follow-ups", "notes"] as Tab[]).map((t) => (
+          {(["overview", "logs", "timeline", "follow-ups", "notes"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -312,6 +340,76 @@ export default function CustomerProfilePage() {
         </div>
       )}
 
+      {tab === "logs" && (
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-xl p-4 space-y-3">
+            {/* Type toggle */}
+            <div className="flex gap-2">
+              {(["ALL", "PURCHASE", "REPAIR"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setLogType(t)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    logType === t
+                      ? "bg-teal-500 text-white"
+                      : "bg-gray-100 dark:bg-white/8 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/12"
+                  }`}
+                >
+                  {t === "ALL" ? "All" : t === "PURCHASE" ? "Purchases" : "Repairs"}
+                </button>
+              ))}
+            </div>
+            {/* Date + product */}
+            <div className="flex flex-wrap gap-3">
+              <input
+                type="date"
+                value={logStartDate}
+                onChange={(e) => setLogStartDate(e.target.value)}
+                className="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-700 bg-transparent dark:text-white"
+                placeholder="From"
+              />
+              <input
+                type="date"
+                value={logEndDate}
+                onChange={(e) => setLogEndDate(e.target.value)}
+                className="px-3 py-1.5 text-sm rounded-lg border dark:border-gray-700 bg-transparent dark:text-white"
+                placeholder="To"
+              />
+              <div className="relative flex-1 min-w-[160px]">
+                <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={logProduct}
+                  onChange={(e) => setLogProduct(e.target.value)}
+                  placeholder="Filter by product..."
+                  className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border dark:border-gray-700 bg-transparent dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          {logsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-xl p-8 text-center">
+              <p className="text-gray-400 text-sm">No records found</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {logs.map((log) => (
+                <LogCard key={log.id} log={log} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <AddFollowUpModal
         customerId={customerId}
         customerName={customer.name}
@@ -366,6 +464,119 @@ function InfoCard({
         {title}
       </p>
       {children}
+    </div>
+  );
+}
+
+function LogCard({ log }: { log: CustomerLogItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const isPurchase = log.type === "PURCHASE";
+
+  return (
+    <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-xl overflow-hidden">
+      <button
+        className="w-full text-left p-4 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-white/3 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div
+          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+            isPurchase
+              ? "bg-green-100 dark:bg-green-500/15 text-green-600 dark:text-green-400"
+              : "bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400"
+          }`}
+        >
+          {isPurchase ? (
+            <ShoppingBag className="w-4 h-4" />
+          ) : (
+            <Wrench className="w-4 h-4" />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                {isPurchase ? "Invoice" : "Job Card"}
+              </span>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                #{log.ref}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              {isPurchase && log.totalAmount !== undefined && (
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  ₹{log.totalAmount.toLocaleString("en-IN")}
+                </p>
+              )}
+              {!isPurchase && (log.finalCost ?? log.estimatedCost) !== null && (
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  ₹{(log.finalCost ?? log.estimatedCost ?? 0).toLocaleString("en-IN")}
+                </p>
+              )}
+              <p className="text-xs text-gray-400 mt-0.5">
+                {new Date(log.date).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+          </div>
+
+          {!isPurchase && (
+            <p className="text-xs text-gray-500 mt-1">
+              {log.deviceBrand} {log.deviceModel} · {log.status}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 mt-1.5">
+            <span
+              className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                log.status === "PAID" || log.status === "DELIVERED"
+                  ? "bg-green-100 dark:bg-green-500/15 text-green-600 dark:text-green-400"
+                  : log.status === "UNPAID" || log.status === "PENDING"
+                  ? "bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : "bg-gray-100 dark:bg-white/8 text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {log.status}
+            </span>
+            <span className="text-xs text-gray-400">
+              {log.items.length} item{log.items.length !== 1 ? "s" : ""}
+            </span>
+            {expanded ? (
+              <ChevronUp className="w-3.5 h-3.5 text-gray-400 ml-auto" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400 ml-auto" />
+            )}
+          </div>
+        </div>
+      </button>
+
+      {expanded && log.items.length > 0 && (
+        <div className="border-t dark:border-gray-800 px-4 py-3 space-y-2 bg-gray-50 dark:bg-white/2">
+          {log.items.map((item, i) => (
+            <div key={i} className="flex items-center justify-between text-sm">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-800 dark:text-gray-200 truncate">
+                  {item.productName}
+                </p>
+                {item.brand && (
+                  <p className="text-xs text-gray-400">{item.brand}</p>
+                )}
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                <p className="text-gray-700 dark:text-gray-300">×{item.quantity}</p>
+                {item.rate !== null && (
+                  <p className="text-xs text-gray-400">
+                    ₹{item.rate.toLocaleString("en-IN")} each
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
