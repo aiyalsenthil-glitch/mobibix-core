@@ -170,10 +170,17 @@ export class QuotationsService {
       let gstAmount = 0;
 
       const itemsData = dto.items.map((item) => {
-        const pricePaisa = this.toPaisa(item.price);
+        const gstRate = item.gstRate || 0;
+        let pricePaisa: number;
+        if (dto.taxInclusive && gstRate > 0) {
+          // Back-calculate base price: basePrice = inclusivePrice / (1 + gstRate/100)
+          pricePaisa = Math.round(this.toPaisa(item.price) / (1 + gstRate / 100));
+        } else {
+          pricePaisa = this.toPaisa(item.price);
+        }
         const itemSubTotal = pricePaisa * item.quantity;
-        const itemGstAmount = Math.round((itemSubTotal * (item.gstRate || 0)) / 100);
-        
+        const itemGstAmount = Math.round((itemSubTotal * gstRate) / 100);
+
         subTotal += itemSubTotal;
         gstAmount += itemGstAmount;
 
@@ -182,7 +189,7 @@ export class QuotationsService {
           description: item.description,
           quantity: item.quantity,
           price: pricePaisa,
-          gstRate: item.gstRate || 0,
+          gstRate,
           gstAmount: itemGstAmount,
           lineTotal: itemSubTotal,
           totalAmount: itemSubTotal + itemGstAmount,

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, ValidateNested, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, ValidateNested, IsInt, IsBoolean, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateQuotationItemDto {
@@ -50,6 +50,10 @@ export class CreateQuotationDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  taxInclusive?: boolean;
 
   @IsArray()
   @ValidateNested({ each: true })

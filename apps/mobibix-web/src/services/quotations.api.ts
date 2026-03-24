@@ -77,6 +77,7 @@ export interface CreateQuotationDto {
   quotationDate?: string;
   validityDays?: number;
   notes?: string;
+  taxInclusive?: boolean;
   items: CreateQuotationItemDto[];
 }
 
