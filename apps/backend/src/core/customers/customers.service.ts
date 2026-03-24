@@ -446,6 +446,128 @@ export class CustomersService {
     };
   }
 
+  async getCustomerLogs(
+    tenantId: string,
+    customerId: string,
+    params: {
+      type?: 'PURCHASE' | 'REPAIR' | 'ALL';
+      startDate?: string;
+      endDate?: string;
+      product?: string;
+    },
+  ) {
+    const { type = 'ALL', startDate, endDate, product } = params;
+
+    const dateFilter: any = {};
+    if (startDate) dateFilter.gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
+    const [invoices, jobCards] = await Promise.all([
+      type !== 'REPAIR'
+        ? this.prisma.invoice.findMany({
+            where: {
+              tenantId,
+              customerId,
+              deletedAt: null,
+              ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
+              ...(product && {
+                items: {
+                  some: {
+                    product: { name: { contains: product, mode: 'insensitive' } },
+                  },
+                },
+              }),
+            },
+            include: {
+              items: {
+                include: {
+                  product: { select: { id: true, name: true, brand: true, category: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+          })
+        : [],
+      type !== 'PURCHASE'
+        ? this.prisma.jobCard.findMany({
+            where: {
+              tenantId,
+              customerId,
+              deletedAt: null,
+              ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
+              ...(product && {
+                parts: {
+                  some: {
+                    product: { name: { contains: product, mode: 'insensitive' } },
+                  },
+                },
+              }),
+            },
+            include: {
+              parts: {
+                include: {
+                  product: { select: { id: true, name: true, brand: true, category: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+          })
+        : [],
+    ]);
+
+    const mappedInvoices = invoices.map((inv: any) => ({
+      type: 'PURCHASE' as const,
+      id: inv.id,
+      ref: inv.invoiceNumber,
+      date: inv.createdAt,
+      status: inv.status,
+      totalAmount: inv.totalAmount / 100,
+      items: inv.items.map((item: any) => ({
+        productId: item.shopProductId,
+        productName: item.product?.name ?? 'Unknown',
+        brand: item.product?.brand ?? null,
+        category: item.product?.category ?? null,
+        quantity: item.quantity,
+        rate: item.rate / 100,
+        lineTotal: item.lineTotal / 100,
+      })),
+    }));
+
+    const mappedJobCards = jobCards.map((jc: any) => ({
+      type: 'REPAIR' as const,
+      id: jc.id,
+      ref: jc.jobNumber,
+      date: jc.createdAt,
+      status: jc.status,
+      deviceBrand: jc.deviceBrand,
+      deviceModel: jc.deviceModel,
+      deviceType: jc.deviceType,
+      complaint: jc.customerComplaint,
+      finalCost: jc.finalCost ? jc.finalCost / 100 : null,
+      estimatedCost: jc.estimatedCost ? jc.estimatedCost / 100 : null,
+      items: jc.parts.map((part: any) => ({
+        productId: part.shopProductId,
+        productName: part.product?.name ?? 'Unknown',
+        brand: part.product?.brand ?? null,
+        category: part.product?.category ?? null,
+        quantity: part.quantity,
+        rate: null,
+      })),
+    }));
+
+    const all = [...mappedInvoices, ...mappedJobCards].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
+    return { data: all, total: all.length };
+  }
+
   async updateCustomerLifecycle(
     tenantId: string,
     customerId: string,

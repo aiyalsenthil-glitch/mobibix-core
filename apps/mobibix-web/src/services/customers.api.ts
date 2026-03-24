@@ -344,6 +344,50 @@ export async function createCustomerNote(
   return extractData(response);
 }
 
+export interface CustomerLogItem {
+  type: "PURCHASE" | "REPAIR";
+  id: string;
+  ref: string;
+  date: string;
+  status: string;
+  totalAmount?: number;
+  finalCost?: number | null;
+  estimatedCost?: number | null;
+  deviceBrand?: string;
+  deviceModel?: string;
+  deviceType?: string;
+  complaint?: string;
+  items: {
+    productId: string;
+    productName: string;
+    brand?: string | null;
+    category?: string | null;
+    quantity: number;
+    rate: number | null;
+    lineTotal?: number;
+  }[];
+}
+
+export async function getCustomerLogs(
+  customerId: string,
+  params?: {
+    type?: "PURCHASE" | "REPAIR" | "ALL";
+    startDate?: string;
+    endDate?: string;
+    product?: string;
+  },
+): Promise<{ data: CustomerLogItem[]; total: number }> {
+  const q = new URLSearchParams();
+  if (params?.type && params.type !== "ALL") q.set("type", params.type);
+  if (params?.startDate) q.set("startDate", params.startDate);
+  if (params?.endDate) q.set("endDate", params.endDate);
+  if (params?.product) q.set("product", params.product);
+  const url = `/core/customers/${customerId}/logs${q.toString() ? "?" + q.toString() : ""}`;
+  const response = await authenticatedFetch(url);
+  if (!response.ok) return { data: [], total: 0 };
+  return extractData(response);
+}
+
 export async function deleteCustomerNote(
   customerId: string,
   noteId: string,
