@@ -4,10 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
+import com.aiyal.mobibix.ui.components.DateRangeFilterRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,23 +47,22 @@ fun ProfitLossScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Date Filter Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            DateRangeFilterRow(
+                startDate = uiState.startDate,
+                endDate = uiState.endDate,
+                onRangeSelected = { start, end ->
+                    viewModel.updateDateRange(start, end)
+                    viewModel.loadProfitSummary()
+                }
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(Icons.Default.DateRange, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${uiState.startDate} to ${uiState.endDate}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
             if (uiState.isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
@@ -85,6 +83,7 @@ fun ProfitLossScreen(
                 SummaryCard("Sales", metrics.salesRevenue, metrics.salesCost, metrics.salesProfit, null, currencyFormatter)
                 SummaryCard("Repairs", metrics.repairRevenue, metrics.repairCost, metrics.repairProfit, null, currencyFormatter)
             }
+            } // end inner Column
         }
     }
 }

@@ -77,6 +77,31 @@ data class B2bInvoiceItemDto(
     val hsnCode: String? = null
 )
 
+// ─── Wholesale Catalog (Restock / Distributor Network) ────────────────────────
+
+data class WholesaleCatalogItem(
+    val id: String,
+    val distributorId: String,
+    val productName: String,
+    val category: String,
+    val wholesalePrice: Double,
+    val moq: Int = 1,
+    val sku: String? = null,
+    val description: String? = null,
+    val stockQuantity: Int = 0
+)
+
+data class PlaceWholesaleOrderDto(
+    val distributorId: String,
+    val items: List<WholesaleOrderItemDto>
+)
+
+data class WholesaleOrderItemDto(
+    val catalogItemId: String,
+    val quantity: Int,
+    val unitPrice: Double
+)
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 interface B2bApi {
@@ -135,4 +160,12 @@ interface B2bApi {
         @Path("invoiceId") invoiceId: String,
         @Query("amount") amount: Double
     ): B2bInvoice
+
+    // Wholesale catalog — browse all linked distributor products for restocking
+    @GET("api/mobileshop/b2b/catalog")
+    suspend fun getWholesaleCatalog(): List<WholesaleCatalogItem>
+
+    // Place a wholesale purchase order from the catalog
+    @POST("api/mobileshop/b2b/order")
+    suspend fun placeWholesaleOrder(@Body dto: PlaceWholesaleOrderDto): Any
 }

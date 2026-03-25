@@ -59,7 +59,6 @@ fun SalesInvoiceFormScreen(
     navController: NavController,
     viewModel: SalesViewModel = hiltViewModel()
 ) {
-    val products by viewModel.products.collectAsState()
     val gstEnabled by viewModel.gstEnabled.collectAsState()
     var customerName by remember { mutableStateOf("") }
     var customerPhone by remember { mutableStateOf("") }
@@ -105,7 +104,6 @@ fun SalesInvoiceFormScreen(
             items.forEachIndexed { index, item ->
                 InvoiceItemRow(
                     item = item,
-                    products = products,
                     onRemove = { items.removeAt(index) },
                     onItemChange = { updatedItem -> items[index] = updatedItem },
                     gstEnabled = gstEnabled

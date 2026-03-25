@@ -5,8 +5,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import com.aiyal.mobibix.ui.components.DateRangeFilterRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,19 +69,32 @@ fun Gstr1ReportScreen(
     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
     val state by viewModel.state.collectAsState()
     var activeTab by remember { mutableIntStateOf(0) }
+    val fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val today = java.time.LocalDate.now()
+    var startDate by remember { mutableStateOf(today.withDayOfMonth(1).format(fmt)) }
+    var endDate by remember { mutableStateOf(today.format(fmt)) }
 
-    LaunchedEffect(activeShopId) { activeShopId?.let { viewModel.load(it) } }
+    LaunchedEffect(activeShopId) { activeShopId?.let { viewModel.load(it, startDate, endDate) } }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("GSTR-1", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } },
+                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+            DateRangeFilterRow(
+                startDate = startDate,
+                endDate = endDate,
+                onRangeSelected = { start, end ->
+                    startDate = start
+                    endDate = end
+                    activeShopId?.let { viewModel.load(it, start, end) }
+                }
+            )
             TabRow(selectedTabIndex = activeTab) {
                 Tab(selected = activeTab == 0, onClick = { activeTab = 0 }, text = { Text("B2B") })
                 Tab(selected = activeTab == 1, onClick = { activeTab = 1 }, text = { Text("Summary") })

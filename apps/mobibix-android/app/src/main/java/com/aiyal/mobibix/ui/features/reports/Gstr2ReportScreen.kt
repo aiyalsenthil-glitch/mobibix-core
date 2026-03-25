@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.aiyal.mobibix.data.network.Gstr2ReportItem
+import com.aiyal.mobibix.ui.components.DateRangeFilterRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +32,7 @@ fun Gstr2ReportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Column {
                         Text("GSTR-2 Report", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text("Purchase tax credit report", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -46,6 +47,14 @@ fun Gstr2ReportScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+            DateRangeFilterRow(
+                startDate = uiState.startDate,
+                endDate = uiState.endDate,
+                onRangeSelected = { start, end ->
+                    viewModel.updateDateRange(start, end)
+                    viewModel.loadGstr2Report()
+                }
+            )
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()

@@ -5,10 +5,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
+import com.aiyal.mobibix.ui.components.DateRangeFilterRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,52 +88,27 @@ fun PurchaseReportScreen(
                 title = { Text("Purchase Report", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Date filter card
-            item {
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Date Range", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedTextField(
-                                value = startDate,
-                                onValueChange = { startDate = it },
-                                label = { Text("From") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                trailingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            )
-                            OutlinedTextField(
-                                value = endDate,
-                                onValueChange = { endDate = it },
-                                label = { Text("To") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                trailingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            )
-                        }
-                        Button(
-                            onClick = { activeShopId?.let { viewModel.load(it, startDate, endDate) } },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        ) { Text("Apply Filter") }
-                    }
+        Column(modifier = Modifier.padding(padding)) {
+            DateRangeFilterRow(
+                startDate = startDate,
+                endDate = endDate,
+                onRangeSelected = { start, end ->
+                    startDate = start
+                    endDate = end
+                    activeShopId?.let { viewModel.load(it, start, end) }
                 }
-            }
-
+            )
+            LazyColumn(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             when {
                 state.loading -> item {
                     Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -216,7 +191,8 @@ fun PurchaseReportScreen(
                     }
                 }
             }
-        }
+            } // end LazyColumn
+        } // end outer Column
     }
 }
 

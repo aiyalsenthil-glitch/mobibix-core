@@ -758,6 +758,13 @@ fun AppNavGraph(
             )
         }
 
+        // ── Restock / Wholesale Distributor Network ───────────────────────────
+        composable("restock") {
+            com.aiyal.mobibix.ui.features.b2b.RestockScreen(
+                navController = navController
+            )
+        }
+
         // ── Barcode Labels ────────────────────────────────────────────────────
         composable("barcode_labels") {
             com.aiyal.mobibix.ui.features.products.BarcodeLabelScreen(

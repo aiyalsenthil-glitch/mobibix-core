@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import Script from "next/script";
 import { ArrowRight, ArrowLeft, Building2, MapPin, Globe, Check, AlertCircle, Tag, Loader2, Network } from "lucide-react";
 import {
   exchangeFirebaseToken,
@@ -350,7 +351,15 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white py-12">
+    <>
+      <Script id="gtag-onboarding-signup" strategy="afterInteractive">
+        {`
+          gtag('event', 'conversion_event_signup_1', {
+            // <event_parameters>
+          });
+        `}
+      </Script>
+      <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white py-12">
       <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-stone-950 p-8 shadow-2xl">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-semibold text-white">Set up your business</h1>
@@ -361,7 +370,7 @@ export default function OnboardingPage() {
 
         {error && (
           <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+            <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
             <p className="text-sm font-medium text-red-300">{error}</p>
           </div>
         )}
@@ -374,7 +383,7 @@ export default function OnboardingPage() {
                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-500/20 text-teal-400 mb-2">
                  <Building2 className="w-8 h-8" />
                </div>
-               <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
+               <h2 className="text-xl font-bold bg-linear-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
                  Invitation Detected
                </h2>
                <p className="text-stone-400 text-sm max-w-sm mx-auto">
@@ -703,5 +712,6 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

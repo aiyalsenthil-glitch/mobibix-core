@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -33,8 +35,23 @@ fun PurchaseListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
 
+    var payingPurchase by remember { mutableStateOf<Purchase?>(null) }
+
     LaunchedEffect(Unit) {
         viewModel.loadPurchases()
+    }
+
+    // Quick pay dialog
+    payingPurchase?.let { purchase ->
+        QuickPayDialog(
+            purchase = purchase,
+            formatter = currencyFormatter,
+            onDismiss = { payingPurchase = null },
+            onConfirm = { amount, method ->
+                viewModel.quickPayFromList(purchase.id, amount, method)
+                payingPurchase = null
+            }
+        )
     }
 
     Scaffold(
@@ -86,9 +103,14 @@ fun PurchaseListScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(uiState.purchases) { purchase ->
-                        PremiumPurchaseCard(purchase, currencyFormatter) {
-                            navController.navigate("purchase_detail/${purchase.id}")
-                        }
+                        PremiumPurchaseCard(
+                            purchase = purchase,
+                            formatter = currencyFormatter,
+                            onClick = { navController.navigate("purchase_detail/${purchase.id}") },
+                            onQuickPay = if (purchase.outstandingAmount > 0) {
+                                { payingPurchase = purchase }
+                            } else null
+                        )
                     }
                 }
             }
@@ -97,7 +119,12 @@ fun PurchaseListScreen(
 }
 
 @Composable
-fun PremiumPurchaseCard(purchase: Purchase, formatter: NumberFormat, onClick: () -> Unit) {
+fun PremiumPurchaseCard(
+    purchase: Purchase,
+    formatter: NumberFormat,
+    onClick: () -> Unit,
+    onQuickPay: (() -> Unit)? = null
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
@@ -135,17 +162,33 @@ fun PremiumPurchaseCard(purchase: Purchase, formatter: NumberFormat, onClick: ()
             }
             if (purchase.outstandingAmount > 0) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Pending: ${formatter.format(purchase.outstandingAmount)}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Due: ${formatter.format(purchase.outstandingAmount)}",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    if (onQuickPay != null) {
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(
+                            onClick = onQuickPay,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Text("Pay", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
         }
@@ -170,4 +213,60 @@ fun PremiumPurchaseStatusChip(status: PurchaseStatus) {
             color = textColor
         )
     }
+}
+
+private val QUICK_PAY_METHODS = listOf("CASH", "UPI", "BANK_TRANSFER", "CARD", "CHEQUE")
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickPayDialog(
+    purchase: Purchase,
+    formatter: NumberFormat,
+    onDismiss: () -> Unit,
+    onConfirm: (amount: Double, method: String) -> Unit
+) {
+    var amountText by remember { mutableStateOf(purchase.outstandingAmount.toString()) }
+    var method by remember { mutableStateOf("CASH") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Record Payment") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Invoice: ${purchase.invoiceNumber}  •  Due: ${formatter.format(purchase.outstandingAmount)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount (₹)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                Text("Payment Method", style = MaterialTheme.typography.labelMedium)
+                QUICK_PAY_METHODS.forEach { m ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = method == m, onClick = { method = m })
+                        Text(m.replace("_", " "), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amount = amountText.toDoubleOrNull() ?: 0.0
+                    if (amount > 0) onConfirm(amount, method)
+                },
+                enabled = amountText.toDoubleOrNull()?.let { it > 0 } == true
+            ) {
+                Text("Confirm Payment")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }

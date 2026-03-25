@@ -103,6 +103,22 @@ class PurchaseViewModel @Inject constructor(
         }
     }
 
+    // Quick pay from list screen — records payment then refreshes the list
+    fun quickPayFromList(id: String, amount: Double, method: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                purchaseRepository.recordPayment(id, amount, method, null, null)
+                loadPurchases()
+                _uiState.value = _uiState.value.copy(actionSuccess = true)
+            } catch (e: Exception) {
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
+            }
+        }
+    }
+
     fun loadPurchaseOrders() {
         val shopId = shopContextProvider.getActiveShopId() ?: ""
         viewModelScope.launch {

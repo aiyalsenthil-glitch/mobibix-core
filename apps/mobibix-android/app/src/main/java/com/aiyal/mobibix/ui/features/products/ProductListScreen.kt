@@ -39,6 +39,7 @@ fun ProductListScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedProduct by remember { mutableStateOf<ShopProduct?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) } // 0=All, 1=Low Stock
     val sheetState = rememberModalBottomSheetState()
 
     // Handle scanned barcode result
@@ -115,6 +116,24 @@ fun ProductListScreen(
                     )
                 )
 
+                // ── Tabs ──
+                TabRow(selectedTabIndex = selectedTab) {
+                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("All Stock") })
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = {
+                            val lowCount = uiState.products.count { it.stockQty <= 5 }
+                            Text("Low Stock${if (lowCount > 0) " ($lowCount)" else ""}")
+                        }
+                    )
+                }
+
+                val displayedProducts = remember(uiState.products, selectedTab) {
+                    if (selectedTab == 1) uiState.products.filter { it.stockQty <= 5 }
+                    else uiState.products
+                }
+
                 // ── Content ──
                 if (uiState.error != null) {
                     Surface(
@@ -136,12 +155,22 @@ fun ProductListScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
-                } else if (uiState.products.isEmpty()) {
+                } else if (displayedProducts.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("No products found", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            Text(
+                                if (selectedTab == 1) "No low stock items" else "No products found",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(Modifier.height(8.dp))
-                            Text("Tap + to add your first product", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, fontWeight = FontWeight.Medium)
+                            Text(
+                                if (selectedTab == 1) "All products have sufficient stock" else "Tap + to add your first product",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
                 } else {
@@ -150,7 +179,7 @@ fun ProductListScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.products) { product ->
+                        items(displayedProducts) { product ->
                             PremiumProductCard(
                                 product = product,
                                 onClick = {

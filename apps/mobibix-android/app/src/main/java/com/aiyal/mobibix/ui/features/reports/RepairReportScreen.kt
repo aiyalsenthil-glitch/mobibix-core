@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
+import com.aiyal.mobibix.ui.components.DateRangeFilterRow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,20 +47,14 @@ fun RepairReportScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Date Filter Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.DateRange, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${uiState.startDate} to ${uiState.endDate}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            DateRangeFilterRow(
+                startDate = uiState.startDate,
+                endDate = uiState.endDate,
+                onRangeSelected = { start, end ->
+                    viewModel.updateDateRange(start, end)
+                    viewModel.loadRepairReport()
+                }
+            )
 
             if (uiState.isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
