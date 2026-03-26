@@ -172,6 +172,7 @@ model NotificationLog {
   sentAt      DateTime?
   readAt      DateTime?
   title       String?
+  body        String?
   tenant      Tenant              @relation(fields: [tenantId], references: [id])
   user        User?               @relation(fields: [userId], references: [id])
 
@@ -230,6 +231,7 @@ model User {
   deletedBy          String?
   tokenVersion       Int                @default(0)
   phone              String?
+  fcmToken           String?
   welcomeEmailSent   Boolean            @default(false)
   marketingConsent   Boolean            @default(false)
   privacyAcceptedAt  DateTime?
@@ -3191,6 +3193,10 @@ enum StockRefType {
   SALE
   REPAIR
   ADJUSTMENT
+  LOSS
+  DAMAGE
+  THEFT
+  INTERNAL_USE
 }
 
 enum BillingCycle {

@@ -33,11 +33,35 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
+import com.google.gson.stream.JsonWriter
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+
+/**
+ * Gson TypeAdapter that converts null JSON strings to empty string ("") for non-nullable
+ * Kotlin String fields. Gson ignores Kotlin's null safety — without this adapter a backend
+ * returning `"field": null` for a `val field: String` would crash Text() composables with NPE.
+ */
+private object NullSafeStringAdapter : TypeAdapter<String>() {
+    override fun write(out: JsonWriter, value: String?) {
+        if (value == null) out.nullValue() else out.value(value)
+    }
+    override fun read(reader: JsonReader): String {
+        if (reader.peek() == JsonToken.NULL) {
+            reader.nextNull()
+            return ""
+        }
+        return reader.nextString()
+    }
+}
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -77,6 +101,9 @@ object NetworkModule {
         }
 
         return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(unauthorizedInterceptor) // Must be first to catch 401 before processing
             .addInterceptor(authInterceptor)
             .addInterceptor(shopInterceptor)
@@ -88,10 +115,13 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+        val gson = GsonBuilder()
+            .registerTypeAdapter(String::class.java, NullSafeStringAdapter)
+            .create()
         return Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 
@@ -247,6 +277,16 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideTradeInApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.TradeInApi =
+        retrofit.create(com.aiyal.mobibix.data.network.TradeInApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideConsumerFinanceApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.ConsumerFinanceApi =
+        retrofit.create(com.aiyal.mobibix.data.network.ConsumerFinanceApi::class.java)
+
+    @Provides
+    @Singleton
     fun provideStockLedgerApi(retrofit: Retrofit): StockLedgerApi =
         retrofit.create(StockLedgerApi::class.java)
 
@@ -254,4 +294,14 @@ object NetworkModule {
     @Singleton
     fun provideB2bApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.B2bApi =
         retrofit.create(com.aiyal.mobibix.data.network.B2bApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.NotificationApi =
+        retrofit.create(com.aiyal.mobibix.data.network.NotificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAppVersionApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.AppVersionApi =
+        retrofit.create(com.aiyal.mobibix.data.network.AppVersionApi::class.java)
 }

@@ -165,6 +165,14 @@ export class UsersService {
 
   // 🔹 Create STAFF user (used by staff invite / admin)
 
+  // 🔹 Register FCM token for push notifications (Android app)
+  async saveFcmToken(userId: string, token: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken: token },
+    });
+  }
+
   // 🔹 Update user profile (name / avatar)
   // 🔹 Update user profile (name / phone)
   async updateProfile(

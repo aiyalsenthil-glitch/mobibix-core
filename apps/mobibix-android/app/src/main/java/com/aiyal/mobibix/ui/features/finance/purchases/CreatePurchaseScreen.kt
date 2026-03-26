@@ -46,10 +46,17 @@ fun CreatePurchaseScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = {
-                        // TODO: Implement save logic in ViewModel
-                        // For now, this is a placeholder for the API call
-                    }) {
+                    TextButton(
+                        onClick = {
+                            viewModel.createPurchase(
+                                supplierName = supplierName,
+                                invoiceNumber = invoiceNumber,
+                                paymentMethod = paymentMethod,
+                                items = items.toList()
+                            )
+                        },
+                        enabled = supplierName.isNotBlank() && invoiceNumber.isNotBlank() && items.isNotEmpty() && !uiState.isLoading
+                    ) {
                         Text("Save")
                     }
                 }

@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.REMOVED_AUTH_PROVIDER.messaging.FirebaseMessagingService
 import com.google.REMOVED_AUTH_PROVIDER.messaging.RemoteMessage
@@ -34,8 +35,12 @@ class MobiFcmService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        // TODO: Send token to backend for push notification targeting
-        // Call: POST /api/users/fcm-token with { token }
+        // Persist the latest FCM token so it can be sent to the backend on next authenticated session
+        getSharedPreferences("mobi_fcm", Context.MODE_PRIVATE)
+            .edit()
+            .putString("pending_fcm_token", token)
+            .apply()
+        Log.i("MobiFcmService", "FCM token refreshed — stored for registration on next login")
     }
 
     private fun sendNotification(

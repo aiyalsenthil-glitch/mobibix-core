@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export function FeaturesClient() {
   const [mounted, setMounted] = useState(false);
@@ -27,7 +28,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m0 11v1m5-10.45a9 9 0 11-10 0M12 7V3m0 0L9 6m3-3l3 3" />
         </svg>
       ),
-      color: "from-blue-500 to-cyan-400"
+      color: "from-blue-500 to-cyan-400",
+      href: "#imei-inventory"
     },
     {
       title: "Repair Job Pipeline",
@@ -37,7 +39,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
       ),
-      color: "from-primary to-primary/60"
+      color: "from-primary to-primary/60",
+      href: "/auth"
     },
     {
       title: "GST Cloud Billing",
@@ -47,7 +50,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
-      color: "from-purple-500 to-indigo-400"
+      color: "from-purple-500 to-indigo-400",
+      href: "/auth"
     },
     {
       title: "Multi-Shop Synchronization",
@@ -57,7 +61,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5" />
         </svg>
       ),
-      color: "from-orange-500 to-rose-400"
+      color: "from-orange-500 to-rose-400",
+      href: "/auth"
     },
     {
       title: "WhatsApp CRM & Marketing",
@@ -67,7 +72,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
-      color: "from-primary to-blue-500"
+      color: "from-primary to-blue-500",
+      href: "#whatsapp-crm"
     },
     {
       title: "Advanced Profit Analytics",
@@ -77,7 +83,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16m17-16v16" />
         </svg>
       ),
-      color: "from-cyan-500 to-blue-400"
+      color: "from-cyan-500 to-blue-400",
+      href: "/auth"
     },
     {
       title: "Distributor Network",
@@ -87,7 +94,8 @@ export function FeaturesClient() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
       ),
-      color: "from-indigo-500 to-violet-500"
+      color: "from-indigo-500 to-violet-500",
+      href: "/distributor"
     }
   ];
 
@@ -97,13 +105,13 @@ export function FeaturesClient() {
     "serviceType": "Mobile Shop POS & Management Software",
     "provider": {
       "@type": "Organization",
-      "name": "MobiBix",
+      "name": "Mobibix",
       "url": "https://REMOVED_DOMAIN"
     },
     "areaServed": "India",
     "hasOfferCatalog": {
       "@type": "OfferCatalog",
-      "name": "MobiBix Features",
+      "name": "Mobibix Features",
       "itemListElement": features.map((f, i) => ({
         "@type": "Offer",
         "itemOffered": {
@@ -145,7 +153,7 @@ export function FeaturesClient() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-500">Retail Excellence.</span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-16 max-w-3xl mx-auto leading-relaxed font-bold">
-            MobiBix isn&apos;t just a billing app. It&apos;s a complete Operating System designed to scale your mobile shop from a local store to a regional powerhouse.
+            Mobibix isn&apos;t just a billing app. It&apos;s a complete Operating System designed to scale your mobile shop from a local store to a regional powerhouse.
           </p>
         </motion.div>
       </section>
@@ -170,12 +178,12 @@ export function FeaturesClient() {
                 <p className="text-muted-foreground font-bold leading-relaxed text-lg group-hover:text-foreground transition-colors">
                   {f.description}
                 </p>
-                <div className="mt-8 pt-8 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <Link href={f.href as string} className="mt-8 pt-8 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity duration-500 cursor-pointer block">
                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary">
                       Learn More
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                    </div>
-                </div>
+                </Link>
               </motion.div>
             ))}
           </div>
@@ -183,7 +191,7 @@ export function FeaturesClient() {
       </section>
 
       {/* Modern Section: IMEIs */}
-      <section className="py-40 px-6 relative z-10 overflow-hidden">
+      <section id="imei-inventory" className="py-40 px-6 relative z-10 overflow-hidden">
         <div className="container mx-auto max-w-7xl">
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
               <motion.div
@@ -235,7 +243,7 @@ export function FeaturesClient() {
       </section>
 
       {/* Coming Soon Section: WhatsApp CRM */}
-      <section className="py-40 px-6 relative z-10 overflow-hidden bg-muted/10 border-t border-border">
+      <section id="whatsapp-crm" className="py-40 px-6 relative z-10 overflow-hidden bg-muted/10 border-t border-border">
         <div className="container mx-auto max-w-6xl text-center">
             <motion.div
                 initial={{ opacity: 0, y: 30 }}

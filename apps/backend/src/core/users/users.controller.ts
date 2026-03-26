@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { UsersService } from './users.service';
@@ -24,5 +24,15 @@ export class UsersController {
   @Get()
   async list(@Req() req: any) {
     return this.usersService.findByTenant(req.user.tenantId);
+  }
+
+  /**
+   * Register / update FCM push notification token for the authenticated user.
+   * Called by the Android app on every login when a pending FCM token is stored.
+   */
+  @Post('fcm-token')
+  async registerFcmToken(@Req() req: any, @Body() body: { token: string }) {
+    await this.usersService.saveFcmToken(req.user.userId, body.token);
+    return { success: true };
   }
 }

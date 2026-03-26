@@ -17,6 +17,7 @@ import { TradeInModule } from './tradein/tradein.module';
 import { FinanceModule } from './finance/finance.module';
 import { EWayBillModule } from './ewaybill/ewaybill.module';
 import { TargetsModule } from './targets/targets.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { TargetsModule } from './targets/targets.module';
     FinanceModule,
     EWayBillModule,
     TargetsModule,
+    RecommendationsModule,
   ],
 })
 export class MobileShopModule {}

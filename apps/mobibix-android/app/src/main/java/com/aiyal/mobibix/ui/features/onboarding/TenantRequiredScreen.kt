@@ -93,6 +93,23 @@ fun TenantRequiredScreen(
     var categoriesLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    // Promo preview
+    var promoPreview by remember { mutableStateOf<com.aiyal.mobibix.data.network.PromoPreview?>(null) }
+    var promoChecking by remember { mutableStateOf(false) }
+
+    LaunchedEffect(promoCode) {
+        if (promoCode.isBlank()) {
+            promoPreview = null
+            promoChecking = false
+            return@LaunchedEffect
+        }
+        promoChecking = true
+        promoPreview = null
+        kotlinx.coroutines.delay(600)
+        promoPreview = try { tenantApi.previewPromoCode(promoCode) } catch (_: Exception) { null }
+        promoChecking = false
+    }
+
     LaunchedEffect(Unit) {
         try {
             categories = tenantApi.getBusinessCategories()
@@ -114,7 +131,10 @@ fun TenantRequiredScreen(
                 currency = india.currency
                 timezone = india.timezone
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.w("TenantRequired", "Failed to load countries: ${e.message}")
+            // Non-fatal: user can still register; country defaults to IN
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -172,6 +192,8 @@ fun TenantRequiredScreen(
                                 onLegalNameChange = { legalName = it },
                                 promoCode = promoCode,
                                 onPromoCodeChange = { promoCode = it.uppercase() },
+                                promoPreview = promoPreview,
+                                promoChecking = promoChecking,
                                 categories = categories,
                                 selectedCategory = selectedCategory,
                                 onCategorySelect = { selectedCategory = it },
@@ -385,13 +407,15 @@ fun IdentityStep(
     businessName: String, onBusinessNameChange: (String) -> Unit,
     legalName: String, onLegalNameChange: (String) -> Unit,
     promoCode: String, onPromoCodeChange: (String) -> Unit,
+    promoPreview: com.aiyal.mobibix.data.network.PromoPreview?,
+    promoChecking: Boolean,
     categories: List<BusinessCategory>, selectedCategory: BusinessCategory?,
     onCategorySelect: (BusinessCategory) -> Unit, categoriesLoading: Boolean,
     isExpanded: Boolean, onExpandedChange: (Boolean) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         StepHeader("Business Identity", "How should customers identify you?")
-        
+
         OutlinedTextField(
             value = businessName,
             onValueChange = onBusinessNameChange,
@@ -399,7 +423,7 @@ fun IdentityStep(
             placeholder = { Text("e.g. Smart Tech Solutions") },
             modifier = Modifier.fillMaxWidth()
         )
-        
+
         OutlinedTextField(
             value = legalName,
             onValueChange = onLegalNameChange,
@@ -429,13 +453,69 @@ fun IdentityStep(
             }
         }
 
-        OutlinedTextField(
-            value = promoCode,
-            onValueChange = onPromoCodeChange,
-            label = { Text("Promo Code (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = TealAccent, fontWeight = FontWeight.Bold)
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedTextField(
+                value = promoCode,
+                onValueChange = onPromoCodeChange,
+                label = { Text("Promo Code (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = TealAccent, fontWeight = FontWeight.Bold),
+                trailingIcon = {
+                    when {
+                        promoChecking -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = TealAccent)
+                        promoPreview?.valid == true -> Icon(Icons.Default.CheckCircle, null, tint = TealAccent, modifier = Modifier.size(20.dp))
+                        promoPreview?.valid == false && promoCode.isNotBlank() -> Icon(Icons.Default.Cancel, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                        else -> null
+                    }
+                }
+            )
+
+            // Promo preview badge
+            AnimatedVisibility(visible = promoCode.isNotBlank() && !promoChecking) {
+                promoPreview?.let { preview ->
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (preview.valid) TealAccent.copy(alpha = 0.1f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                if (preview.valid) Icons.Default.LocalOffer else Icons.Default.Error,
+                                null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (preview.valid) TealAccent else MaterialTheme.colorScheme.error
+                            )
+                            Column {
+                                if (preview.valid) {
+                                    Text(
+                                        preview.badge ?: "Valid Code",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TealAccent
+                                    )
+                                    preview.benefit?.let {
+                                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    (preview.distributorName ?: preview.partnerName)?.let {
+                                        Text("via $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                } else {
+                                    Text(
+                                        preview.reason ?: "Invalid promo code",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

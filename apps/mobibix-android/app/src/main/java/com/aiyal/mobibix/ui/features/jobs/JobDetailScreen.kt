@@ -297,10 +297,10 @@ fun JobDetailScreen(
                 // AddPart bottom sheet shown outside Scaffold padding
                 if (showAddPart) {
                     AddPartBottomSheet(
-                        products = emptyList(), // TODO: wire product search VM
-                        searchLoading = false,
+                        products = uiState.productSearchResults,
+                        searchLoading = uiState.productSearchLoading,
                         onDismiss = { showAddPart = false },
-                        onSearch = { /* TODO: call productViewModel.searchProducts(it) */ },
+                        onSearch = { query -> viewModel.searchProducts(shopId, query) },
                         onConfirm = { pid, qty -> viewModel.addPart(shopId, jobId, pid, qty) }
                     )
                 }

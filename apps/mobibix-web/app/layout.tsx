@@ -11,27 +11,28 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 
 
 export const metadata: Metadata = {
-  title: "MobiBix — Mobile Shop POS & Management Platform",
+  title: "Mobibix — The Retail OS for Mobile Shops",
   description:
     "Run your mobile shop smarter. IMEI tracking, repair management, GST billing and customer records — all in one platform built for Indian mobile retailers.",
   metadataBase: new URL("https://REMOVED_DOMAIN"),
-  applicationName: "MobiBix",
+  applicationName: "Mobibix",
   manifest: "/manifest.json",
   icons: { 
-    icon: "/assets/mobibix-app-icon.png",
-    apple: "/assets/mobibix-app-icon.png"
+    icon: "/assets/mobibix-icon.png",
+    shortcut: "/assets/mobibix-icon.png",
+    apple: "/assets/mobibix-icon.png"
   },
   openGraph: {
-    title: "MobiBix — The Retail OS for Indian Mobile Shops",
+    title: "Mobibix — The Retail OS for Indian Mobile Shops",
     description: "Track IMEI, manage repairs, generate GST bills and run your mobile shop from anywhere.",
     url: "https://REMOVED_DOMAIN",
-    siteName: "MobiBix",
+    siteName: "Mobibix",
     images: [
       {
         url: "/assets/og-banner.png",
         width: 1200,
         height: 630,
-        alt: "MobiBix — The Modern OS for Mobile Retailers",
+        alt: "Mobibix — The Modern OS for Mobile Retailers",
       }
     ],
     locale: "en_IN",
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MobiBix — The Retail OS for Indian Mobile Shops",
+    title: "Mobibix — The Retail OS for Indian Mobile Shops",
     description: "WhatsApp notifications, GST billing, and IMEI tracking for modern mobile shops.",
     images: ["/assets/og-banner.png"],
     creator: "@mobibix",
@@ -86,13 +87,9 @@ export default function RootLayout({
              __html: JSON.stringify({
                "@context": "https://schema.org",
                "@type": "Organization",
-               "name": "MobiBix",
+               "name": "Mobibix",
                "url": "https://REMOVED_DOMAIN",
-               "logo": "https://REMOVED_DOMAIN/assets/mobibix-app-icon.png",
-               "contactPoint": {
-                 "@type": "ContactPoint",
-                 "contactType": "customer support"
-               }
+               "logo": "https://REMOVED_DOMAIN/logo.png"
              })
           }}
         />
@@ -102,7 +99,7 @@ export default function RootLayout({
              __html: JSON.stringify({
                "@context": "https://schema.org",
                "@type": "SoftwareApplication",
-               "name": "MobiBix POS",
+               "name": "Mobibix POS",
                "operatingSystem": "Web",
                "applicationCategory": "BusinessApplication",
                "offers": {

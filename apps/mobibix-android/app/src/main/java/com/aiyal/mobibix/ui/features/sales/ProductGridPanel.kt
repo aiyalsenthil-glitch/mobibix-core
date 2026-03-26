@@ -69,7 +69,7 @@ fun ProductGridPanel(
     val filtered = remember(search, selectedCategory, products) {
         products.filter { product ->
             val matchesSearch = search.isBlank() ||
-                product.name.contains(search, ignoreCase = true) ||
+                product.name.contains(search, ignoreCase = true) == true ||
                 (product.sku?.contains(search, ignoreCase = true) == true)
             val matchesCategory = selectedCategory == "All" || product.category == selectedCategory
             matchesSearch && matchesCategory
@@ -168,7 +168,7 @@ private fun ProductCard(product: ShopProduct, onClick: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = product.name.take(1).uppercase(),
+                    text = (product.name.ifEmpty { "?" }).take(1).uppercase(),
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
@@ -178,7 +178,7 @@ private fun ProductCard(product: ShopProduct, onClick: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = product.name,
+                text = product.name.ifEmpty { "Unnamed Product" },
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 2,

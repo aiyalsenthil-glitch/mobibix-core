@@ -59,7 +59,11 @@ fun SalesListScreen(
     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
 
     val allShops by produceState<List<Shop>>(initialValue = emptyList()) {
-        try { value = shopApi.getMyShops().data } catch (_: Exception) {}
+        try {
+            value = shopApi.getMyShops().data
+        } catch (e: Exception) {
+            android.util.Log.w("SalesListScreen", "Failed to load shops: ${e.message}")
+        }
     }
 
     var search by remember { mutableStateOf("") }

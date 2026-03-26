@@ -374,3 +374,95 @@ export async function getPayablesAging(detailed = false): Promise<AgingReport | 
   const data = await extractData(response) as AgingReport | AgingReportDetailed;
   return data;
 }
+
+// =============================================================================
+// INTELLIGENCE & SHRINKAGE
+// =============================================================================
+
+export interface ModelProfitability {
+  model: string;
+  jobCount: number;
+  revenue: number;
+  partsCost: number;
+  margin: number;
+  marginPercentage: number;
+}
+
+export async function getRepairProfitability(
+  params: ReportParams = {},
+): Promise<ModelProfitability[]> {
+  const query = new URLSearchParams(cleanParams(params));
+  const response = await authenticatedFetch(
+    `/mobileshop/repair-intelligence/profitability?${query}`,
+  );
+  if (!response.ok) throw new Error("Failed to fetch repair profitability");
+  const data = await extractData(response) as ModelProfitability[];
+  return data;
+}
+
+export interface ShrinkageReason {
+  reason: string;
+  count: number;
+  lossQty: number;
+  lossValue: number;
+  lossValueRupees: number;
+  affectedProducts: number;
+  percentOfTotal: number;
+}
+
+export interface ShrinkageCategory {
+  category: string;
+  lossQty: number;
+  lossValue: number;
+  lossValueRupees: number;
+  affectedProducts: number;
+  percentOfTotal: number;
+}
+
+export interface ShrinkageIntelligence {
+  totalLostValue: number;
+  totalLostUnits: number;
+  topLossCategory: string | null;
+  topLossStaff: string | null;
+  topLossSupplier: string | null;
+  byCategory: ShrinkageCategory[];
+  byStaff: ShrinkageStaff[];
+  bySupplier: ShrinkageSupplier[];
+  byReason: ShrinkageReason[];
+  topProducts: ShrinkageProduct[];
+}
+
+export interface ShrinkageStaff {
+  staffId: string;
+  staffName: string;
+  lostValue: number;
+  lostUnits: number;
+}
+
+export interface ShrinkageSupplier {
+  supplierId: string;
+  supplierName: string;
+  lostValue: number;
+  lostUnits: number;
+}
+
+export interface ShrinkageProduct {
+  productId: string;
+  productName: string;
+  category: string;
+  lossQty: number;
+  lossValue: number;
+  lossValueRupees: number;
+}
+
+export async function getShrinkageIntelligence(
+  params: ReportParams = {},
+): Promise<ShrinkageIntelligence> {
+  const query = new URLSearchParams(cleanParams(params));
+  const response = await authenticatedFetch(
+    `/mobileshop/operations/shrinkage/intelligence?${query}`,
+  );
+  if (!response.ok) throw new Error("Failed to fetch shrinkage intelligence");
+  const data = await extractData(response) as ShrinkageIntelligence;
+  return data;
+}

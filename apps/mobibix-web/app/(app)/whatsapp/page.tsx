@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
   createWhatsAppCampaign,
@@ -16,22 +17,26 @@ import {
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
-import WhatsAppDashboardView from "./components/WhatsAppDashboardView";
 import { ServiceSelector } from "./components/ServiceSelector";
-import AuthkeySetupForm from "./components/AuthkeySetupForm";
-import MetaSetupForm from "./components/MetaSetupForm";
-import QRScanner from "@/components/whatsapp/QRScanner";
-import WhatsAppInbox from "@/components/whatsapp/WhatsAppInbox";
 import { useAuth } from "@/hooks/useAuth";
 import {
   WhatsAppNumberProvider,
 } from "@/context/WhatsAppNumberContext";
-import WhatsAppPlanPicker from "@/components/whatsapp/WhatsAppPlanPicker";
-import MetaTemplateManager from "@/components/whatsapp/MetaTemplateManager";
 import { getWaOfficialPlans } from "@/services/payments.api";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+
+// Dynamic Imports
+const WhatsAppDashboardView = dynamic(() => import("./components/WhatsAppDashboardView"), {
+  loading: () => <div className="p-8"><Loader2 className="animate-spin h-6 w-6" /></div>
+});
+const AuthkeySetupForm = dynamic(() => import("./components/AuthkeySetupForm"));
+const MetaSetupForm = dynamic(() => import("./components/MetaSetupForm"));
+const QRScanner = dynamic(() => import("@/components/whatsapp/QRScanner"));
+const WhatsAppInbox = dynamic(() => import("@/components/whatsapp/WhatsAppInbox"));
+const WhatsAppPlanPicker = dynamic(() => import("@/components/whatsapp/WhatsAppPlanPicker"));
+const MetaTemplateManager = dynamic(() => import("@/components/whatsapp/MetaTemplateManager"));
 import {
   Loader2,
   Settings2,
@@ -410,12 +415,10 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
 function WebModeConnectedCard({ waStatus }: { waStatus: any }) {
   return (
     <div className="grid gap-6">
-      <Card className="rounded-[2rem] border-none shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white">
+      <Card className="rounded-4xl border-none shadow-sm bg-linear-to-br from-emerald-500 to-teal-600 p-8 text-white">
         <h3 className="text-2xl font-black mb-2">Web Mode Active</h3>
         <p className="opacity-80 font-medium">Real-time automation is active via your linked WhatsApp session.</p>
       </Card>
@@ -440,7 +443,7 @@ function WebModeConnectedCard({ waStatus }: { waStatus: any }) {
 function AuthkeyConnectedCard({ waStatus }: { waStatus: any }) {
   return (
     <div className="grid gap-6">
-      <Card className="rounded-[2rem] border-none shadow-sm bg-gradient-to-br from-violet-600 to-indigo-600 p-8 text-white">
+      <Card className="rounded-4xl border-none shadow-sm bg-linear-to-br from-violet-600 to-indigo-600 p-8 text-white">
         <h3 className="text-2xl font-black mb-2">Official WhatsApp Active</h3>
         <p className="opacity-80 font-medium">Powered by Authkey — official API with reliable delivery.</p>
       </Card>

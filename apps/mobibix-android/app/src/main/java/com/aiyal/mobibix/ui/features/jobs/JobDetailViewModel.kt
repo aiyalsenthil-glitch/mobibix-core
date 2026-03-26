@@ -9,8 +9,10 @@ import com.aiyal.mobibix.data.network.AddPartRequest
 import com.aiyal.mobibix.data.network.JobCardResponse
 import com.aiyal.mobibix.data.network.RefundDetails
 import com.aiyal.mobibix.data.network.ShopDetails
+import com.aiyal.mobibix.data.network.ShopProduct
 import com.aiyal.mobibix.data.network.dto.UpdateJobRequest
 import com.aiyal.mobibix.domain.JobRepository
+import com.aiyal.mobibix.domain.ProductRepository
 import com.aiyal.mobibix.domain.ShopRepository
 import com.aiyal.mobibix.model.JobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +26,7 @@ import javax.inject.Inject
 class JobDetailViewModel @Inject constructor(
     private val jobRepository: JobRepository,
     private val shopRepository: ShopRepository,
+    private val productRepository: ProductRepository,
     private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
@@ -146,6 +149,20 @@ class JobDetailViewModel @Inject constructor(
         }
     }
 
+    fun searchProducts(shopId: String, query: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(productSearchLoading = true)
+            try {
+                val response = productRepository.getProducts(shopId, take = 100)
+                val filtered = if (query.isBlank()) response.data
+                    else response.data.filter { it.name.contains(query, ignoreCase = true) || (it.sku?.contains(query, ignoreCase = true) == true) }
+                _uiState.value = _uiState.value.copy(productSearchResults = filtered, productSearchLoading = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(productSearchLoading = false)
+            }
+        }
+    }
+
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(successMessage = null, error = null)
     }
@@ -157,5 +174,7 @@ data class JobDetailUiState(
     val job: JobCardResponse? = null,
     val shop: ShopDetails? = null,
     val error: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val productSearchResults: List<ShopProduct> = emptyList(),
+    val productSearchLoading: Boolean = false
 )

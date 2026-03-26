@@ -124,7 +124,10 @@ fun AppNavGraph(
 
             LaunchedEffect(uiState.loginSuccess) {
                 if (uiState.loginSuccess) {
-                    navController.navigate("home") { popUpTo("login") { inclusive = true } }
+                    navController.navigate("home") {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             }
 
@@ -155,12 +158,15 @@ fun AppNavGraph(
             val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
             
             val appState by produceState<AppState?>(initialValue = null, activeShopId) {
-                value = appStateResolver.resolve()
+                value = try { appStateResolver.resolve() } catch (e: Exception) {
+                    android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
+                    null
+                }
             }
 
             // Validate shopId against actual shops to fix stale DataStore values
             LaunchedEffect(appState) {
-                if (appState != null) {
+                if (appState is AppState.Staff || appState is AppState.Owner) {
                     try {
                         val myShops = shopApi.getMyShops().data
                         val validIds = myShops.map { it.id }.toSet()
@@ -251,7 +257,12 @@ fun AppNavGraph(
                 navArgument("invoiceId") { type = NavType.StringType }
             )
         ) {
-            val appState by produceState<AppState?>(initialValue = null) { value = appStateResolver.resolve() }
+            val appState by produceState<AppState?>(initialValue = null) {
+                value = try { appStateResolver.resolve() } catch (e: Exception) {
+                    android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
+                    null
+                }
+            }
             val shopId = it.arguments?.getString("shopId") ?: ""
             val invoiceId = it.arguments?.getString("invoiceId") ?: ""
             InvoiceDetailsScreen(
@@ -263,11 +274,17 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "invoice_print_preview/{invoiceId}",
-            arguments = listOf(navArgument("invoiceId") { type = NavType.StringType })
+            route = "invoice_print_preview/{invoiceId}/{shopId}?autoShare={autoShare}",
+            arguments = listOf(
+                navArgument("invoiceId") { type = NavType.StringType },
+                navArgument("shopId") { type = NavType.StringType },
+                navArgument("autoShare") { type = NavType.BoolType; defaultValue = false }
+            )
         ) { backStackEntry ->
             val invoiceId = backStackEntry.arguments?.getString("invoiceId") ?: ""
-            InvoicePrintPreviewScreen(invoiceId = invoiceId, navController = navController)
+            val shopId = backStackEntry.arguments?.getString("shopId") ?: ""
+            val autoShare = backStackEntry.arguments?.getBoolean("autoShare") ?: false
+            InvoicePrintPreviewScreen(invoiceId = invoiceId, shopId = shopId, navController = navController, autoShare = autoShare)
         }
         
         composable("reports") {
@@ -579,7 +596,12 @@ fun AppNavGraph(
         
         // Placeholder routes for drawer items not yet implemented
         composable("settings") {
-            val appState by produceState<AppState?>(initialValue = null) { value = appStateResolver.resolve() }
+            val appState by produceState<AppState?>(initialValue = null) {
+                value = try { appStateResolver.resolve() } catch (e: Exception) {
+                    android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
+                    null
+                }
+            }
             val isOwner = appState is AppState.Owner
             com.aiyal.mobibix.ui.features.settings.SettingsScreen(
                 navController = navController,
@@ -600,6 +622,22 @@ fun AppNavGraph(
         }
         composable("negative_stock") {
              com.aiyal.mobibix.ui.features.products.NegativeStockScreen(navController = navController)
+        }
+
+        // ── Trade-in / Buyback ────────────────────────────────────────────────
+        composable("trade_in") {
+            com.aiyal.mobibix.ui.features.tradein.TradeInScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Consumer Finance ─────────────────────────────────────────────────
+        composable("consumer_finance") {
+            com.aiyal.mobibix.ui.features.consumerfinance.ConsumerFinanceScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
         }
 
         // ── Credit Notes ─────────────────────────────────────────────────────

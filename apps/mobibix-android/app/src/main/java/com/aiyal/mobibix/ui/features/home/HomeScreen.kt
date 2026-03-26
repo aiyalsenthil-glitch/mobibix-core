@@ -27,8 +27,8 @@ fun HomeScreen(
             onNavigateToJobs = onNavigateToJobs,
             onNavigateToInventory = onNavigateToInventory,
             onNavigateToNegativeStock = onNavigateToNegativeStock,
-            onNavigateToNewSale = { /* TODO: Navigate to new sale */ },
-            onNavigateToNewPurchase = { /* TODO: Navigate to new purchase */ },
+            onNavigateToNewSale = { navController.navigate("new_sale") },
+            onNavigateToNewPurchase = { navController.navigate("create_purchase") },
             onNavigateToReports = { navController.navigate("reports") },
             onOpenDrawer = onOpenDrawer
         )

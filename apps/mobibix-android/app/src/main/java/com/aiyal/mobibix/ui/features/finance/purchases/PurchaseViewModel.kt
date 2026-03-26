@@ -192,6 +192,45 @@ class PurchaseViewModel @Inject constructor(
         }
     }
 
+    fun createPurchase(
+        supplierName: String,
+        invoiceNumber: String,
+        paymentMethod: String,
+        items: List<com.aiyal.mobibix.data.network.PurchaseItemDto>
+    ) {
+        val shopId = shopContextProvider.getActiveShopId() ?: run {
+            uiMessageBus.showError("No active shop selected")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val dto = com.aiyal.mobibix.data.network.CreatePurchaseDto(
+                    shopId = shopId,
+                    globalSupplierId = null,
+                    supplierName = supplierName,
+                    supplierGstin = null,
+                    invoiceNumber = invoiceNumber,
+                    invoiceDate = null,
+                    dueDate = null,
+                    paymentMethod = paymentMethod,
+                    status = null,
+                    items = items,
+                    currency = null,
+                    exchangeRate = null,
+                    poId = null,
+                    grnId = null
+                )
+                purchaseRepository.createPurchase(dto)
+                _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
+            } catch (e: Exception) {
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
+            }
+        }
+    }
+
     fun resetActionSuccess() {
         _uiState.value = _uiState.value.copy(actionSuccess = false)
     }

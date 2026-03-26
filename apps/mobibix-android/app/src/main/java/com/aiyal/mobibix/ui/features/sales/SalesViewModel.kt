@@ -2,14 +2,19 @@ package com.aiyal.mobibix.ui.features.sales
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.data.network.CollectInvoicePaymentRequest
 import com.aiyal.mobibix.data.network.CreateInvoiceRequest
 import com.aiyal.mobibix.data.network.InvoiceDetails
 import com.aiyal.mobibix.data.network.InvoiceListItem
+import com.aiyal.mobibix.data.network.PaymentMethodRequest
 import com.aiyal.mobibix.data.network.ProductApi
 import com.aiyal.mobibix.data.network.SalesApi
+import com.aiyal.mobibix.data.network.SendMessageRequest
 import com.aiyal.mobibix.data.network.ShopApi
 import com.aiyal.mobibix.data.network.ShopDetails
 import com.aiyal.mobibix.data.network.ShopProduct
+import com.aiyal.mobibix.data.network.WhatsappApi
 import com.aiyal.mobibix.core.util.MobiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -38,7 +43,9 @@ data class InvoiceDetailWithShop(
 class SalesViewModel @Inject constructor(
     private val salesApi: SalesApi,
     private val productApi: ProductApi,
-    private val shopApi: ShopApi
+    private val shopApi: ShopApi,
+    private val whatsappApi: WhatsappApi,
+    private val shopContextProvider: ShopContextProvider
 ) : ViewModel() {
 
     // State for the invoice list screen
@@ -71,6 +78,12 @@ class SalesViewModel @Inject constructor(
     // B5 FIX: cancel error is surfaced to UI instead of silenced
     private val _cancelError = MutableStateFlow<String?>(null)
     val cancelError = _cancelError.asStateFlow()
+
+    private val _actionLoading = MutableStateFlow(false)
+    val actionLoading = _actionLoading.asStateFlow()
+
+    private val _actionError = MutableStateFlow<String?>(null)
+    val actionError = _actionError.asStateFlow()
 
     fun loadInvoices(shopId: String) {
         viewModelScope.launch {
@@ -134,6 +147,60 @@ class SalesViewModel @Inject constructor(
 
     fun clearCancelError() {
         _cancelError.value = null
+    }
+
+    fun collectPayment(invoiceId: String, amount: Double, method: String, ref: String?, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _actionLoading.value = true
+            _actionError.value = null
+            try {
+                val request = CollectInvoicePaymentRequest(
+                    paymentMethods = listOf(PaymentMethodRequest(mode = method, amount = amount)),
+                    transactionRef = ref
+                )
+                val updated = salesApi.collectPayment(invoiceId, request)
+                val current = _invoiceWithShop.value
+                _invoiceWithShop.value = current?.copy(invoice = updated)
+                onSuccess()
+            } catch (e: Exception) {
+                _actionError.value = MobiError.extractMessage(e)
+            } finally {
+                _actionLoading.value = false
+            }
+        }
+    }
+
+    fun sendInvoiceWhatsApp(invoice: InvoiceDetails, shopId: String, shopName: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val phone = invoice.customerPhone ?: run { onError("No phone number on invoice"); return }
+        viewModelScope.launch {
+            _actionLoading.value = true
+            try {
+                whatsappApi.sendMessage(
+                    SendMessageRequest(
+                        shopId = shopId,
+                        phoneNumber = phone,
+                        templateName = "invoice_created_confirmation_v1",
+                        language = "en",
+                        parameters = listOf(
+                            invoice.customerName ?: "Customer",
+                            shopName,
+                            invoice.invoiceNumber,
+                            "₹${"%.2f".format(invoice.totalAmount)}"
+                        )
+                    )
+                )
+                loadInvoiceDetails(invoice.id, shopId) // refresh to update whatsappSent
+                onSuccess()
+            } catch (e: Exception) {
+                onError(MobiError.extractMessage(e))
+            } finally {
+                _actionLoading.value = false
+            }
+        }
+    }
+
+    fun clearActionError() {
+        _actionError.value = null
     }
 
     fun loadInitialData(shopId: String) {

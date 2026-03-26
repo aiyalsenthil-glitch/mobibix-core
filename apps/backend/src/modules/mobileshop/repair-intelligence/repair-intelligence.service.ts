@@ -118,4 +118,82 @@ export class RepairIntelligenceService {
 
     return partsInStock;
   }
+
+  /**
+   * 💹 REPAIR PROFITABILITY ANALYSIS
+   * Calculates margins per phone model by analyzing Invoices + Job Cards.
+   */
+  async getRepairProfitability(
+    tenantId: string,
+    shopId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const jobCards = await this.prisma.jobCard.findMany({
+      where: {
+        tenantId,
+        shopId,
+        status: 'DELIVERED',
+        deliveredAt: { gte: startDate, lte: endDate },
+        invoices: { some: { status: { not: 'VOIDED' } } },
+      },
+      include: {
+        invoices: {
+          where: { status: { not: 'VOIDED' } },
+          include: {
+            items: {
+              include: {
+                product: { select: { avgCost: true, costPrice: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const modelStats: Record<
+      string,
+      {
+        jobs: number;
+        revenue: number;
+        partsCost: number;
+        margin: number;
+      }
+    > = {};
+
+    for (const job of jobCards as any[]) {
+      const model = job.deviceModel || 'Unknown';
+      if (!modelStats[model]) {
+        modelStats[model] = { jobs: 0, revenue: 0, partsCost: 0, margin: 0 };
+      }
+
+      modelStats[model].jobs++;
+
+      // Calculate revenue and parts cost from linked invoices
+      for (const inv of job.invoices) {
+        modelStats[model].revenue += inv.totalAmount;
+
+        for (const item of inv.items) {
+          // Identify if it's a part (SPARE/GOODS) vs Service
+          const cost = item.product?.avgCost || item.product?.costPrice || 0;
+          modelStats[model].partsCost += cost * item.quantity;
+        }
+      }
+    }
+
+    // Final calculations
+    return Object.entries(modelStats)
+      .map(([model, stats]) => ({
+        model,
+        jobCount: stats.jobs,
+        revenue: stats.revenue / 100,
+        partsCost: stats.partsCost / 100,
+        margin: (stats.revenue - stats.partsCost) / 100,
+        marginPercentage:
+          stats.revenue > 0
+            ? ((stats.revenue - stats.partsCost) / stats.revenue) * 100
+            : 0,
+      }))
+      .sort((a, b) => b.margin - a.margin);
+  }
 }

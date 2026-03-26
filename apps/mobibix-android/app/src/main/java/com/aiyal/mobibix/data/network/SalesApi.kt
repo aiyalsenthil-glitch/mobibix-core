@@ -80,6 +80,12 @@ data class PaginatedInvoiceResponse(
  * All monetary amounts are in RUPEES (backend converts from Paisa via fromPaisa()).
  * Use Double, not Int — amounts like ₹849.32 are valid.
  */
+data class CollectInvoicePaymentRequest(
+    val paymentMethods: List<PaymentMethodRequest>,
+    val transactionRef: String? = null,
+    val narration: String? = null
+)
+
 data class InvoiceDetails(
     val id: String,
     val invoiceNumber: String,
@@ -95,15 +101,17 @@ data class InvoiceDetails(
     val sgst: Double? = null,
     val igst: Double? = null,
     val totalAmount: Double,                 // Rupees float
+    val balanceAmount: Double = 0.0,         // Remaining unpaid amount
     val paymentMode: String,
     val paymentStatus: String? = null,
+    val whatsappSent: Boolean = false,
     val isGstApplicable: Boolean = false,
     val items: List<InvoiceItemDetail>
 )
 
 data class InvoiceItemDetail(
     val shopProductId: String,
-    val productName: String,
+    val productName: String?,
     val quantity: Int,
     val rate: Double,        // Rupees float — do NOT declare as Int
     val gstRate: Double? = null,
@@ -142,4 +150,10 @@ interface SalesApi {
     suspend fun cancelInvoice(
         @Path("invoiceId") invoiceId: String
     ): InvoiceDetails  // Backend returns updated invoice after cancel
+
+    @POST("api/mobileshop/sales/invoice/{invoiceId}/collect-payment")
+    suspend fun collectPayment(
+        @Path("invoiceId") invoiceId: String,
+        @Body request: CollectInvoicePaymentRequest
+    ): InvoiceDetails
 }

@@ -31,11 +31,12 @@ export class InventoryIntelligenceService {
     startDate: Date,
     endDate: Date,
   ): Promise<LossItem[]> {
-    const rows = await this.prisma.stockVerificationItem.findMany({
+    // 1. Fetch losses from confirmed stock counts (Verifications)
+    const verificationRows = await this.prisma.stockVerificationItem.findMany({
       where: {
         tenantId,
         shopId,
-        difference: { lt: 0 }, // losses only
+        difference: { lt: 0 },
         verification: {
           status: 'CONFIRMED',
           sessionDate: { gte: startDate, lte: endDate },
@@ -50,21 +51,58 @@ export class InventoryIntelligenceService {
       },
     });
 
-    return rows.map((r) => {
-      const lossQty  = Math.abs(r.difference);
-      const costPerUnit = r.shopProduct?.avgCost ?? 0; // Paisa
+    const verificationLosses: LossItem[] = verificationRows.map((r) => {
+      const lossQty = Math.abs(r.difference);
+      const costPerUnit = r.shopProduct?.avgCost ?? 0;
       return {
         shopProductId: r.shopProductId,
-        productName:   r.shopProduct?.name ?? 'Unknown',
-        category:      r.shopProduct?.category ?? 'Uncategorized',
-        reason:        r.reason ?? 'CORRECTION',
-        difference:    r.difference,
+        productName: r.shopProduct?.name ?? 'Unknown',
+        category: r.shopProduct?.category ?? 'Uncategorized',
+        reason: r.reason ?? 'CORRECTION',
+        difference: r.difference,
         lossQty,
-        lossValue:     lossQty * costPerUnit, // Paisa
-        sessionDate:   r.verification.sessionDate,
-        sessionId:     r.verification.id,
+        lossValue: lossQty * costPerUnit,
+        sessionDate: r.verification.sessionDate,
+        sessionId: r.verification.id,
       };
     });
+
+    // 2. Fetch direct losses from ledger (Manual Adjustments)
+    const ledgerRows = await this.prisma.stockLedger.findMany({
+      where: {
+        tenantId,
+        shopId,
+        type: 'OUT',
+        referenceType: { in: ['LOSS', 'DAMAGE', 'THEFT', 'INTERNAL_USE'] },
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      select: {
+        id: true,
+        quantity: true,
+        referenceType: true,
+        shopProductId: true,
+        createdAt: true,
+        product: { select: { name: true, category: true, avgCost: true } },
+      },
+    });
+
+    const ledgerLosses: LossItem[] = (ledgerRows as any[]).map((r: any) => {
+      const lossQty = Math.abs(r.quantity);
+      const costPerUnit = r.product?.avgCost ?? 0;
+      return {
+        shopProductId: r.shopProductId,
+        productName: r.product?.name ?? 'Unknown',
+        category: r.product?.category ?? 'Uncategorized',
+        reason: String(r.referenceType) || 'ADJUSTMENT',
+        difference: -lossQty,
+        lossQty,
+        lossValue: lossQty * costPerUnit,
+        sessionDate: r.createdAt,
+        sessionId: r.id, // using ledger entry ID as session ID for grouping
+      };
+    });
+
+    return [...verificationLosses, ...ledgerLosses];
   }
 
   private resolveDateRange(query: InventoryIntelligenceQueryDto): { start: Date; end: Date } {

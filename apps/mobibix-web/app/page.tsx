@@ -7,7 +7,7 @@ import { Header } from "../components/layout/Header";
 import { Footer } from "../components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "MobiBix — #1 Mobile Shop Billing Software, IMEI & Repair Management",
+  title: "Mobibix — The Retail OS for Mobile Shops",
   description:
     "India's best mobile shop POS. Manage IMEI tracking, repair jobs, GST billing, and inventory. Trusted by 5000+ Indian mobile retailers. Start your free trial today.",
   keywords: [
@@ -55,7 +55,7 @@ export default function HomePage() {
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "MobiBix",
+    name: "Mobibix",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web, Android",
     offers: { "@type": "Offer", priceCurrency: "INR", price: "0" },
@@ -65,7 +65,7 @@ export default function HomePage() {
     inLanguage: "en-IN",
     publisher: {
       "@type": "Organization",
-      name: "MobiBix",
+      name: "Mobibix",
       url: "https://REMOVED_DOMAIN",
     },
   };
@@ -90,42 +90,42 @@ export default function HomePage() {
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "What is MobiBix?",
+        "name": "What is Mobibix?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "MobiBix is a complete Operating System for Indian mobile retailers, providing IMEI tracking, repair management, GST billing, and inventory control."
+          "text": "Mobibix is a complete Operating System for Indian mobile retailers, providing IMEI tracking, repair management, GST billing, and inventory control."
         }
       },
       {
         "@type": "Question",
-        "name": "Does MobiBix support IMEI tracking?",
+        "name": "Does Mobibix support IMEI tracking?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, MobiBix offers serial-perfect IMEI tracking to help you manage stock and prevent theft with 100% accuracy."
+          "text": "Yes, Mobibix offers serial-perfect IMEI tracking to help you manage stock and prevent theft with 100% accuracy."
         }
       },
       {
         "@type": "Question",
-        "name": "Can I generate GST bills with MobiBix?",
+        "name": "Can I generate GST bills with Mobibix?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Absolutely. MobiBix allows you to generate professional, GST-compliant invoices in just 5 seconds."
+          "text": "Absolutely. Mobibix allows you to generate professional, GST-compliant invoices in just 5 seconds."
         }
       },
       {
         "@type": "Question",
-        "name": "Does MobiBix provide WhatsApp integration?",
+        "name": "Does Mobibix provide WhatsApp integration?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, MobiBix automates payment reminders and repair status updates via WhatsApp to help you get paid faster."
+          "text": "Yes, Mobibix automates payment reminders and repair status updates via WhatsApp to help you get paid faster."
         }
       },
       {
         "@type": "Question",
-        "name": "Does MobiBix support distributor and wholesale management?",
+        "name": "Does Mobibix support distributor and wholesale management?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. MobiBix includes a free Distributor Network for mobile parts wholesalers. Distributors can publish a catalog, receive purchase orders, and track retailer stock visibility. ERP users can link to multiple distributors and control what each one can see."
+          "text": "Yes. Mobibix includes a free Distributor Network for mobile parts wholesalers. Distributors can publish a catalog, receive purchase orders, and track retailer stock visibility. ERP users can link to multiple distributors and control what each one can see."
         }
       }
     ]

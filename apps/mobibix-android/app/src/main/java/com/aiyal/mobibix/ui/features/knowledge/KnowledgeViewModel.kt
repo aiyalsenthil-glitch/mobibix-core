@@ -1,5 +1,6 @@
 package com.aiyal.mobibix.ui.features.knowledge
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.util.MobiError
@@ -74,7 +75,9 @@ class KnowledgeViewModel @Inject constructor(
                         notHelpfulCount = if (!helpful) n.notHelpfulCount + 1 else n.notHelpfulCount
                     ) else n
                 })
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w("KnowledgeVM", "Vote failed: ${e.message}")
+            }
         }
     }
 

@@ -6,15 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +27,7 @@ fun FollowUpsScreen(
     viewModel: CrmViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showCreateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.loadData()
@@ -48,7 +45,7 @@ fun FollowUpsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Open Add Sheet */ }) {
+            FloatingActionButton(onClick = { showCreateDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
         }
@@ -79,6 +76,113 @@ fun FollowUpsScreen(
             }
         }
     }
+
+    if (showCreateDialog) {
+        CreateFollowUpDialog(
+            isSaving = uiState.isSaving,
+            onDismiss = { showCreateDialog = false },
+            onCreate = { customerId, type, dueDate, note, priority ->
+                viewModel.createFollowUp(customerId, type, dueDate, note ?: "", priority) {
+                    showCreateDialog = false
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateFollowUpDialog(
+    isSaving: Boolean,
+    onDismiss: () -> Unit,
+    onCreate: (customerId: String, type: String, dueDate: String, note: String?, priority: String) -> Unit
+) {
+    var customerId by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf("CALL") }
+    var dueDate by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var selectedPriority by remember { mutableStateOf("MEDIUM") }
+    var typeExpanded by remember { mutableStateOf(false) }
+
+    val types = listOf("CALL", "WHATSAPP", "VISIT")
+    val priorities = listOf("HIGH", "MEDIUM", "LOW")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Follow-up") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = customerId,
+                    onValueChange = { customerId = it },
+                    label = { Text("Customer ID") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = typeExpanded,
+                    onExpandedChange = { typeExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
+                        types.forEach { t ->
+                            DropdownMenuItem(text = { Text(t) }, onClick = { selectedType = t; typeExpanded = false })
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = dueDate,
+                    onValueChange = { dueDate = it },
+                    label = { Text("Due Date (YYYY-MM-DD)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("2026-03-30") }
+                )
+
+                Text("Priority", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    priorities.forEach { p ->
+                        FilterChip(
+                            selected = selectedPriority == p,
+                            onClick = { selectedPriority = p },
+                            label = { Text(p) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Note (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (customerId.isNotBlank() && dueDate.isNotBlank()) {
+                        onCreate(customerId, selectedType, dueDate, note.ifBlank { null }, selectedPriority)
+                    }
+                },
+                enabled = !isSaving && customerId.isNotBlank() && dueDate.isNotBlank()
+            ) {
+                if (isSaving) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                else Text("Create")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable

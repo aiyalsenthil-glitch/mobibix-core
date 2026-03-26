@@ -10,8 +10,8 @@ export function Footer({ compact = false }: { compact?: boolean }) {
         <div className={`grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-16 ${compact ? "mb-10" : "mb-20"}`}>
           <div className="md:col-span-2 space-y-4 md:space-y-8">
             <div className="flex items-center gap-4">
-              <Image src="/assets/mobibix-main-logo.png" alt="MobiBix" width={100} height={32} className="h-8 w-auto opacity-90 dark:brightness-200" />
-              <span className="text-xl font-black tracking-tighter uppercase text-foreground">MobiBix</span>
+              <Image src="/assets/mobibix-main-logo.png" alt="Mobibix" width={100} height={32} className="h-8 w-auto opacity-90 dark:brightness-200" />
+              <span className="text-xl font-black tracking-tighter uppercase text-foreground">Mobibix</span>
             </div>
             {!compact && (
               <p className="text-muted-foreground font-medium text-lg max-w-sm leading-relaxed">
@@ -89,7 +89,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
 
         <div className={`${compact ? "pt-6" : "pt-8"} border-t border-border flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8`}>
           <div className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground">
-            © 2026 MobiBix Enterprise Solutions
+            © 2026 Mobibix
           </div>
           <div className="flex items-center gap-4">
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />

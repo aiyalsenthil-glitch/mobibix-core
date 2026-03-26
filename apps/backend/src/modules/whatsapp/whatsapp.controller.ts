@@ -638,15 +638,19 @@ export class WhatsAppController {
   async sendMessage(
     @Body()
     dto: {
-      tenantId: string;
-      phone: string;
+      tenantId?: string;
+      phone?: string;
       templateId?: string;
+      templateName?: string;
       text?: string;
       parameters?: string[];
     },
     @Req() req: any,
   ) {
-    this.validateAccess(req, dto.tenantId);
+    // Fallback to JWT tenantId when client omits it (e.g. Android app)
+    const tenantId: string = dto.tenantId || req.user?.tenantId;
+    if (!tenantId) throw new BadRequestException('tenantId is required');
+    this.validateAccess(req, tenantId);
 
     // Normalize parameters if frontend uses different names
     const phone = dto.phone || (dto as any).phoneNumber;
@@ -656,9 +660,19 @@ export class WhatsAppController {
       throw new BadRequestException('Phone number is required');
     }
 
-    if (!dto.templateId && !text) {
+    // Resolve templateId from templateName when only name is provided (Android app)
+    let resolvedTemplateId = dto.templateId;
+    if (!resolvedTemplateId && dto.templateName) {
+      const tmpl = await this.prisma.whatsAppTemplate.findFirst({
+        where: { metaTemplateName: dto.templateName },
+        select: { id: true },
+      });
+      resolvedTemplateId = tmpl?.id;
+    }
+
+    if (!resolvedTemplateId && !text) {
       throw new BadRequestException(
-        'Either templateId or text must be provided',
+        'Either templateId/templateName or text must be provided',
       );
     }
 
@@ -677,31 +691,31 @@ export class WhatsAppController {
     if (text) {
       const textBody = text.trim();
       if (!textBody) return { success: true, skipped: true }; // Empty text check
- 
+
       // Get default WhatsAppNumber for tenant
       let defaultNumber = await this.prisma.whatsAppNumber.findFirst({
-        where: { tenantId: dto.tenantId, isDefault: true, isEnabled: true },
+        where: { tenantId, isDefault: true, isEnabled: true },
         select: { id: true },
       });
- 
+
       // Fallback: If no default marked, take the first available enabled number
       if (!defaultNumber) {
         defaultNumber = await this.prisma.whatsAppNumber.findFirst({
-          where: { tenantId: dto.tenantId, isEnabled: true },
+          where: { tenantId, isEnabled: true },
           select: { id: true },
         });
       }
- 
+
       if (!defaultNumber) {
         throw new BadRequestException(
           'No active WhatsApp configuration found for this tenant. Please connect your number first.',
         );
       }
- 
+
       // Create log entry
       const log = await this.prisma.whatsAppLog.create({
         data: {
-          tenantId: dto.tenantId,
+          tenantId,
           whatsAppNumberId: defaultNumber.id,
           phone: phone,
           type: 'MANUAL',
@@ -709,14 +723,14 @@ export class WhatsAppController {
           metadata: { text_snippet: textBody.substring(0, 50) },
         },
       });
- 
+
       // Send Text
       const result = await this.sender.sendTextMessage(
-        dto.tenantId,
+        tenantId,
         phone,
         textBody,
       );
- 
+
       // Update Log
       if (result.success && result.messageId) {
         await this.prisma.whatsAppLog.update({
@@ -736,16 +750,16 @@ export class WhatsAppController {
         });
       }
       return this.prisma.whatsAppLog.findFirst({
-        where: { id: log.id, tenantId: dto.tenantId },
+        where: { id: log.id, tenantId },
       });
     }
 
     // ---------------------------------------------------------
     // B. TEMPLATE FLOW (Automation / Notifications)
     // ---------------------------------------------------------
-    if (dto.templateId) {
+    if (resolvedTemplateId) {
       const template = await this.prisma.whatsAppTemplate.findUnique({
-        where: { id: dto.templateId },
+        where: { id: resolvedTemplateId },
       });
 
       if (!template) {
@@ -754,14 +768,14 @@ export class WhatsAppController {
 
       // Get default WhatsAppNumber for tenant
       let defaultNumber = await this.prisma.whatsAppNumber.findFirst({
-        where: { tenantId: dto.tenantId, isDefault: true, isEnabled: true },
+        where: { tenantId, isDefault: true, isEnabled: true },
         select: { id: true },
       });
 
       // Fallback: If no default marked, take the first available enabled number
       if (!defaultNumber) {
         defaultNumber = await this.prisma.whatsAppNumber.findFirst({
-          where: { tenantId: dto.tenantId, isEnabled: true },
+          where: { tenantId, isEnabled: true },
           select: { id: true },
         });
       }
@@ -775,9 +789,9 @@ export class WhatsAppController {
       // Create log entry with PENDING status first
       const log = await this.prisma.whatsAppLog.create({
         data: {
-          tenantId: dto.tenantId,
+          tenantId,
           whatsAppNumberId: defaultNumber.id,
-          phone: dto.phone,
+          phone: phone,
           type: template.feature,
           status: 'PENDING',
           metadata: dto.parameters ? { parameters: dto.parameters } : undefined,
@@ -786,9 +800,9 @@ export class WhatsAppController {
 
       // Send the message
       const result = await this.sender.sendTemplateMessage(
-        dto.tenantId,
+        tenantId,
         template.feature as any,
-        dto.phone,
+        phone,
         template.metaTemplateName,
         dto.parameters || [],
         { logId: log.id }, // Pass logId to helper for auto update
@@ -797,7 +811,7 @@ export class WhatsAppController {
       // Note: sendTemplateMessage already updates the log if logId is passed.
       // But we return the fresh log.
       return this.prisma.whatsAppLog.findFirst({
-        where: { id: log.id, tenantId: dto.tenantId },
+        where: { id: log.id, tenantId },
       });
     }
   }

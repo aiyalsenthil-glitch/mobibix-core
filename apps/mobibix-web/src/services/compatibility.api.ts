@@ -47,3 +47,13 @@ export async function submitCompatibilityFeedback(data: CompatibilityFeedbackInp
   });
   return response.json();
 }
+
+/**
+ * Returns localized inventory items for a specific shop that are compatible with the specified model.
+ */
+export async function getUpsellRecommendations(shopId: string, model: string, type?: string): Promise<CompatiblePart[]> {
+  const query = new URLSearchParams({ shopId, model });
+  if (type) query.append('type', type);
+  const response = await authenticatedFetch(`/recommendations/upsell?${query.toString()}`);
+  return extractData<CompatiblePart[]>(response);
+}

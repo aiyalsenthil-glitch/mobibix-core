@@ -49,6 +49,7 @@ export class NotificationsController {
         id: true,
         eventId: true,
         title: true,
+        body: true,
         payload: true,
         status: true,
         readAt: true,

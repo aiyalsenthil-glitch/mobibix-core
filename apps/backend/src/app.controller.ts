@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Head,
+  HttpCode,
   Req,
   UseGuards,
   VERSION_NEUTRAL,
@@ -32,6 +33,14 @@ export class AppController {
   @Head()
   root() {
     return { status: 'Backend is running' };
+  }
+
+  /** Silences browser/crawler favicon requests — returns 204 No Content to avoid 404 log spam */
+  @Public()
+  @Get('favicon.ico')
+  @HttpCode(204)
+  favicon() {
+    // Intentionally empty — 204 No Content suppresses browser favicon 404 log spam
   }
 
   @Public()

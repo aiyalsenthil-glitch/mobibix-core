@@ -8,6 +8,8 @@ import { PartySelector } from "@/components/common/PartySelector";
 import { DeviceModelSelector } from "@/components/common/DeviceModelSelector";
 import { type Party } from "@/services/parties.api";
 import { CustomerModal } from "../../customers/CustomerModal";
+import { RepairUpsell } from "@/components/jobcards/RepairUpsell";
+import { type CompatiblePart } from "@/services/compatibility.api";
 
 type StepFormData = {
   // Customer info is now handled via Party selection mostly, but we keep fields for display/fallback if needed 
@@ -39,6 +41,7 @@ export default function CreateJobCardPage() {
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [suggestedFault, setSuggestedFault] = useState<{ id: string; name: string } | null>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [selectedUpsellIds, setSelectedUpsellIds] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<StepFormData>({
     deviceType: "Mobile",
@@ -142,6 +145,24 @@ export default function CreateJobCardPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save job card");
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSelectUpsell = (part: CompatiblePart) => {
+    setSelectedUpsellIds(prev => 
+      prev.includes(part.id) ? prev.filter(id => id !== part.id) : [...prev, part.id]
+    );
+
+    // If adding, append to complaint
+    if (!selectedUpsellIds.includes(part.id)) {
+      setFormData(prev => ({
+        ...prev,
+        customerComplaint: prev.customerComplaint + (prev.customerComplaint ? "\n\n" : "") + 
+          `[RECOMMENDED]: ${part.name} (Check for wear/damage)`,
+        estimatedCost: prev.estimatedCost 
+          ? (parseFloat(prev.estimatedCost) + (part.price || 0)).toString() 
+          : (part.price || 0).toString()
+      }));
     }
   };
 
@@ -384,6 +405,13 @@ export default function CreateJobCardPage() {
                     </button>
                   </div>
                 )}
+                
+                <RepairUpsell 
+                  shopId={selectedShopId!} 
+                  modelName={formData.deviceModel} 
+                  onSelect={handleSelectUpsell}
+                  selectedParts={selectedUpsellIds}
+                />
               </div>
             </div>
           )}

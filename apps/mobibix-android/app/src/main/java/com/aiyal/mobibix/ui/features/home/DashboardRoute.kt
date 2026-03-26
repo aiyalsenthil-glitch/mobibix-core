@@ -39,8 +39,8 @@ fun DashboardRoute(
             onNavigateToInventory = onNavigateToInventory,
             onNavigateToNegativeStock = onNavigateToNegativeStock,
             // onNavigateToStaff is handled by the 'More' tab now
-            onNavigateToNewSale = { /* TODO: navController.navigate("new_sale") */ },
-            onNavigateToNewPurchase = { /* TODO: navController.navigate("new_purchase") */ }
+            onNavigateToNewSale = { navController.navigate("new_sale") },
+            onNavigateToNewPurchase = { navController.navigate("create_purchase") }
         )
     } else if (appState is AppState.Staff) {
         LaunchedEffect(appState.shopId) {

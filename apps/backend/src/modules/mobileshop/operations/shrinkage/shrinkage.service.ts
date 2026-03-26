@@ -221,29 +221,56 @@ export class ShrinkageService {
     startDate: string,
     endDate: string,
   ) {
-    const items = await this.prisma.stockVerificationItem.findMany({
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // 1. Get losses from stock counts (Verification)
+    const verificationItems = await this.prisma.stockVerificationItem.findMany({
       where: {
         tenantId,
         shopId,
-        difference:   { lt: 0 },
+        difference: { lt: 0 },
         verification: {
-          status:      'CONFIRMED',
-          sessionDate: { gte: new Date(startDate), lte: new Date(endDate) },
+          status: 'CONFIRMED',
+          sessionDate: { gte: start, lte: end },
         },
       },
       select: { difference: true, reason: true, shopProduct: { select: { avgCost: true } } },
     });
 
+    // 2. Get direct losses from ledger (Manual Adjustments)
+    const ledgerItems = await this.prisma.stockLedger.findMany({
+      where: {
+        tenantId,
+        shopId,
+        type: 'OUT',
+        referenceType: { in: ['LOSS', 'DAMAGE', 'THEFT', 'INTERNAL_USE'] },
+        createdAt: { gte: start, lte: end },
+      },
+      select: { quantity: true, referenceType: true, product: { select: { avgCost: true } } },
+    });
+
     const reasonMap: Record<string, { count: number; lostUnits: number; lostValue: number }> = {};
 
-    for (const item of items) {
+    // Process verification data
+    for (const item of verificationItems) {
       const reason = item.reason ?? 'CORRECTION';
-      const units  = Math.abs(item.difference);
-      const value  = units * (item.shopProduct?.avgCost ?? 0);
+      const units = Math.abs(item.difference);
+      const value = units * (item.shopProduct?.avgCost ?? 0);
 
-      if (!reasonMap[reason]) {
-        reasonMap[reason] = { count: 0, lostUnits: 0, lostValue: 0 };
-      }
+      if (!reasonMap[reason]) reasonMap[reason] = { count: 0, lostUnits: 0, lostValue: 0 };
+      reasonMap[reason].count++;
+      reasonMap[reason].lostUnits += units;
+      reasonMap[reason].lostValue += value;
+    }
+
+    // Process direct ledger data
+    for (const item of ledgerItems) {
+      const reason = item.referenceType || 'ADJUSTMENT';
+      const units = Math.abs(item.quantity);
+      const value = units * (item.product?.avgCost ?? 0);
+
+      if (!reasonMap[reason]) reasonMap[reason] = { count: 0, lostUnits: 0, lostValue: 0 };
       reasonMap[reason].count++;
       reasonMap[reason].lostUnits += units;
       reasonMap[reason].lostValue += value;
@@ -252,7 +279,7 @@ export class ShrinkageService {
     return Object.entries(reasonMap)
       .map(([reason, data]) => ({
         reason,
-        count:     data.count,
+        count: data.count,
         lostUnits: data.lostUnits,
         lostValue: data.lostValue / 100,
       }))

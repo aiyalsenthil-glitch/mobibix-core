@@ -3,6 +3,7 @@ package com.aiyal.mobibix.data.network
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 data class BusinessCategory(
     val id: String,
@@ -55,6 +56,16 @@ data class RequestDeletionRequest(
     val reason: String? = null
 )
 
+data class PromoPreview(
+    val valid: Boolean,
+    val reason: String?,
+    val type: String?,
+    val benefit: String?,
+    val badge: String?,
+    val distributorName: String?,
+    val partnerName: String?
+)
+
 interface TenantApi {
     @POST("api/tenant")
     suspend fun createTenant(
@@ -67,6 +78,9 @@ interface TenantApi {
     /** Fetch country config for the onboarding country selector */
     @GET("api/config/countries")
     suspend fun getCountries(): List<CountryOption>
+
+    @GET("api/partners/promo/preview")
+    suspend fun previewPromoCode(@Query("code") code: String): PromoPreview
 
     @POST("api/tenant/request-deletion")
     suspend fun requestDeletion(

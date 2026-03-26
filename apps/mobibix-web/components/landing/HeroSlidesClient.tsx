@@ -128,7 +128,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 </h1>
                 
                 <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-2xl mx-auto mb-10 md:mb-12 leading-relaxed italic">
-                    Stop losing track of IMEIs, repairs, and stock. Generate GST bills in 5 seconds. The #1 Billing & Inventory app for Indian Mobile Retailers.
+                    Mobibix — The Retail OS for Mobile Shops. Stop losing track of IMEIs, repairs, and stock. Generate GST bills in 5 seconds. The #1 Billing & Inventory app for Indian Mobile Retailers.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                     <Link href="/auth" className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20 text-center">
@@ -197,7 +197,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 <div>
                     <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Proven Impact</span>
                     <h2 className="text-5xl md:text-7xl font-black text-foreground mt-6 mb-8 tracking-tighter leading-tight uppercase">Build A Retail <br />Empire.</h2>
-                    <p className="text-muted-foreground text-lg font-bold mb-12 max-w-lg">Indian shop owners using MobiBix report a 3x increase in repair turnaround and zero lost inventory.</p>
+                    <p className="text-muted-foreground text-lg font-bold mb-12 max-w-lg">Indian shop owners using Mobibix report a 3x increase in repair turnaround and zero lost inventory.</p>
                     <div className="grid grid-cols-2 gap-8">
                         <StatItem value="5" unit="min" label="Setup Time" />
                         <StatItem value="3x" unit="" label="Efficiency" />

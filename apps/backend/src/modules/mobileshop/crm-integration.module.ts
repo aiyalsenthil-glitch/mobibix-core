@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { CrmIntegrationService } from './services/crm-integration.service';
 import { MobileShopCrmController } from './crm-integration.controller';
 import { CrmEventListener } from './services/crm-event.listener';
+import { CrmAutomationCron } from './services/crm-automation.cron';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { PrismaModule } from '../../core/prisma/prisma.module';
 import { FollowUpsModule } from '../../core/follow-ups/follow-ups.module';
@@ -50,7 +51,11 @@ import { FollowUpsModule } from '../../core/follow-ups/follow-ups.module';
     PrismaModule,
   ],
   controllers: [MobileShopCrmController],
-  providers: [CrmIntegrationService, CrmEventListener],
+  providers: [
+    CrmIntegrationService,
+    CrmEventListener,
+    CrmAutomationCron,
+  ],
   exports: [CrmIntegrationService],
 })
 export class CrmIntegrationModule {}

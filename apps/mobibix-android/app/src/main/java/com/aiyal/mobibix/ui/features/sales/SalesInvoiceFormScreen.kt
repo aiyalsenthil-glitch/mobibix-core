@@ -27,6 +27,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,9 +36,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -68,7 +72,9 @@ fun SalesInvoiceFormScreen(
 
     val items = remember { mutableStateListOf<InvoiceItemUi>() }
 
-    val saving by viewModel.saving.collectAsState() // Correctly collect the state
+    val saving by viewModel.saving.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(shopId) {
         if (shopId.isNotBlank()) {
@@ -77,7 +83,8 @@ fun SalesInvoiceFormScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("New Sale") }) }
+        topBar = { TopAppBar(title = { Text("New Sale") }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
         Column(
@@ -203,7 +210,7 @@ fun SalesInvoiceFormScreen(
                     viewModel.createInvoice(
                         request = request, 
                         onSuccess = { navController.popBackStack() }, 
-                        onError = { /* TODO: Show snackbar */ }
+                        onError = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                     )
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp)

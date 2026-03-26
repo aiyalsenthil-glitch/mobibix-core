@@ -1,5 +1,6 @@
 package com.aiyal.mobibix.ui.features.intelligence
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.util.MobiError
@@ -92,7 +93,9 @@ class IntelligenceViewModel @Inject constructor(
             try {
                 val suggestions = intelligenceApi.autocompletePhoneModels(query)
                 _compatibilityState.value = _compatibilityState.value.copy(suggestions = suggestions)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w("IntelligenceVM", "Autocomplete failed: ${e.message}")
+            }
         }
     }
 

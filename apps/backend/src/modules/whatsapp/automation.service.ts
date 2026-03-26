@@ -49,6 +49,9 @@ export class AutomationService {
       'JOB_CREATED',
       'JOB_READY',
       'JOB_COMPLETED',
+      'WARRANTY_EXPIRY',
+      'POST_REPAIR_SURVEY',
+      'CUSTOMER_WIN_BACK',
     ],
   };
 
@@ -101,6 +104,9 @@ export class AutomationService {
       case 'JOB_READY':
       case 'JOB_COMPLETED':
       case 'JOB_DELIVERED':
+      case 'WARRANTY_EXPIRY':
+      case 'POST_REPAIR_SURVEY':
+      case 'CUSTOMER_WIN_BACK':
         return ReminderTriggerType.EVENT_BASED;
       default:
         return ReminderTriggerType.DATE; // Fallback

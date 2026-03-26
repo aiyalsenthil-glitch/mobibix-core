@@ -18,6 +18,7 @@ import { LoyaltyRedemptionInput } from "@/components/loyalty/LoyaltyRedemptionIn
 import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
 import { getQuotation } from "@/services/quotations.api";
 import { getParty } from "@/services/parties.api";
+import { UpsellSidebar } from "@/components/sales/UpsellSidebar";
 
 export default function CreateInvoicePage() {
   const router = useRouter();
@@ -580,18 +581,28 @@ export default function CreateInvoicePage() {
               </form>
             </div>
 
-            <InvoiceProductTable
-              items={items}
-              products={shopProducts}
-              pricesIncludeTax={pricesIncludeTax}
-              onPricesIncludeTaxChange={setPricesIncludeTax}
-              onUpdateItem={updateItem}
-              onAddItem={addItem}
-              onRemoveItem={removeItem}
-              onNewProduct={() => setIsProductModalOpen(true)}
-              onUpdateProductCost={handleUpdateProductCost}
-              imeiHighlight={imeiHighlight}
-            />
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
+              <InvoiceProductTable
+                items={items}
+                products={shopProducts}
+                pricesIncludeTax={pricesIncludeTax}
+                onPricesIncludeTaxChange={setPricesIncludeTax}
+                onUpdateItem={updateItem}
+                onAddItem={addItem}
+                onRemoveItem={removeItem}
+                onNewProduct={() => setIsProductModalOpen(true)}
+                onUpdateProductCost={handleUpdateProductCost}
+                imeiHighlight={imeiHighlight}
+              />
+              <div className="hidden xl:block">
+                <UpsellSidebar 
+                  shopId={selectedShopId!} 
+                  items={items} 
+                  onAddItem={addItem} 
+                  products={shopProducts} 
+                />
+              </div>
+            </div>
           </div>
 
           {/* Loyalty Redemption */}

@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.print.PrintAttributes
 import android.print.PrintManager
-import android.util.Log
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -120,7 +119,7 @@ fun JobCardPrintPreviewScreen(
 @Composable
 private fun PrintPreviewContent(job: JobCardResponse, shop: ShopInfo) {
     val context = LocalContext.current
-    val activity = context as Activity
+    val activity = context as? Activity ?: return
     val qrUrl = "${BuildConfig.PUBLIC_BASE_URL}/public/job/${job.publicToken}"
     val qrBitmap = remember { generateQrBitmap(qrUrl) }
     val printableView = remember { mutableStateOf<FrameLayout?>(null) }
@@ -131,7 +130,6 @@ private fun PrintPreviewContent(job: JobCardResponse, shop: ShopInfo) {
     fun generateAndUsePdf(onPdfGenerated: (File) -> Unit) {
         val targetView = printableView.value ?: return
         captureViewToBitmap(activity, targetView) { bitmap ->
-            Log.d("PRINT", "Captured bitmap = ${bitmap.width} x ${bitmap.height}")
             val pdfFile = createPrintablePdf(
                 context = context,
                 bitmap = bitmap,

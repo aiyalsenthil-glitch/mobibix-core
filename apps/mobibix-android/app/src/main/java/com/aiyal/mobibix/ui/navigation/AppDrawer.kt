@@ -57,6 +57,8 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
             DrawerItem("Credit Notes", Icons.Default.Receipt, "credit_notes", "SALES_VIEW"),
             DrawerItem("Sales Return", Icons.AutoMirrored.Filled.AssignmentReturn, "sales_return", "SALES_VIEW"),
             DrawerItem("Quotations", Icons.Default.Description, "quotations", "SALES_VIEW"),
+            DrawerItem("Trade-in / Buyback", Icons.Default.SwapHoriz, "trade_in", "SALES_VIEW"),
+            DrawerItem("Consumer Finance", Icons.Default.AccountBalance, "consumer_finance", "SALES_VIEW"),
             DrawerItem("Loyalty", Icons.Default.Stars, "loyalty", "SALES_VIEW"),
             DrawerItem("CRM", Icons.Default.AssignmentInd, "crm_dashboard", "MEMBER_VIEW"),
             DrawerItem("B2B", Icons.Default.Business, "b2b", "SALES_VIEW",
@@ -68,6 +70,7 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         items = listOf(
             DrawerItem("Products", Icons.Default.ShoppingBag, "product_list", "INVENTORY_VIEW"),
             DrawerItem("Suppliers", Icons.Default.LocalShipping, "suppliers", "INVENTORY_VIEW"),
+            DrawerItem("Purchase Orders", Icons.Default.ShoppingBasket, "purchase_orders", "INVENTORY_MANAGE"),
             DrawerItem("Purchases", Icons.Default.ShoppingCart, "purchases", "INVENTORY_MANAGE"),
             DrawerItem("Stock Ledger", Icons.Default.Inventory2, "stock_ledger", "INVENTORY_VIEW"),
             DrawerItem("Barcode Labels", Icons.Default.QrCode, "barcode_labels", "INVENTORY_VIEW"),
@@ -77,7 +80,9 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         title = "Finance",
         items = listOf(
             DrawerItem("Payments", Icons.Default.CreditCard, "finance", "SALES_VIEW"),
-            DrawerItem("Expenses", Icons.Default.Money, "expenses", "SALES_VIEW"),
+            DrawerItem("Sales Receipts", Icons.Default.Receipt, "receipts", "SALES_VIEW"),
+            DrawerItem("Payment Vouchers", Icons.Default.Money, "vouchers", "SALES_VIEW"),
+            DrawerItem("Expenses", Icons.Default.AccountBalanceWallet, "expenses", "SALES_VIEW"),
             DrawerItem("Daily Closing", Icons.Default.Lock, "daily_closing", "SALES_VIEW",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT)),
         )
@@ -96,21 +101,27 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
     DrawerSection(
         title = "Intelligence",
         items = listOf(
-            DrawerItem("AI Assistant", Icons.AutoMirrored.Filled.Chat, "ai_chat"),
+            // Web: AI features restricted to OWNER/MANAGER only (not ADMIN)
+            DrawerItem("AI Assistant", Icons.AutoMirrored.Filled.Chat, "ai_chat",
+                allowedRoles = listOf(UserRole.OWNER, UserRole.MANAGER)),
             DrawerItem("Inventory Intelligence", Icons.Default.Psychology, "inventory_intelligence", "INVENTORY_VIEW"),
             DrawerItem("Shrinkage Analysis", Icons.AutoMirrored.Filled.TrendingDown, "shrinkage_intelligence", "INVENTORY_VIEW",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)),
             DrawerItem("Expense Intelligence", Icons.Default.Analytics, "expense_intelligence", "DASHBOARD_VIEW"),
-            DrawerItem("Compatibility", Icons.Default.DevicesOther, "compatibility"),
+            // Web: requires mobile_shop.compatibility.view; blocks ACCOUNTANT role explicitly
+            DrawerItem("Compatibility", Icons.Default.DevicesOther, "compatibility", "INVENTORY_VIEW",
+                allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER,
+                    UserRole.STAFF, UserRole.TECHNICIAN, UserRole.SUPERVISOR)),
         )
     ),
     DrawerSection(
         title = "Operations",
         items = listOf(
-            DrawerItem("Repair Knowledge", Icons.Default.Build, "repair_knowledge"),
+            // Repair knowledge base — for technical staff, not accountants
+            DrawerItem("Repair Knowledge", Icons.Default.Build, "repair_knowledge", "REPAIR_MANAGE"),
             DrawerItem("Stock Verification", Icons.AutoMirrored.Filled.FactCheck, "stock_verification", "INVENTORY_MANAGE",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPERVISOR)),
-            DrawerItem("WhatsApp", Icons.AutoMirrored.Filled.Chat, "whatsapp_dashboard", "REPAIR_MANAGE"),
+            DrawerItem("WhatsApp", Icons.AutoMirrored.Filled.Chat, "whatsapp_dashboard", "SALES_VIEW"),
         )
     ),
     DrawerSection(
@@ -122,17 +133,19 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)),
             DrawerItem("Approvals", Icons.Default.Approval, "approvals", "STAFF_VIEW",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)),
-            DrawerItem("Settings", Icons.Default.Settings, "settings"),
+            // Web: Settings requires core.settings.manage — OWNER/ADMIN only
+            DrawerItem("Settings", Icons.Default.Settings, "settings", "SHOP_MANAGE",
+                allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN)),
         )
     )
 )
 
-// Premium accent colors for glass morphism
-private val GlassAccent = Color(0xFF6366F1)       // Indigo
-private val GlassAccentAlt = Color(0xFF8B5CF6)    // Violet
-private val GlassSurface = Color(0xFF1E1E2E)
+// Brand teal accent colors — matches TopAppBar and website
+private val GlassAccent = Color(0xFF14B8A6)       // Brand Teal
+private val GlassAccentAlt = Color(0xFF0D9488)    // Teal Dark
+private val GlassSurface = Color(0xFF0D1F1E)
 private val GlassBorder = Color(0x33FFFFFF)
-private val GlassSelected = Color(0xFF6366F1)
+private val GlassSelected = Color(0xFF14B8A6)
 
 @Composable
 fun AppDrawerContent(
@@ -180,9 +193,9 @@ fun AppDrawerContent(
     } else {
         Brush.verticalGradient(
             listOf(
-                Color(0xFFF8F9FF),
-                Color(0xFFEEF0FF),
-                Color(0xFFF4F5FF)
+                Color(0xFFFFFFFF),
+                Color(0xFFF0FDFB),
+                Color(0xFFFFFFFF)
             )
         )
     }

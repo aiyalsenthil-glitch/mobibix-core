@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getInvoice, getPublicInvoice } from "@/services/sales.api";
@@ -15,19 +16,21 @@ import { mapVoucherToPrintData } from "@/lib/print/adapters/voucher.adapter"; //
 import { mapJobCardToPrintData } from "@/lib/print/adapters/jobcard.adapter";
 import { mapQuotationToPrintData } from "@/lib/print/adapters/quotation.adapter";
 import { resolveTemplate, registerTemplate } from "@/lib/print/registry";
-import { InvoiceClassic } from "@/components/print/templates/InvoiceClassic";
-import { InvoiceThermal } from "@/components/print/templates/InvoiceThermal";
-import { InvoiceModern } from "@/components/print/templates/InvoiceModern"; // New
-import { InvoiceCorporate } from "@/components/print/templates/InvoiceCorporate"; // New
-import { InvoiceCompact } from "@/components/print/templates/InvoiceCompact"; // New
-import { InvoiceSimple } from "@/components/print/templates/InvoiceSimple"; // New
-import { JobCardThermal } from "@/components/print/templates/JobCardThermal";
-import { JobCardClassic } from "@/components/print/templates/JobCardClassic";
-import { JobCardSimple } from "@/components/print/templates/JobCardSimple";
-import { JobCardDetailed } from "@/components/print/templates/JobCardDetailed";
-import { ReceiptPrint } from "@/components/print/templates/ReceiptPrint"; // New
-import { VoucherPrint } from "@/components/print/templates/VoucherPrint"; // New
 import type { PrintDocumentData, DocumentType } from "@/lib/print/types";
+
+// Dynamic Template Imports
+const InvoiceClassic = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/InvoiceClassic").then(m => m.InvoiceClassic));
+const InvoiceThermal = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/InvoiceThermal").then(m => m.InvoiceThermal));
+const InvoiceModern = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/InvoiceModern").then(m => m.InvoiceModern));
+const InvoiceCorporate = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/InvoiceCorporate").then(m => m.InvoiceCorporate));
+const InvoiceCompact = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/InvoiceCompact").then(m => m.InvoiceCompact));
+const InvoiceSimple = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/InvoiceSimple").then(m => m.InvoiceSimple));
+const JobCardThermal = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/JobCardThermal").then(m => m.JobCardThermal));
+const JobCardClassic = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/JobCardClassic").then(m => m.JobCardClassic));
+const JobCardSimple = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/JobCardSimple").then(m => m.JobCardSimple));
+const JobCardDetailed = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/JobCardDetailed").then(m => m.JobCardDetailed));
+const ReceiptPrint = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/ReceiptPrint").then(m => m.ReceiptPrint));
+const VoucherPrint = dynamic<{ data: PrintDocumentData }>(() => import("@/components/print/templates/VoucherPrint").then(m => m.VoucherPrint));
 
 import { Suspense } from "react";
 
@@ -304,7 +307,7 @@ function GenericPrintContent() {
               </button>
               <button
                 onClick={() => window.print()}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl font-medium"
+                className="px-6 py-2.5 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl font-medium"
               >
                 <svg
                   className="w-5 h-5"
@@ -335,7 +338,7 @@ function GenericPrintContent() {
       {/* Floating Print Button for Mobile/Tablet */}
       <button
         onClick={() => window.print()}
-        className="print:hidden fixed bottom-8 right-8 lg:hidden w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-200 flex items-center justify-center z-40"
+        className="print:hidden fixed bottom-8 right-8 lg:hidden w-14 h-14 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-200 flex items-center justify-center z-40"
         title="Print Document"
       >
         <svg

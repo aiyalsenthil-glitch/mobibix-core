@@ -99,7 +99,9 @@ fun QuotationDetailScreen(
                                     putExtra(Intent.EXTRA_SUBJECT, "Quotation ${q.quotationNumber}")
                                 }
                                 context.startActivity(Intent.createChooser(intent, "Share Quotation"))
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                android.util.Log.e("QuotationDetail", "Share failed: ${e.message}")
+                            }
                         }) {
                             Icon(Icons.Default.Share, contentDescription = "Share quotation")
                         }

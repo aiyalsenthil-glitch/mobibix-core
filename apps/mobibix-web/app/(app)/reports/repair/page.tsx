@@ -17,12 +17,16 @@ import { useShop } from "@/context/ShopContext";
 import {
   getRepairReport,
   getRepairMetrics,
+  getRepairProfitability,
   type SalesReportItem,
   type RepairMetrics,
+  type ModelProfitability,
 } from "@/services/reports.api";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -39,6 +43,7 @@ export default function RepairReportPage() {
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<SalesReportItem[]>([]);
   const [metrics, setMetrics] = useState<RepairMetrics | null>(null);
+  const [profitability, setProfitability] = useState<ModelProfitability[]>([]);
   const [dateRange, setDateRange] = useState(30);
 
   const fetchData = async () => {
@@ -55,7 +60,7 @@ export default function RepairReportPage() {
       startDate.setDate(endDate.getDate() - dateRange);
       startDate.setHours(0, 0, 0, 0);
 
-      const [report, stats] = await Promise.all([
+      const [report, stats, profitBreakdown] = await Promise.all([
         getRepairReport({
           shopId: selectedShopId,
           startDate: startDate.toISOString(),
@@ -66,10 +71,16 @@ export default function RepairReportPage() {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
         }),
+        getRepairProfitability({
+          shopId: selectedShopId,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        }),
       ]);
 
       setReportData(report);
       setMetrics(stats);
+      setProfitability(profitBreakdown);
     } catch (error) {
       console.error("Failed to load repair report:", error);
     } finally {
@@ -166,23 +177,43 @@ export default function RepairReportPage() {
             </div>
 
             {/* Trends */}
-            <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
-              <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Service Growth Trend</h3>
-              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#374151" : "#e5e7eb"} />
-                    <XAxis dataKey="date" stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
-                    <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: theme === "dark" ? "#1f2937" : "#000", border: 'none', borderRadius: '8px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9' }} />
-                    <Line type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
-                  </LineChart>
-                </ResponsiveContainer>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+                <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Service Growth Trend</h3>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#374151" : "#e5e7eb"} />
+                      <XAxis dataKey="date" stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
+                      <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: theme === "dark" ? "#1f2937" : "#000", border: 'none', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9' }} />
+                      <Line type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+                <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Profit by Model (Top 5)</h3>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={profitability.slice(0, 5)}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#374151" : "#e5e7eb"} />
+                      <XAxis dataKey="model" stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={10} />
+                      <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={10} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: theme === "dark" ? "#1f2937" : "#000", border: 'none', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Bar dataKey="margin" name="Margin (₹)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
 
