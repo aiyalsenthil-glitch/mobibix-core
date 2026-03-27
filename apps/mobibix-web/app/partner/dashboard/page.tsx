@@ -66,6 +66,7 @@ interface PartnerStats {
     city: string | null;
     plan: string | null;
     isActive: boolean;
+    renewalDate: string | null;
     totalCommission: number;
     joinedAt: string;
   }>;
@@ -786,7 +787,7 @@ export default function PartnerDashboard() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800/50">
-                          {["Shop", "Location", "Plan", "Status", "Your Commission", "Joined"].map((h) => (
+                          {["Shop", "Location", "Plan", "Status", "Renews On", "Your Commission", "Joined"].map((h) => (
                             <th key={h} className="text-left px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{h}</th>
                           ))}
                         </tr>
@@ -804,6 +805,11 @@ export default function PartnerDashboard() {
                               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${shop.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                                 {shop.isActive ? "Active" : "Inactive"}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 text-xs text-slate-400">
+                              {shop.renewalDate
+                                ? new Date(shop.renewalDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                                : "—"}
                             </td>
                             <td className="px-6 py-4 text-sm font-bold text-teal-600">₹{(shop.totalCommission / 100).toLocaleString("en-IN")}</td>
                             <td className="px-6 py-4 text-xs text-slate-400">{new Date(shop.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>

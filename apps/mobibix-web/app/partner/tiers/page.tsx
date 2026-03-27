@@ -46,7 +46,7 @@ const TIERS = [
       "Dedicated partner portal access",
       "Promo code generator (up to 5 codes)",
       "Real-time commission dashboard",
-      "Email support (48h SLA)",
+      "Email support",
     ],
   },
   {
@@ -68,7 +68,7 @@ const TIERS = [
     perks: [
       "30% commission on first payment",
       "10% recurring on every renewal",
-      "Priority email support (24h SLA)",
+      "Priority email support",
       "Co-branded landing page",
       "Monthly performance report",
       "Unlock custom bonus campaigns",
@@ -93,10 +93,10 @@ const TIERS = [
     perks: [
       "30% commission on first payment",
       "15% recurring on every renewal",
-      "Dedicated partner success manager",
-      "WhatsApp group support",
+      "Dedicated onboarding call on request",
+      "WhatsApp group access (on request)",
       "Featured in MobiBix partner directory",
-      "Co-marketing budget (₹5,000/month)",
+      "Co-marketing assistance on request",
       "Early access to new features",
     ],
   },
@@ -119,8 +119,8 @@ const TIERS = [
     perks: [
       "30% commission on first payment",
       "20% recurring on every renewal",
-      "Dedicated account manager (direct line)",
-      "Custom SLA & payout terms",
+      "Named partner contact for escalations",
+      "Custom payout terms (on agreement)",
       "MobiBix Elite badge + co-brand kit",
       "Revenue share on upsell revenue",
       "Invite to product roadmap reviews",
@@ -129,7 +129,7 @@ const TIERS = [
   },
 ];
 
-const PLAN_PRICE = 2999; // ₹/yr base plan
+const PLAN_PRICE = 4999; // ₹/yr base plan
 
 const FAQS = [
   {
@@ -339,7 +339,7 @@ export default function PartnerTiersPage() {
               </div>
               <div className="p-5 bg-primary/10 border border-primary/20 rounded-2xl text-center">
                 <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-2">Year 2+ Passive</p>
-                <p className="text-4xl font-black text-foreground">₹{(year2plus / 100).toLocaleString("en-IN")}</p>
+                <p className="text-4xl font-black text-foreground">₹{(year2plus .toLocaleString("en-IN")}</p>
                 <p className="text-xs text-muted-foreground mt-1">yearly, no new effort</p>
               </div>
             </div>
@@ -347,18 +347,18 @@ export default function PartnerTiersPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between px-5 py-4 bg-muted/60 rounded-2xl">
                 <span className="text-sm font-bold text-muted-foreground">Year 1 total earnings ({shops} shops)</span>
-                <span className="text-xl font-black text-foreground">₹{(year1 / 100).toLocaleString("en-IN")}</span>
+                <span className="text-xl font-black text-foreground">₹{(year1 .toLocaleString("en-IN")}</span>
               </div>
               <div className="flex items-center justify-between px-5 py-4 bg-primary/8 border border-primary/20 rounded-2xl">
                 <div>
                   <span className="text-sm font-bold text-primary">Year 2 onwards (recurring only)</span>
                   <span className="text-xs text-muted-foreground ml-2">— just keep them subscribed</span>
                 </div>
-                <span className="text-xl font-black text-primary">₹{(year2plus / 100).toLocaleString("en-IN")}/yr</span>
+                <span className="text-xl font-black text-primary">₹{(year2plus .toLocaleString("en-IN")}/yr</span>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground/50 text-center mt-4">
-              Based on ₹{(PLAN_PRICE / 100).toLocaleString("en-IN")}/yr plan · All figures in INR · Illustrative only
+              Based on ₹{(PLAN_PRICE .toLocaleString("en-IN")}/yr plan · All figures in INR · Illustrative only
             </p>
           </div>
         </div>
@@ -423,10 +423,10 @@ export default function PartnerTiersPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Users, title: "CRM Dashboard", desc: "Track every shop you referred — their plan, renewal dates, and total commission earned per account.", tier: "All tiers" },
+              { icon: Users, title: "CRM Dashboard", desc: "Track every shop you referred — their plan, renewal date, and total commission earned per account.", tier: "All tiers" },
               { icon: Star, title: "Custom Promo Codes", desc: "Create up to 5 campaign-specific codes with custom trial durations or bonus months to convert leads faster.", tier: "All tiers" },
-              { icon: HeadphonesIcon, title: "Dedicated Support", desc: "Growth gets priority email. Pro gets WhatsApp support. Elite gets a named account manager with a direct line.", tier: "Growth +" },
-              { icon: Megaphone, title: "Co-Marketing Budget", desc: "Pro partners receive ₹5,000/month in co-marketing support for social ads, events, or collateral production.", tier: "Pro +" },
+              { icon: HeadphonesIcon, title: "Partner Support", desc: "All partners get email support. Growth and above get faster response times. Pro and Elite partners can request a dedicated onboarding call.", tier: "Growth +" },
+              { icon: Megaphone, title: "Co-Marketing Assistance", desc: "Pro and Elite partners can request co-marketing help — creatives, campaign guidance, or referral collateral — on a case-by-case basis.", tier: "Pro +" },
             ].map((item, i) => (
               <motion.div
                 key={i}

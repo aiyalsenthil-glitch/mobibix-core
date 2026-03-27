@@ -458,7 +458,7 @@ export class PartnersService {
           subscription: {
             where: { status: 'ACTIVE' },
             take: 1,
-            select: { status: true },
+            select: { status: true, endDate: true },
           },
         },
       }),
@@ -487,6 +487,7 @@ export class PartnersService {
       city: t.city,
       plan: latestPlanByTenant[t.id] ?? null,
       isActive: t.subscription.length > 0,
+      renewalDate: t.subscription[0]?.endDate ?? null,
       totalCommission: commissionByTenant[t.id] ?? 0,
       joinedAt: t.createdAt,
     }));
