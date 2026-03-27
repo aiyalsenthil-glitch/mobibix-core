@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client';
 
 // User provided connection string
 const CONNECTION_STRING =
-  'postgresql://postgres:k%2FWwZ9M!gJagvq6@db.wdjyrnldcsotkgoqcsfz.supabase.co:5432/postgres';
+  process.env.DIRECT_URL || process.env.DATABASE_URL || '';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 

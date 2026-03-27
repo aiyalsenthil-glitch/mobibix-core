@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
   Inject,
@@ -41,6 +42,8 @@ const AUTO_FOLLOW_UP_DAYS = 7;
 
 @Injectable()
 export class JobCardsService {
+  private readonly logger = new Logger(JobCardsService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
@@ -1299,7 +1302,7 @@ export class JobCardsService {
           id,
           user.userId || user.sub,
         ).catch((err) =>
-          console.error('[auto-follow-up] Failed to create:', err.message),
+          this.logger.error('[auto-follow-up] Failed to create', err instanceof Error ? err.stack : err),
         );
       }
 

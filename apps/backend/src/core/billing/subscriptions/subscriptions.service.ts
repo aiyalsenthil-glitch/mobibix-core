@@ -212,7 +212,7 @@ export class SubscriptionsService {
           `Subscription for ${plan.name} (${billingCycle})`,
           {
             name: tenant.name,
-            email: tenant.contactEmail || 'admin@mobibix.com',
+            email: tenant.contactEmail || process.env.BILLING_FALLBACK_EMAIL || 'billing@REMOVED_DOMAIN',
             contact: tenant.contactPhone || '9999999999',
           },
           `sub_${tenantId.slice(-14)}_${module.slice(0, 10)}_${billingCycle.slice(0, 8)}`, // L-3: deterministic ref prevents duplicate links on retry
@@ -465,7 +465,7 @@ export class SubscriptionsService {
         `Prorated Upgrade: ${subscription.plan.name} → ${newPlan.name}`,
         {
           name: subscription.tenant.name,
-          email: subscription.tenant.contactEmail || 'admin@mobibix.com',
+          email: subscription.tenant.contactEmail || process.env.BILLING_FALLBACK_EMAIL || 'billing@REMOVED_DOMAIN',
           contact: subscription.tenant.contactPhone || '9999999999',
         },
         `up_${subscriptionId.slice(-14)}_${Math.floor(Date.now() / 1000)}`,

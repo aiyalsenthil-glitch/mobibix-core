@@ -66,11 +66,14 @@ export const metadata: Metadata = {
 export const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
+  display: "swap",
 });
 
 export const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
+  display: "swap",
+  preload: true,
 });
 
 export default function RootLayout({

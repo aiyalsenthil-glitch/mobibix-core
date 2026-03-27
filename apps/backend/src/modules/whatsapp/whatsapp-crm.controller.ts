@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Logger, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { WhatsAppCrmService } from './whatsapp-crm.service';
@@ -16,6 +16,8 @@ import { ModuleType, UserRole } from '@prisma/client';
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppCrmController {
+  private readonly logger = new Logger(WhatsAppCrmController.name);
+
   constructor(private readonly whatsappCrmService: WhatsAppCrmService) {}
 
   /**
@@ -30,7 +32,7 @@ export class WhatsAppCrmController {
       if (!tenantId) throw new Error('No tenantId');
       return await this.whatsappCrmService.getStatus(tenantId);
     } catch (error) {
-      console.error('Error fetching WhatsApp CRM status:', error);
+      this.logger.error('Error fetching WhatsApp CRM status', error instanceof Error ? error.stack : error);
       // Fallback for demo/error cases to avoid UI crash
       return {
         hasSubscription: false,

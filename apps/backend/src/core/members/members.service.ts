@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   BadRequestException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -108,6 +109,8 @@ import { AutomationService } from '../../modules/whatsapp/automation.service';
 
 @Injectable()
 export class MembersService {
+  private readonly logger = new Logger(MembersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
@@ -957,7 +960,7 @@ export class MembersService {
         entityId: memberId,
       });
     } catch (err) {
-      console.error('Failed to audit member deletion:', err);
+      this.logger.error('Failed to audit member deletion', err instanceof Error ? err.stack : err);
     }
 
     return { success: true };

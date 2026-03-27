@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AutomationService } from '../../modules/whatsapp/automation.service';
@@ -19,6 +20,8 @@ import {
 
 @Injectable()
 export class FollowUpsService {
+  private readonly logger = new Logger(FollowUpsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly automationService: AutomationService,
@@ -78,7 +81,7 @@ export class FollowUpsService {
         entityId: followUp.id,
       });
     } catch (err) {
-      console.error('Failed to trigger WhatsApp automation:', err.message);
+      this.logger.error('Failed to trigger WhatsApp automation', err instanceof Error ? err.stack : err);
     }
 
     return this.mapFollowUp(followUp);
@@ -143,7 +146,7 @@ export class FollowUpsService {
           entityId: followUp.id,
         });
       } catch (err) {
-        console.error('Failed to trigger WhatsApp automation:', err.message);
+        this.logger.error('Failed to trigger WhatsApp automation', err instanceof Error ? err.stack : err);
       }
     }
 
@@ -290,7 +293,7 @@ export class FollowUpsService {
           entityId: followUp.id,
         });
       } catch (err) {
-        console.error('Failed to trigger WhatsApp automation:', err.message);
+        this.logger.error('Failed to trigger WhatsApp automation', err instanceof Error ? err.stack : err);
       }
     }
 
@@ -425,7 +428,7 @@ export class FollowUpsService {
           entityId: item.id,
         });
       } catch (err) {
-        console.error('Failed to trigger WhatsApp automation:', err.message);
+        this.logger.error('Failed to trigger WhatsApp automation', err instanceof Error ? err.stack : err);
       }
     }
   }

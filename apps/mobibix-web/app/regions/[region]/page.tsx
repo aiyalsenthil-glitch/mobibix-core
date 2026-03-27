@@ -4,22 +4,7 @@ import Link from "next/link";
 import { Header } from "../../../components/layout/Header";
 import { Footer } from "../../../components/layout/Footer";
 import { Breadcrumbs } from "../../../components/layout/Breadcrumbs";
-import { Plan } from "../../pricing/page";
 
-async function fetchBasePrice(): Promise<string> {
-  try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
-    const res = await fetch(`${apiBase}/plans/public/pricing?module=MOBILE_SHOP`, { next: { revalidate: 3600 } });
-    if (!res.ok) return "999";
-    const json = await res.json();
-    const plans: Plan[] = json?.data?.MOBILE_SHOP ?? json?.MOBILE_SHOP ?? [];
-    const proPlan = plans.find(p => p.level === 2) || plans[0];
-    const monthlyPrice = proPlan?.pricing?.find(p => p.cycle === "MONTHLY")?.price ?? 99900;
-    return (monthlyPrice / 100).toString();
-  } catch {
-    return "999";
-  }
-}
 
 // ─── Region Data ────────────────────────────────────────────────────────────
 interface RegionData {
@@ -224,10 +209,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const r = regions[resolvedParams.region];
   if (!r) notFound();
 
-  const basePrice = await fetchBasePrice();
-  
-  // Use fetched base price for India, otherwise use predefined regional price 
-  const displayPrice = r.slug === "india" ? `₹${basePrice}` : r.price;
+  const displayPrice = r.price;
 
   const localBusinessSchema = {
     "@context": "https://schema.org",
@@ -255,7 +237,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         <Header />
 
         {/* Background */}
-        <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/8 rounded-full blur-[130px]" />
           <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/8 rounded-full blur-[130px]" />
         </div>

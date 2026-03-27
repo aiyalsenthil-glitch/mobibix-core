@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,6 +25,8 @@ import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class StaffService {
+  private readonly logger = new Logger(StaffService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -517,7 +520,7 @@ export class StaffService {
       });
     } catch (err) {
       // Don't fail the invite if email trigger fails
-      console.error('Failed to emit staff.invited event:', err);
+      this.logger.error('Failed to emit staff.invited event', err instanceof Error ? err.stack : err);
     }
   }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -7,6 +7,8 @@ import { SubscriptionTrialExpiringEvent } from '../../../common/email/email.even
 
 @Injectable()
 export class SubscriptionExpiryCron {
+  private readonly logger = new Logger(SubscriptionExpiryCron.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
@@ -104,9 +106,9 @@ export class SubscriptionExpiryCron {
           // ⏳ Respect Resend rate limits
           await this.sleep(600);
         } catch (err) {
-          console.error(
+          this.logger.error(
             `[CRON][Expiry] Email FAILED for tenant ${sub.tenantId}`,
-            err,
+            err instanceof Error ? err.stack : err,
           );
         }
       }

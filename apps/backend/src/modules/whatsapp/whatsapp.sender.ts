@@ -456,7 +456,8 @@ export class WhatsAppSender {
         },
       });
     } catch (error) {
-      console.error(`[WhatsAppSender] Usage tracking failed for tenant ${tenantId}:`, error);
+      // WhatsAppLogger writes to DB — use process.stderr for this infra-level error
+      process.stderr.write(`[WhatsAppSender] Usage tracking failed for tenant ${tenantId}: ${error instanceof Error ? error.message : String(error)}\n`);
     }
   }
 }

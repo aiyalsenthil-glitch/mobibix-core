@@ -168,8 +168,8 @@ export class AdminTenantController {
       impersonatedBy: adminEmail,
       redirectUrl:
         userTenant.tenant.tenantType === 'GYM'
-          ? this.configService.get<string>('GYM_FRONTEND_URL', 'http://localhost_REPLACED:3002') + '/login/impersonate'
-          : this.configService.get<string>('ERP_FRONTEND_URL', 'http://localhost_REPLACED:3001') + '/login/impersonate',
+          ? (this.configService.get<string>('GYM_FRONTEND_URL') || 'https://app.mobibix.in') + '/login/impersonate'
+          : (this.configService.get<string>('ERP_FRONTEND_URL') || 'https://REMOVED_DOMAIN') + '/login/impersonate',
     };
   }
 

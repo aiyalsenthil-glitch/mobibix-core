@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
@@ -18,6 +19,8 @@ import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authVerification: AuthVerificationService,
@@ -281,7 +284,7 @@ export class AuthService {
         throw err;
       }
 
-      console.error('❌ AuthService Error:', err);
+      this.logger.error('AuthService Error', err instanceof Error ? err.stack : err);
       throw new InternalServerErrorException(
         `Authentication failed: ${err.message || 'Unknown error'}`,
       );
@@ -336,6 +339,9 @@ export class AuthService {
    * 🧪 FOR QA AUTOMATION ONLY
    */
   async loginWithCredentials(email: string, password?: string) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('QA login is disabled in production');
+    }
     if (
       email !== 'test@gmail.com' &&
       !email.startsWith('staff') &&

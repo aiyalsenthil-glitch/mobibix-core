@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 
 const CONNECTION_STRING =
-  'postgresql://postgres:k%2FWwZ9M!gJagvq6@db.wdjyrnldcsotkgoqcsfz.supabase.co:5432/postgres';
+  process.env.DIRECT_URL || process.env.DATABASE_URL || '';
 
 @Injectable()
 class CustomPrismaService

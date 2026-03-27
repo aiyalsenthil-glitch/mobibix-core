@@ -48,8 +48,11 @@ export class AiCoreClient {
     private readonly prisma: PrismaService,
   ) {
     this.aiCoreUrl = this.configService.get<string>('AI_CORE_URL') || 'http://localhost_REPLACED:3002';
-    // Match INTERNAL_API_KEY from AI Core config
-    this.internalToken = this.configService.get<string>('INTERNAL_API_KEY') || 'dev-internal-key';
+    const token = this.configService.get<string>('INTERNAL_API_KEY');
+    if (!token && process.env.NODE_ENV === 'production') {
+      throw new Error('INTERNAL_API_KEY must be set in production');
+    }
+    this.internalToken = token || 'dev-internal-key';
   }
 
   async sendTask(dto: AiTaskRequest): Promise<AiTaskResult> {

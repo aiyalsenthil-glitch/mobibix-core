@@ -1,4 +1,8 @@
-import { HeroSlidesClient } from "../components/landing/HeroSlidesClient";
+import dynamic from "next/dynamic";
+const HeroSlidesClient = dynamic(
+  () => import("../components/landing/HeroSlidesClient").then((m) => m.HeroSlidesClient),
+  { ssr: false }
+);
 import { WhatsAppWidget } from "../components/landing/WhatsAppWidget";
 import type { Metadata } from "next";
 import { getAllPosts } from "../lib/blog";

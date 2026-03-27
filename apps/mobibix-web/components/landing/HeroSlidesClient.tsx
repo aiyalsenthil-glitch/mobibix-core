@@ -140,8 +140,8 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 </div>
             </motion.div>
             {/* Background Effects */}
-            <div className="absolute top-[20%] -left-[10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-            <div className="absolute bottom-[10%] -right-[10%] w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: "2s" }} />
+            <div className="absolute top-[20%] -left-[10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[10%] -right-[10%] w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
           </div>
 
           {/* Slide 2: Features */}
@@ -175,7 +175,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                       
                       <div className="relative z-10">
                         <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm relative">
-                            <NextImage src={feat.icon} alt={feat.alt} fill className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
+                            <NextImage src={feat.icon} alt={feat.alt} fill sizes="80px" className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
                         </div>
                         <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
                         <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>

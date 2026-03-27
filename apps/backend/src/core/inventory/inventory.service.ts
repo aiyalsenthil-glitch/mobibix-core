@@ -3,6 +3,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   BadRequestException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ProductType as PrismaProductType } from '@prisma/client';
@@ -12,6 +13,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 
 @Injectable()
 export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
+
   constructor(
     private prisma: PrismaService,
     private stockService: StockService,
@@ -101,7 +104,7 @@ export class InventoryService {
       });
       return this.mapProduct(product);
     } catch (error) {
-      console.error('Error creating product:', error);
+      this.logger.error('Error creating product', error instanceof Error ? error.stack : error);
       throw new BadRequestException(
         `Failed to create product: ${error.message}`,
       );

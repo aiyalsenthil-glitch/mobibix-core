@@ -1121,9 +1121,9 @@ export class SalesService {
           );
         } catch (error) {
           // Log but don't fail cancellation if loyalty reversal fails
-          console.error(
+          this.logger.error(
             `Failed to reverse loyalty points for invoice ${invoiceId}`,
-            error,
+            error instanceof Error ? error.stack : error,
           );
         }
       }
