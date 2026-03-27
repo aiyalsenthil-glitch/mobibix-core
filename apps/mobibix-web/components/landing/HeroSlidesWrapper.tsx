@@ -7,7 +7,7 @@ type BlogPost = ReturnType<typeof getAllPosts>[number];
 
 const HeroSlidesClient = dynamic(
   () => import("./HeroSlidesClient").then((m) => m.HeroSlidesClient),
-  { ssr: false }
+  { ssr: true }
 );
 
 export function HeroSlidesWrapper({ posts }: { posts: BlogPost[] }) {

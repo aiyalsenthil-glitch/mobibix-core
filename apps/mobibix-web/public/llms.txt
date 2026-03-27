@@ -1,0 +1,25 @@
+# Mobibix - The Retail OS for Mobile Shops
+
+Mobibix is an all-in-one software platform (POS & ERP) specifically designed for Indian mobile retailers. It streamlines operations by combining IMEI tracking, repair management, and GST-compliant billing.
+
+## Core Capabilities
+- **IMEI Tracking**: Serial-perfect accuracy tracking for every smartphone.
+- **Repair Management**: Digital job cards, technician part tracking, and automated status updates.
+- **GST Billing**: Generate professional, GST-compliant invoices in under 5 seconds.
+- **Inventory Control**: Real-time stock alerts and distributor network integration.
+- **WhatsApp Integration**: Automated payment reminders and customer notifications.
+
+## Target Audience
+- **Standalone Mobile Shops**: Scaling from one to many branches.
+- **Large Mobile Showrooms**: Managing high volume and multi-staff teams.
+- **Distributors & Wholesalers**: Joining the network for stock visibility and B2B orders.
+
+## Pricing Structure (Standard Tiers)
+- **Trial**: 14-day full access.
+- **Retailer Pro**: Advanced inventory + repair module + CRM.
+- **Distributor Hub**: Free access for wholesalers linking to retailers.
+
+## Technical Details
+- **Platform**: Cloud-based (Next.js), responsive web interface.
+- **Location**: Optimized for Indian laws (GST) and retailers.
+- **Site URL**: https://REMOVED_DOMAIN

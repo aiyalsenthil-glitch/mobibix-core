@@ -9,7 +9,7 @@ import { Footer } from "../components/layout/Footer";
 export const metadata: Metadata = {
   title: "Mobibix — The Retail OS for Mobile Shops",
   description:
-    "India's best mobile shop POS. Manage IMEI tracking, repair jobs, GST billing, and inventory. Trusted by 5000+ Indian mobile retailers. Start your free trial today.",
+    "India's best mobile shop POS. Track IMEI, manage repairs, and generate GST bills in seconds. Trusted by 5000+ Indian mobile retailers. Start your free trial.",
   keywords: [
     "mobile shop software",
     "mobile shop POS India",

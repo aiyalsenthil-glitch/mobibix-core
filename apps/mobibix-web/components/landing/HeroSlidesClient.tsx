@@ -47,7 +47,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" && currentSlide < 5) setCurrentSlide(currentSlide + 1);
+      if (e.key === "ArrowDown" && currentSlide < 6) setCurrentSlide(currentSlide + 1);
       else if (e.key === "ArrowUp" && currentSlide > 0) setCurrentSlide(currentSlide - 1);
     };
 
@@ -68,7 +68,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         if (e.deltaY < 0 && !isAtTop) return;
       }
 
-      if (e.deltaY > 30 && currentSlide < 5) { 
+      if (e.deltaY > 30 && currentSlide < 6) { 
         setCurrentSlide((prev: number) => prev + 1); 
         scrollCooldown.current = now; 
       }
@@ -86,9 +86,9 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
     };
   }, [currentSlide]);
 
-  if (!mounted) return null;
+  // if (!mounted) return null; // MOVED: Now allow SSR of the first slide for SEO/AEO visibility.
 
-  const slides = [0, 1, 2, 3, 4, 5];
+  const slides = [0, 1, 2, 3, 4, 5, 6];
 
   return (
     <div className="bg-background text-foreground selection:bg-primary/30 min-h-screen overflow-hidden transition-colors duration-500">
@@ -250,14 +250,40 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
              <BlogSection posts={posts} />
           </div>
 
-          {/* Slide 6: CTA + Footer */}
+          {/* Slide 6: FAQ (AEO & GEO Optimization) */}
           <div 
             ref={(el) => { if (el) slideRefs.current[5] = el; }}
+            className="h-screen w-screen flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden relative pt-24 md:pt-32 px-6"
+          >
+             <div className="w-full max-w-4xl pt-10 pb-20">
+                <div className="mb-14 text-center">
+                    <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Frequently Asked Questions</span>
+                    <h2 className="text-4xl md:text-5xl font-black text-foreground mt-4 tracking-tight uppercase leading-none italic">Still Have Questions?</h2>
+                </div>
+                <div className="space-y-12">
+                   {[
+                      { q: "What is Mobibix and how does it help?", a: "Mobibix is a specialized Retail OS that solves three main problems: inventory leakage, slow billing, and unorganized repair management. It lets you run your shop from anywhere." },
+                      { q: "How do I manage IMEI tracking efficiently?", a: "Mobibix tracks every IMEI from purchase to sale. You scan the number once, and our system tracks its history, owner, and warranty status automatically." },
+                      { q: "Can I generate GST bills without an accountant?", a: "Yes. Our billing engine is pre-configured with GST rules. You just select the item, and Mobibix calculates the tax and generates a professional invoice in 5 seconds." },
+                      { q: "Is repair management digital?", a: "Absolutely. Create digital job cards, assign technicians, track parts used, and send automated WhatsApp updates to customers when their device is ready." }
+                   ].map((faq, i) => (
+                      <div key={i} className="group border-l-2 border-border pl-8 hover:border-primary transition-colors">
+                         <h3 className="text-xl md:text-2xl font-black text-foreground mb-4 group-hover:text-primary transition-colors uppercase italic">{faq.q}</h3>
+                         <p className="text-muted-foreground font-bold leading-relaxed">{faq.a}</p>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          </div>
+
+          {/* Slide 7: CTA + Footer */}
+          <div 
+            ref={(el) => { if (el) slideRefs.current[6] = el; }}
             className="h-screen w-screen overflow-y-auto overflow-x-hidden relative bg-background scrolls-custom"
           >
              <div className="min-h-screen flex flex-col items-center justify-center py-32 md:py-48 px-6">
                 <motion.div 
-                  animate={currentSlide === 5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+                  animate={currentSlide === 6 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
                   transition={{ duration: 0.8 }}
                   className="flex flex-col items-center justify-center w-full max-w-5xl"
                 >
@@ -265,7 +291,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                     Stop Losing <br />Profits.
                   </h2>
                   <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12 text-center leading-relaxed">
-                    Join 5000+ successful shop owners across World. Set up your digital store in exactly 5 minutes.
+                    Join 5,000+ successful shop owners across India. Set up your digital store in exactly 5 minutes.
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
                     <Link href="/auth" className="w-full sm:w-auto px-12 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20 text-center">
@@ -286,7 +312,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
       {/* Refined Side Navigation */}
       <div 
         className={`fixed right-8 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-8 transition-all duration-700 ${
-          currentSlide === 5 ? "opacity-0 pointer-events-none translate-x-12" : "opacity-100 translate-x-0"
+          currentSlide === 6 ? "opacity-0 pointer-events-none translate-x-12" : "opacity-100 translate-x-0"
         }`}
       >
         {/* Scroll Up Arrow */}
