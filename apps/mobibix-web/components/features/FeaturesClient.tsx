@@ -40,7 +40,7 @@ export function FeaturesClient() {
         </svg>
       ),
       color: "from-primary to-primary/60",
-      href: "/auth"
+      href: "/features/repair-pipeline"
     },
     {
       title: "GST Cloud Billing",
@@ -51,7 +51,7 @@ export function FeaturesClient() {
         </svg>
       ),
       color: "from-purple-500 to-indigo-400",
-      href: "/auth"
+      href: "/features/gst-billing"
     },
     {
       title: "Multi-Shop Synchronization",
@@ -62,7 +62,7 @@ export function FeaturesClient() {
         </svg>
       ),
       color: "from-orange-500 to-rose-400",
-      href: "/auth"
+      href: "/features/multi-shop"
     },
     {
       title: "WhatsApp CRM & Marketing",
@@ -84,7 +84,7 @@ export function FeaturesClient() {
         </svg>
       ),
       color: "from-cyan-500 to-blue-400",
-      href: "/auth"
+      href: "/features/profit-analytics"
     },
     {
       title: "Distributor Network",

@@ -38,7 +38,7 @@ export class WaitlistService {
       // Hook in Mailing Service for user confirmation mail
       if (dto.email) {
         await this.emailService.send({
-          tenantId: 'SYSTEM', // System-level mail
+          tenantId: null,
           recipientType: 'LEAD',
           emailType: 'WAITLIST_CONFIRMED',
           referenceId: lead.id,

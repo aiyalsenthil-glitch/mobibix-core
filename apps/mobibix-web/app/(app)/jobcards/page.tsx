@@ -22,6 +22,8 @@ import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer"
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { toast } from "react-hot-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +46,8 @@ import {
   ReceiptText,
   Search,
   X,
+  ChevronDown,
+  Wrench,
 } from "lucide-react";
 import { AddPartModal } from "./AddPartModal";
 import { Input } from "@/components/ui/input";
@@ -164,14 +168,10 @@ export default function JobCardsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
-  const [selectedJobForPart, setSelectedJobForPart] = useState<JobCard | null>(
-    null,
-  );
+  const [selectedJobForPart, setSelectedJobForPart] = useState<JobCard | null>(null);
 
   // CRM Modals State
-  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
-    null,
-  );
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
   const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
   const [followUpData, setFollowUpData] = useState<{
     customerId: string;
@@ -189,6 +189,15 @@ export default function JobCardsPage() {
 
   const [billingJob, setBillingJob] = useState<JobCard | null>(null);
   const [isMyQueueActive, setIsMyQueueActive] = useState(false);
+
+  // Confirm modal state (replaces native confirm())
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: "danger" | "warning";
+    onConfirm: () => void;
+  } | null>(null);
 
   // URL Syncing
   const searchParams = useSearchParams();
@@ -279,55 +288,51 @@ export default function JobCardsPage() {
   const totalPages = Math.ceil(total / 50);
 
   const handleStatusChange = async (job: JobCard, status: JobStatus) => {
-    // 💸 ADVANCE REFUND CHECK FOR CANCELLATION
-    if (["CANCELLED", "RETURNED", "SCRAPPED"].includes(status)) {
-      const advancePaid = job.advancePaid || 0;
-      if (advancePaid > 0) {
-        const refundConfirm = confirm(
-          `This job has an active advance of ₹${advancePaid}. To move it to ${status}, the advance must be refunded.\n\nClick OK to automatically log a CASH refund of ₹${advancePaid} and proceed.`
-        );
-        if (!refundConfirm) return;
-        try {
-          await updateJobCardStatus(selectedShopId, job.id, status, { amount: advancePaid, mode: "CASH" });
-          reload();
-        } catch (err: unknown) {
-          alert(err instanceof Error ? err.message : "Failed to update status");
-        }
-        return;
-      }
-    }
     // 🚨 CRITICAL VALIDATION
     if (status === "READY") {
       if (!job.finalCost && !job.estimatedCost) {
-        alert(
-          "Cannot mark job READY without cost.\n\nPlease edit the job card and add Final Cost or Estimated Cost first.",
-        );
+        toast.error("Cannot mark job READY without a Final Cost or Estimated Cost. Please edit the job card first.");
         return;
       }
     }
 
     // 💰 INTERCEPT DELIVERED STATUS FOR PAYMENT
     if (status === "DELIVERED") {
-      // Find valid invoice (not voided)
-      // Note: Backend returns invoices array due to our recent change
-      const invoice = job.invoices?.find(
-        (i) => i.status !== "VOIDED" && i.status !== "PAID",
-      );
-
+      const invoice = job.invoices?.find((i) => i.status !== "VOIDED" && i.status !== "PAID");
       if (invoice) {
-        // Redirect to Invoice Page for Billing/Payment
         router.push(`/sales/${invoice.id}?shopId=${selectedShopId}`);
         return;
       }
-      // If no valid invoice found (shouldn't happen if READY), proceed or let backend block
+    }
+
+    // 💸 ADVANCE REFUND CHECK FOR CANCELLATION
+    if (["CANCELLED", "RETURNED", "SCRAPPED"].includes(status)) {
+      const advancePaid = job.advancePaid || 0;
+      if (advancePaid > 0) {
+        setConfirmState({
+          title: "Refund Advance?",
+          message: `This job has an advance of ₹${advancePaid}. Moving to ${status} will automatically log a CASH refund of ₹${advancePaid}.`,
+          confirmLabel: `Refund & ${status}`,
+          variant: "warning",
+          onConfirm: async () => {
+            setConfirmState(null);
+            try {
+              await updateJobCardStatus(selectedShopId, job.id, status, { amount: advancePaid, mode: "CASH" });
+              reload();
+            } catch (err: unknown) {
+              toast.error(err instanceof Error ? err.message : "Failed to update status");
+            }
+          },
+        });
+        return;
+      }
     }
 
     try {
       await updateJobCardStatus(selectedShopId, job.id, status);
-      // Reload job cards after status change
       reload();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to update status");
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
     }
   };
 
@@ -361,15 +366,22 @@ export default function JobCardsPage() {
     }
   };
 
-  const handleDelete = async (jobCardId: string) => {
-    if (!confirm("Are you sure you want to delete this job card?")) return;
-
-    try {
-      await deleteJobCard(selectedShopId, jobCardId);
-      reload();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete job card");
-    }
+  const handleDelete = (jobCardId: string) => {
+    setConfirmState({
+      title: "Delete Job Card",
+      message: "This action is permanent and cannot be undone. The job card and all its history will be removed.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await deleteJobCard(selectedShopId, jobCardId);
+          reload();
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : "Failed to delete job card");
+        }
+      },
+    });
   };
 
   const handleAddNew = () => {
@@ -388,35 +400,38 @@ export default function JobCardsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1
-          className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
-        >
-          Job Cards
-        </h1>
-        <div className="flex gap-3">
+      {/* Page Header — clear hierarchy: title | secondary | primary */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Job Cards</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Manage repair pipeline and device jobs</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {/* Tertiary: queue toggle */}
           <button
             onClick={() => setIsMyQueueActive(!isMyQueueActive)}
-            className={`px-6 py-2 rounded-lg font-bold transition shadow-sm flex items-center gap-2 ${
-               isMyQueueActive 
-                 ? "bg-teal-600 text-white border-teal-700" 
-                 : "bg-white text-teal-700 border-teal-200 dark:bg-teal-900/10 dark:text-teal-300 dark:border-teal-800"
-            } border`}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition border flex items-center gap-2 ${
+               isMyQueueActive
+                 ? "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-400/40"
+                 : "bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5"
+            }`}
           >
-            {isMyQueueActive ? "🏠 Show All Jobs" : "👷 My Work Queue"}
+            {isMyQueueActive ? "Show All Jobs" : "My Queue"}
           </button>
+          {/* Secondary: repair assistant */}
           <button
             onClick={() => router.push("/tools/repair-knowledge")}
-            className="px-6 py-2 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/50 rounded-lg font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition shadow-sm flex items-center gap-2"
+            className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50 rounded-xl text-sm font-semibold hover:bg-amber-100 transition flex items-center gap-2"
           >
-            <span>💡</span> Repair Assistant
+            <Wrench className="w-4 h-4" /> Repair KB
           </button>
+          {/* Primary: create */}
           <button
             onClick={handleAddNew}
             disabled={!selectedShopId}
-            className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
+            className="px-5 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition shadow-md shadow-teal-500/20 flex items-center gap-2"
           >
-            + Create New Job Card
+            + New Job Card
           </button>
         </div>
       </div>
@@ -624,47 +639,35 @@ export default function JobCardsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {(() => {
-                        const allowedTransitions = getAllowedTransitions(
-                          job.status,
-                        );
+                        const allowedTransitions = getAllowedTransitions(job.status);
                         const isTerminal = allowedTransitions.length === 0;
-
-                        return (
-                          <select
-                            value={job.status || ""}
-                            onChange={(e) =>
-                              handleStatusChange(
-                                job,
-                                e.target.value as JobStatus,
-                              )
-                            }
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status as JobStatus]} focus:outline-none ${isTerminal ? "cursor-not-allowed" : "cursor-pointer"} appearance-none`}
-                            disabled={isTerminal}
-                            title={
-                              isTerminal
-                                ? "Terminal state - no further changes allowed"
-                                : "Change status"
-                            }
-                          >
-                            {/* Current status always shown */}
-                            <option
-                              value={job.status}
-                              className="bg-white dark:bg-stone-900 text-black dark:text-white"
-                            >
-                              {job.status.replace(/_/g, " ")}
-                            </option>
-
-                            {/* Only show allowed transitions */}
-                            {allowedTransitions.map((status) => (
-                              <option
-                                key={status}
-                                value={status}
-                                className="bg-white dark:bg-stone-900 text-black dark:text-white"
-                              >
-                                → {status.replace(/_/g, " ")}
-                              </option>
-                            ))}
-                          </select>
+                        return isTerminal ? (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status as JobStatus]}`}>
+                            {job.status.replace(/_/g, " ")}
+                          </span>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border cursor-pointer hover:opacity-80 transition ${STATUS_COLORS[job.status as JobStatus]}`}>
+                                <span>{job.status.replace(/_/g, " ")}</span>
+                                <ChevronDown className="w-3 h-3 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-52 bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10">
+                              <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">Move to status</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {allowedTransitions.map((s) => (
+                                <DropdownMenuItem
+                                  key={s}
+                                  onClick={() => handleStatusChange(job, s)}
+                                  className="text-sm"
+                                >
+                                  <span className="text-slate-400 mr-1">→</span>
+                                  {s.replace(/_/g, " ")}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         );
                       })()}
                     </td>
@@ -842,98 +845,29 @@ export default function JobCardsPage() {
             </table>
           </div>
           
-          {/* Pagination Controls */}
+          {/* Simplified Pagination */}
           {totalPages > 1 && (
-            <div
-              className={`mt-4 flex items-center justify-between px-4 py-3 rounded-lg border ${
-                theme === "dark"
-                  ? "border-white/10 bg-white/5"
-                  : "border-gray-200 bg-gray-50"
-              }`}
-            >
-              <div
-                className={`text-sm ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
-              >
-                Showing {currentPage * 50 + 1} to{" "}
-                {Math.min((currentPage + 1) * 50, total)} of{" "}
-                {total} job cards
-              </div>
-              <div className="flex items-center gap-3">
+            <div className="mt-4 flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {currentPage * 50 + 1}–{Math.min((currentPage + 1) * 50, total)} of {total}
+              </p>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    const next = Math.max(0, currentPage - 1);
-                    setCurrentPage(next);
-                    updateUrl({ page: (next + 1).toString() });
-                  }}
+                  onClick={() => { const n = currentPage - 1; setCurrentPage(n); updateUrl({ page: (n + 1).toString() }); }}
                   disabled={currentPage === 0}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    currentPage === 0
-                      ? theme === "dark"
-                        ? "bg-white/5 text-stone-600 cursor-not-allowed"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : theme === "dark"
-                        ? "bg-white/10 hover:bg-white/20 text-stone-300"
-                        : "bg-white hover:bg-gray-100 text-gray-700"
-                  }`}
+                  className="px-4 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
-                  Previous
+                  ← Prev
                 </button>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
-                    Page
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    defaultValue={currentPage + 1}
-                    key={currentPage} // Reset input when page changes from outside
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const val = parseInt((e.target as HTMLInputElement).value);
-                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
-                          setCurrentPage(val - 1);
-                          updateUrl({ page: val.toString() });
-                        }
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= 1 && val <= totalPages) {
-                        setCurrentPage(val - 1);
-                        updateUrl({ page: val.toString() });
-                      } else {
-                        e.target.value = (currentPage + 1).toString();
-                      }
-                    }}
-                    className={`w-16 px-2 py-1 text-center rounded border focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${
-                      theme === "dark"
-                        ? "bg-stone-900 border-white/10 text-stone-200"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                  />
-                  <span className={`text-sm ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
-                    of {totalPages}
-                  </span>
-                </div>
+                <span className="text-sm text-slate-500 dark:text-slate-400 px-2">
+                  Page {currentPage + 1} / {totalPages}
+                </span>
                 <button
-                  onClick={() => {
-                    const next = currentPage + 1;
-                    setCurrentPage(next);
-                    updateUrl({ page: (next + 1).toString() });
-                  }}
+                  onClick={() => { const n = currentPage + 1; setCurrentPage(n); updateUrl({ page: (n + 1).toString() }); }}
                   disabled={currentPage >= totalPages - 1}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    currentPage >= totalPages - 1
-                      ? theme === "dark"
-                        ? "bg-white/5 text-stone-600 cursor-not-allowed"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : theme === "dark"
-                        ? "bg-white/10 hover:bg-white/20 text-stone-300"
-                        : "bg-white hover:bg-gray-100 text-gray-700"
-                  }`}
+                  className="px-4 py-1.5 rounded-lg text-sm font-semibold border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             </div>
@@ -1006,6 +940,19 @@ export default function JobCardsPage() {
             reload();
             setSelectedJobForPart(null);
           }}
+        />
+      )}
+
+      {/* Confirm Modal — replaces native confirm() */}
+      {confirmState && (
+        <ConfirmModal
+          isOpen={true}
+          title={confirmState.title}
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          variant={confirmState.variant || "danger"}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
         />
       )}
     </div>

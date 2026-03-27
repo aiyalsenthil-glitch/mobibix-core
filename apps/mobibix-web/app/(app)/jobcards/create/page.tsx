@@ -194,7 +194,7 @@ export default function CreateJobCardPage() {
   const nextStep = () => {
     // Step 1 has Device Info — require brand+model selected from DB
     if (currentStep === 1 && (!formData.deviceBrand || !formData.deviceModel)) {
-      setError("Please select a device from the database before proceeding.");
+      setError("Please select or enter the device brand and model.");
       return;
     }
     setError(null);
@@ -469,6 +469,7 @@ export default function CreateJobCardPage() {
                   <input
                     type="date"
                     name="estimatedDelivery"
+                    min={new Date().toISOString().split('T')[0]}
                     value={formData.estimatedDelivery}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition"

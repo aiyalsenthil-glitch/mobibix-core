@@ -423,26 +423,24 @@ export default function DashboardPage() {
               <Zap className="w-6 h-6" />
             </div>
             <div>
-              <p className="font-semibold text-foreground">Need a hand?</p>
-              <p className="text-xs text-muted-foreground">
-                Quickly create a bill or check stock.
-              </p>
+              <p className="font-semibold text-foreground">Quick Actions</p>
+              <p className="text-xs text-muted-foreground">Jump straight into common tasks.</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => router.push("/sales/create")}
-              className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors"
-              title="Quick Sale"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition shadow-sm"
             >
-              <DollarSign className="w-5 h-5 text-emerald-500" />
+              <DollarSign className="w-4 h-4" />
+              <span className="hidden sm:inline">New Sale</span>
             </button>
             <button
               onClick={() => router.push("/inventory")}
-              className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors"
-              title="Check Stock"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background border border-border hover:bg-muted transition text-sm font-semibold text-foreground"
             >
-              <Search className="w-5 h-5 text-blue-500" />
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">Check Stock</span>
             </button>
           </div>
         </div>

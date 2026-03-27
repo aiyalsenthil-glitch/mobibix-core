@@ -113,9 +113,8 @@ export class PartnerAuthService {
 
     try {
       await this.emailService.send({
-        targetType: 'SYSTEM',
-        tenantId: 'platform',
-        recipientType: 'PARTNER',
+        tenantId: null,
+        recipientType: 'PARTNER' as any,
         emailType: 'PARTNER_PASSWORD_RESET',
         referenceId: partner.id,
         module: 'MOBILE_SHOP',
@@ -127,7 +126,7 @@ export class PartnerAuthService {
           resetUrl,
           expiresIn: '1 hour',
         },
-      } as any);
+      });
     } catch {
       // Don't leak email errors — link is still in DB
     }

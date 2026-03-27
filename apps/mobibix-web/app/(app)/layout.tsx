@@ -98,7 +98,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+
+    // Custom event for same-window sidebar toggle
+    const handleSidebarToggled = (e: CustomEvent) => {
+      setIsCollapsed(e.detail.collapsed);
+    };
+    window.addEventListener("sidebarToggled", handleSidebarToggled as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("sidebarToggled", handleSidebarToggled as EventListener);
+    };
   }, []);
 
   // Close mobile menu on route change

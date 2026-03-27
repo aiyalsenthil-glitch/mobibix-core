@@ -531,9 +531,10 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Est. Delivery Date
                     </label>
-                    <input
+                     <input
                       type="date"
                       name="estimatedDelivery"
+                      min={new Date().toISOString().split("T")[0]}
                       value={formData.estimatedDelivery}
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"

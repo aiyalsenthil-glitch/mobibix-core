@@ -39,6 +39,10 @@ import { JobcardCompletedEmail } from './templates/customer/jobcard-completed';
 
 import { EmailVerificationEmail } from './templates/system/email-verification';
 import { DeletionRequestAdminEmail } from './templates/admin/deletion-request';
+import { WaitlistConfirmedEmail } from './templates/customer/waitlist-confirmed';
+import { MetaTokenExpiryWarningEmail } from './templates/system/meta-token-expiry-warning';
+import { PartnerApprovedEmail } from './templates/partner/partner-approved';
+import { PartnerPasswordResetEmail } from './templates/partner/partner-password-reset';
 import { CustomEmail } from './templates/general/custom';
 
 import { ModuleType } from '@prisma/client';
@@ -361,6 +365,12 @@ export class EmailService {
         });
 
       // Customer
+      case 'WAITLIST_CONFIRMED':
+        return WaitlistConfirmedEmail({
+          module,
+          ...(payload as Omit<Parameters<typeof WaitlistConfirmedEmail>[0], 'module'>),
+        });
+
       case 'INVOICE_GENERATED':
         return InvoiceGeneratedEmail({
           module,
@@ -403,6 +413,12 @@ export class EmailService {
         });
 
       // System
+      case 'META_TOKEN_EXPIRY_WARNING':
+        return MetaTokenExpiryWarningEmail({
+          module,
+          ...(payload as Omit<Parameters<typeof MetaTokenExpiryWarningEmail>[0], 'module'>),
+        });
+
       case 'EMAIL_VERIFICATION':
         return EmailVerificationEmail({
           module,
@@ -418,6 +434,18 @@ export class EmailService {
             Parameters<typeof DeletionRequestAdminEmail>[0],
             'module'
           >),
+        });
+
+      case 'PARTNER_APPROVED':
+        return PartnerApprovedEmail({
+          module,
+          ...(payload as Omit<Parameters<typeof PartnerApprovedEmail>[0], 'module'>),
+        });
+
+      case 'PARTNER_PASSWORD_RESET':
+        return PartnerPasswordResetEmail({
+          module,
+          ...(payload as Omit<Parameters<typeof PartnerPasswordResetEmail>[0], 'module'>),
         });
 
       case 'CUSTOM_EMAIL':

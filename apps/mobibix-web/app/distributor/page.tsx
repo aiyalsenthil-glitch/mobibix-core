@@ -19,9 +19,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "MobiBix Distributor Network — Wholesale B2B Platform for Mobile Parts Distributors India",
+  title: "Mobibix Distributor Network — Wholesale B2B Platform for Mobile Parts Distributors India",
   description:
-    "MobiBix Distributor Network is a free B2B wholesale platform for mobile phone parts distributors in India. Manage your retailer network, share a catalog, track orders, and earn commissions — all from one hub.",
+    "Mobibix Distributor Network is a free B2B wholesale platform for mobile phone parts distributors in India. Manage your retailer network, share a catalog, track orders, and earn commissions — all from one hub.",
   keywords: [
     "mobile phone distributor software India",
     "B2B wholesale platform mobile shops",
@@ -36,11 +36,11 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "https://REMOVED_DOMAIN/distributor" },
   openGraph: {
-    title: "MobiBix Distributor Network — Free Wholesale B2B Hub for Mobile Distributors",
+    title: "Mobibix Distributor Network — Free Wholesale B2B Hub for Mobile Distributors",
     description:
       "Grow your retailer network. Share catalog. Track orders. Earn commissions. Free for distributors — no plan required.",
     url: "https://REMOVED_DOMAIN/distributor",
-    siteName: "MobiBix",
+    siteName: "Mobibix",
     type: "website",
   },
 };
@@ -65,7 +65,7 @@ export default function DistributorPage() {
           </h1>
 
           <p className="text-xl text-muted-foreground font-bold mb-10 max-w-3xl mx-auto leading-relaxed">
-            MobiBix Distributor Network is a free B2B wholesale hub for mobile phone parts and accessories distributors across India.
+            Mobibix Distributor Network is a free B2B wholesale hub for mobile phone parts and accessories distributors across India.
             Publish your catalog, receive purchase orders from retailers, track shipments, and grow your network — all from one dashboard.
           </p>
 
@@ -85,7 +85,7 @@ export default function DistributorPage() {
           </div>
 
           <p className="text-xs text-muted-foreground mt-5 font-medium">
-            Already a MobiBix ERP user? Sign in at <Link href="/auth" className="text-indigo-600 font-bold hover:underline">/auth</Link> — your distributor hub activates automatically.
+            Already a Mobibix ERP user? Sign in at <Link href="/auth" className="text-indigo-600 font-bold hover:underline">/auth</Link> — your distributor hub activates automatically.
           </p>
         </div>
       </section>
@@ -161,7 +161,7 @@ export default function DistributorPage() {
               {
                 icon: TrendingUp,
                 title: "Live Sales Attribution",
-                desc: "When a retailer sells a product they purchased from you, MobiBix records the attribution. See which products and retailers are driving your network volume.",
+                desc: "When a retailer sells a product they purchased from you, Mobibix records the attribution. See which products and retailers are driving your network volume.",
                 color: "emerald",
               },
               {
@@ -179,7 +179,7 @@ export default function DistributorPage() {
               {
                 icon: Star,
                 title: "Partner Commission Tracking",
-                desc: "If you are also a MobiBix Partner, your referral commissions are integrated into the same dashboard. See earnings, pending payouts, and total paid in one place.",
+                desc: "If you are also a Mobibix Partner, your referral commissions are integrated into the same dashboard. See earnings, pending payouts, and total paid in one place.",
                 color: "rose",
               },
             ].map((f, i) => {
@@ -230,7 +230,7 @@ export default function DistributorPage() {
               {
                 step: "03",
                 title: "Receive Orders. Ship. Track Revenue.",
-                desc: "Retailers link to your network using your code, browse your catalog, and place purchase orders. You confirm and ship from your dashboard. MobiBix tracks attribution when they sell your products.",
+                desc: "Retailers link to your network using your code, browse your catalog, and place purchase orders. You confirm and ship from your dashboard. Mobibix tracks attribution when they sell your products.",
               },
             ].map((s, i) => (
               <div key={i} className="flex gap-6 items-start p-8 rounded-[2rem] bg-card border border-border">
@@ -252,10 +252,10 @@ export default function DistributorPage() {
             <div className="lg:w-1/2 space-y-6">
               <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-black uppercase tracking-widest">Optional Upgrade</span>
               <h2 className="text-4xl font-black uppercase tracking-tighter leading-tight">
-                Also run your own shop? Get MobiBix ERP.
+                Also run your own shop? Get Mobibix ERP.
               </h2>
               <p className="text-muted-foreground font-bold leading-relaxed">
-                The Distributor Network is free — always. But if you also operate a retail or repair shop, upgrade to MobiBix ERP and get both sidebars: your full shop ERP <em>and</em> your distributor hub, side by side.
+                The Distributor Network is free — always. But if you also operate a retail or repair shop, upgrade to Mobibix ERP and get both sidebars: your full shop ERP <em>and</em> your distributor hub, side by side.
               </p>
               <ul className="space-y-3 pt-2">
                 {[
@@ -287,7 +287,7 @@ export default function DistributorPage() {
                   <h3 className="text-lg font-black uppercase tracking-wider">Distributor + ERP Mode</h3>
                 </div>
                 <p className="text-indigo-100 font-medium text-sm leading-relaxed">
-                  When you activate a MobiBix ERP plan, your account automatically gains access to both interfaces. One login, two powerful tools.
+                  When you activate a Mobibix ERP plan, your account automatically gains access to both interfaces. One login, two powerful tools.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {[

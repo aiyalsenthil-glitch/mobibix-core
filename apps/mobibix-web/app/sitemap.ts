@@ -61,7 +61,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  // 7. Legal & Auth
+  // 7. Feature Sub-pages (Modernization)
+  const featureDetailRoutes: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/features/repair-pipeline`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${baseUrl}/features/gst-billing`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${baseUrl}/features/multi-shop`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${baseUrl}/features/profit-analytics`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
+  ];
+
+  // 8. Legal & Auth
   const legalRoutes: MetadataRoute.Sitemap = [
     { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
@@ -76,6 +84,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...comparisonRoutes,
     ...cityRoutes,
     ...blogRoutes,
+    ...featureDetailRoutes,
     ...legalRoutes
   ];
 }

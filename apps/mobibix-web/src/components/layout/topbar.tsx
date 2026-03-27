@@ -14,7 +14,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
-  const { authUser, logout } = useAuth();
+  const { authUser, REMOVED_AUTH_PROVIDERUser, logout } = useAuth();
   const router = useRouter();
   const { theme } = useTheme();
   const { selectedShop } = useShop();
@@ -59,26 +59,18 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
                 : "from-teal-700 to-teal-600 bg-clip-text text-transparent"
             } whitespace-nowrap truncate`}
           >
-            {selectedShop?.name || authUser?.name || "Shop Name"}
+            {selectedShop?.name || (authUser as any)?.displayName || authUser?.name || REMOVED_AUTH_PROVIDERUser?.displayName || "Shop Name"}
           </p>
         </div>
       </div>
 
       {/* User Info + Logout + Theme Switcher */}
       <div className="flex items-center gap-3 sm:gap-6">
-        <div className="hidden sm:block text-right text-xs sm:text-sm">
-          <p
-            className={`font-semibold ${
-              isDark ? "text-white" : "text-teal-900"
-            }`}
-          >
-            {authUser?.email || "User"}
+        <div className="hidden sm:block text-right">
+          <p className={`text-sm font-semibold truncate max-w-[160px] ${isDark ? "text-white" : "text-slate-900"}`}>
+            {(authUser as any)?.displayName || authUser?.name || REMOVED_AUTH_PROVIDERUser?.displayName || authUser?.email || "User"}
           </p>
-          <p
-            className={`capitalize ${
-              isDark ? "text-gray-400" : "text-teal-600/70 font-medium"
-            }`}
-          >
+          <p className={`text-xs capitalize ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             {authUser?.isSystemOwner ? "System Owner" : (authUser?.role || "Staff")}
           </p>
         </div>
@@ -113,12 +105,16 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
           <ThemeSwitcher />
         </div>
 
-        {/* Logout Button - More Prominent */}
+        {/* Logout — subtle, not competing with primary CTAs */}
         <button
           onClick={handleLogout}
-          className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-gradient-to-r from-teal-600 via-teal-500 to-teal-600 hover:from-teal-700 hover:via-teal-600 hover:to-teal-700 text-white dark:from-cyan-400 dark:to-teal-400 dark:hover:from-cyan-300 dark:hover:to-teal-300 dark:text-gray-900 rounded-xl transition-all duration-200 hover:shadow-xl hover:shadow-teal-500/30 hover:scale-105 whitespace-nowrap shadow-lg shadow-teal-500/20"
+          className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border transition-all duration-200 whitespace-nowrap ${
+            isDark
+              ? "border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white hover:bg-slate-800"
+              : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 hover:bg-slate-50"
+          }`}
         >
-          Logout
+          Sign out
         </button>
       </div>
     </header>

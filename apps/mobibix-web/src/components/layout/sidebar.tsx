@@ -39,6 +39,8 @@ import {
   Network,
   Boxes,
   ListTodo,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -75,24 +77,20 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
   { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
-  { label: "Distributor Network",  href: "/settings/distributor",        icon: Network,  requiredPermission: "core.settings.manage",      category: "Management" },
-  { label: "Barcode Labels",       href: "/tools/barcode-labels",       icon: Printer,          requiredPermission: "mobile_shop.inventory.view",      category: "Tools" },
-  { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles,       requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
-  { label: "Daily Closing",        href: "/tools/daily-closing",        icon: Lock,            requiredPermission: "core.daily_closing.view",         category: "Tools" },
-  { label: "Expense Manager",      href: "/tools/expenses",             icon: WalletCards,     requiredPermission: "core.expense.view",               category: "Tools" },
-  { label: "Stock Verification",   href: "/tools/stock-verification",   icon: ClipboardCheck,  requiredPermission: "core.stock_verification.view",     category: "Tools" },
-  { label: "Monthly Report",       href: "/tools/monthly-report",       icon: CalendarDays,    requiredPermission: "core.report.view",                 category: "Tools" },
-  { label: "Shrinkage Intelligence",    href: "/tools/shrinkage",                          icon: Activity,   requiredPermission: "core.shrinkage.view",          category: "Tools" },
-  { label: "Inventory Intelligence",    href: "/reports/inventory-intelligence",           icon: BarChart2,  requiredPermission: "core.report.inventory_view",   category: "Management" },
-
-  // --- Distributor Section ---
-  { label: "Distributor Hub",      href: "/distributor/dashboard",       icon: Network,  requiredPermission: "distributor.view",  category: "Distributor Network" },
-  { label: "Wholesale Catalog",    href: "/distributor/catalog",         icon: Boxes,    requiredPermission: "distributor.view",  category: "Distributor Network" },
-  { label: "Retailer Orders",      href: "/distributor/orders",          icon: ListTodo, requiredPermission: "distributor.view",  category: "Distributor Network" },
-  { label: "My Retailers",         href: "/distributor/retailers",       icon: Users,    requiredPermission: "distributor.view",  category: "Distributor Network" },
-
-  // --- Retailer Supply View ---
-  { label: "Wholesale Network",    href: "/suppliers",                   icon: Truck,    requiredPermission: "mobile_shop.supplier.view",  category: "Management" },
+  { label: "Distributor Network", href: "/settings/distributor", icon: Network, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Inventory Intelligence", href: "/reports/inventory-intelligence", icon: BarChart2, requiredPermission: "core.report.inventory_view", category: "Management" },
+  { label: "Barcode Labels", href: "/tools/barcode-labels", icon: Printer, requiredPermission: "mobile_shop.inventory.view", category: "Tools" },
+  { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles, requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
+  { label: "Daily Closing", href: "/tools/daily-closing", icon: Lock, requiredPermission: "core.daily_closing.view", category: "Tools" },
+  { label: "Expense Manager", href: "/tools/expenses", icon: WalletCards, requiredPermission: "core.expense.view", category: "Tools" },
+  { label: "Stock Verification", href: "/tools/stock-verification", icon: ClipboardCheck, requiredPermission: "core.stock_verification.view", category: "Tools" },
+  { label: "Monthly Report", href: "/tools/monthly-report", icon: CalendarDays, requiredPermission: "core.report.view", category: "Tools" },
+  { label: "Shrinkage Intelligence", href: "/tools/shrinkage", icon: Activity, requiredPermission: "core.shrinkage.view", category: "Tools" },
+  // Distributor
+  { label: "Distributor Hub", href: "/distributor/dashboard", icon: Network, requiredPermission: "distributor.view", category: "Distributor Network" },
+  { label: "Wholesale Catalog", href: "/distributor/catalog", icon: Boxes, requiredPermission: "distributor.view", category: "Distributor Network" },
+  { label: "Retailer Orders", href: "/distributor/orders", icon: ListTodo, requiredPermission: "distributor.view", category: "Distributor Network" },
+  { label: "My Retailers", href: "/distributor/retailers", icon: Users, requiredPermission: "distributor.view", category: "Distributor Network" },
 ];
 
 interface SidebarProps {
@@ -105,38 +103,38 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const { theme } = useTheme();
   const { authUser } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [counts, setCounts] = useState<{ total: number } | null>(null);
   const isDark = mounted && theme === "dark";
 
+  useEffect(() => {
+    setMounted(true);
+    const stored = localStorage.getItem("sidebarCollapsed");
+    if (stored) setIsCollapsed(JSON.parse(stored));
+  }, []);
+
+  const toggleCollapse = () => {
+    const next = !isCollapsed;
+    setIsCollapsed(next);
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(next));
+    // Notify layout.tsx via custom event (storage event doesn't fire same window)
+    window.dispatchEvent(new CustomEvent("sidebarToggled", { detail: { collapsed: next } }));
+  };
+
   const visibleItems = useMemo(() => {
     if (!authUser) return [];
-
     return navItems.filter((item) => {
-      // 1. Module-level validation for specialized tools
       if (item.label === "Compatibility Finder") {
         const isMobibix = authUser.tenantType === 'MOBILE_SHOP' || authUser.planCode?.startsWith("MOBIBIX");
-        // Accountants are strictly excluded from this tool
         const isAccountant = authUser.role === 'accountant' || authUser.role === 'shop_accountant';
-        
         if (!isMobibix || isAccountant) return false;
       }
-
-      // 2. Distributor Mode override
-      // Pure distributors (no active ERP plan) see only the distributor hub.
-      // Distributors who also have an active ERP subscription fall through to normal RBAC
-      // and see both the full ERP sidebar AND the Distributor Network section.
       if (authUser.isDistributor && !authUser.hasActiveERP) {
         return item.category === "Distributor Network";
       }
-
-      // 3. Distributor-only items are gated on isDistributor regardless of role
       if (item.category === "Distributor Network" && !authUser.isDistributor) return false;
-
-      // 4. Standard RBAC check
-      // System Owners and users with '*' permission see everything else in their module
       if (authUser.isSystemOwner || authUser.permissions?.includes("*")) return true;
       if (!item.requiredPermission) return true;
-      
       return authUser.permissions?.includes(item.requiredPermission);
     });
   }, [authUser]);
@@ -151,23 +149,16 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   }, [visibleItems]);
 
   useEffect(() => {
-    // Pure distributors have no tenantId — ERP CRM endpoints require it
     if (!mounted || !authUser || !authUser.tenantId) return;
-
     async function loadCounts() {
       try {
         const data = await getFollowUpCounts();
         setCounts(data);
-      } catch {
-        // Silently ignore — sidebar badge is non-critical
-      }
+      } catch { /* silent */ }
     }
-
     loadCounts();
-
     const handleRefresh = () => loadCounts();
     window.addEventListener("refresh-followup-counts", handleRefresh);
-
     const interval = setInterval(loadCounts, 30000);
     return () => {
       clearInterval(interval);
@@ -175,16 +166,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     };
   }, [mounted, authUser]);
 
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   if (!mounted) return null;
 
-  const effectiveCollapsed = false;
-  const sidebarWidth = "w-64";
-  const sidebarPadding = "py-4 px-4";
+  const effectiveCollapsed = isCollapsed && !mobileOpen;
+  const sidebarWidth = effectiveCollapsed ? "w-[72px]" : "w-64";
 
   return (
     <>
@@ -196,7 +181,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 shadow-lg group/sidebar ${
+        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 shadow-lg ${
           isDark
             ? "bg-[#0f172a] border-slate-800"
             : "bg-white border-slate-200"
@@ -204,19 +189,41 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
+        {/* Logo / Header */}
         <div
-          className={`${sidebarPadding} border-b transition-all duration-300 flex items-center justify-center ${
-            isDark ? "border-slate-800" : "border-slate-100 bg-slate-50/50"
-          }`}
+          className={`border-b transition-all duration-300 flex items-center relative ${
+            effectiveCollapsed ? "justify-center py-4 px-2" : "justify-between py-3 px-4"
+          } ${isDark ? "border-slate-800" : "border-slate-100 bg-slate-50/50"}`}
         >
           {!effectiveCollapsed && (
             <img
               src="/assets/mobibix-main-logo.png"
-              alt="MobiBix Logo"
-              className="h-14 w-auto object-contain py-1"
+              alt="Mobibix Logo"
+              className="h-12 w-auto object-contain py-0.5"
+            />
+          )}
+          {effectiveCollapsed && (
+            <img
+              src="/assets/mobibix-app-icon.png"
+              alt="Mobibix Icon"
+              className="w-9 h-9 object-contain"
             />
           )}
 
+          {/* Desktop collapse toggle */}
+          <button
+            onClick={toggleCollapse}
+            className={`hidden lg:flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 flex-shrink-0 ${
+              isDark
+                ? "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                : "border-slate-200 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-700"
+            } ${effectiveCollapsed ? "mt-0" : ""}`}
+            title={effectiveCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {effectiveCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          </button>
+
+          {/* Mobile close */}
           {mobileOpen && (
             <button
               onClick={onClose}
@@ -227,23 +234,19 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
               </svg>
             </button>
           )}
-
-          {effectiveCollapsed && (
-            <img
-              src="/assets/mobibix-app-icon.png"
-              alt="MobiBix Icon"
-              className="w-10 h-10 object-contain"
-            />
-          )}
         </div>
 
-        <nav className={`flex-1 overflow-y-auto py-6 px-3 space-y-7 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700/50 [&::-webkit-scrollbar-thumb]:rounded-full ${effectiveCollapsed ? 'overflow-x-hidden' : ''}`}>
+        {/* Nav */}
+        <nav className={`flex-1 overflow-y-auto py-4 space-y-5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700/50 [&::-webkit-scrollbar-thumb]:rounded-full ${effectiveCollapsed ? "px-2 overflow-x-hidden" : "px-3"}`}>
           {Object.entries(groupedItems).map(([category, items]) => (
-            <div key={category} className="space-y-1">
+            <div key={category} className="space-y-0.5">
               {!effectiveCollapsed && (
-                <div className="px-3 mb-2.5 text-[10px] font-bold tracking-[0.1em] uppercase text-slate-400/80 dark:text-slate-500/80 pointer-events-none">
+                <div className={`px-3 mb-2 text-[10px] font-black tracking-[0.15em] uppercase pointer-events-none ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                   {category}
                 </div>
+              )}
+              {effectiveCollapsed && (
+                <div className={`h-px mx-2 mb-2 ${isDark ? "bg-slate-800" : "bg-slate-100"}`} />
               )}
               {items.map((item) => {
                 const isActive = pathname === item.href || (item.label === "Loyalty Program" && pathname === "/settings" && typeof window !== "undefined" && window.location.search.includes("tab=loyalty"));
@@ -253,25 +256,37 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                     key={item.label}
                     href={item.href!}
                     onClick={() => mobileOpen && onClose && onClose()}
-                    className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 group relative ${
+                    className={`flex items-center gap-3 py-2.5 rounded-xl transition-all duration-150 group relative ${
+                      effectiveCollapsed ? "justify-center px-0" : "px-3"
+                    } ${
                       isActive
                         ? isDark
-                          ? "bg-indigo-500/10 text-white font-medium before:absolute before:left-0 before:w-[3px] before:h-5 before:bg-indigo-500 before:rounded-r-full shadow-sm shadow-indigo-500/5"
-                          : "bg-indigo-50 text-indigo-700 font-medium before:absolute before:left-0 before:w-[3px] before:h-5 before:bg-indigo-600 before:rounded-r-full"
+                          ? "bg-indigo-500/15 text-white font-semibold"
+                          : "bg-indigo-50 text-indigo-700 font-semibold"
                         : isDark
-                          ? "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
+                          ? "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                           : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    } ${effectiveCollapsed ? "justify-center px-0 before:hidden" : ""}`}
+                    }`}
                     title={effectiveCollapsed ? item.label : ""}
                   >
-                    <div className={`flex-shrink-0 ${effectiveCollapsed ? 'mx-auto' : ''}`}>
-                       <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? (isDark ? "text-indigo-400" : "text-indigo-600") : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors"} />
+                    {/* Active indicator bar */}
+                    {isActive && !effectiveCollapsed && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-indigo-500 rounded-r-full" />
+                    )}
+                    <div className="flex-shrink-0">
+                      <Icon
+                        size={17}
+                        strokeWidth={isActive ? 2.5 : 1.8}
+                        className={
+                          isActive
+                            ? isDark ? "text-indigo-400" : "text-indigo-600"
+                            : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors"
+                        }
+                      />
                     </div>
                     {!effectiveCollapsed && (
                       <>
-                        <span className="text-[14px] flex-1">
-                          {item.label}
-                        </span>
+                        <span className="text-[13.5px] flex-1 truncate">{item.label}</span>
                         {item.label === "Customers" && counts && counts.total > 0 && (
                           <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
                             {counts.total}
@@ -280,8 +295,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       </>
                     )}
 
+                    {/* Collapsed tooltip */}
                     {effectiveCollapsed && (
-                      <div className="absolute left-[calc(100%+8px)] px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl pointer-events-none z-50">
+                      <div className="absolute left-[calc(100%+10px)] px-2.5 py-1.5 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl pointer-events-none z-50 border border-slate-700/50">
                         {item.label}
                       </div>
                     )}
@@ -292,55 +308,41 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        <div className={`px-4 mt-auto space-y-3 pb-4 pt-2 border-t mt-4 ${isDark ? 'border-slate-800/50' : 'border-slate-100'} ${effectiveCollapsed ? 'flex flex-col items-center px-2 space-y-2' : ''}`}>
-
-          {/* Upgrade CTA for trial/starter users */}
+        {/* Bottom section */}
+        <div className={`border-t pb-4 pt-3 ${isDark ? "border-slate-800/60" : "border-slate-100"} ${effectiveCollapsed ? "px-2 flex flex-col items-center gap-2" : "px-3 space-y-2"}`}>
+          {/* Upgrade CTA */}
           {!effectiveCollapsed && authUser?.planCode && (authUser.planCode.includes('TRIAL') || authUser.planCode.includes('STARTER')) && (
             <Link
               href="/settings?tab=billing"
               className={`block w-full px-3 py-2.5 rounded-xl text-center text-xs font-bold transition-all ${
                 isDark
-                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 hover:from-amber-500/30 hover:to-orange-500/30'
+                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 hover:from-amber-500/30'
                   : 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-700 hover:border-amber-300'
               }`}
             >
-              ⚡ Upgrade to Pro — unlock WhatsApp & more
+              ⚡ Upgrade to Pro
             </Link>
           )}
 
-          {/* AI Features — Only for Owners and Managers */}
+          {/* AI Button — only OWNER / MANAGER */}
           {(authUser?.role === 'OWNER' || authUser?.role === 'MANAGER') && (
-            <>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { prompt: "" } }))}
-                className={`flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200 w-full font-medium ${isDark ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/10' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
-                title={effectiveCollapsed ? "MobiBix AI Assistant" : ""}
-              >
-                <Sparkles size={15} />
-                {!effectiveCollapsed && <span className="text-[13px] tracking-wide">MobiBix AI</span>}
-              </button>
-              
-              {!effectiveCollapsed && (
-                <div className="mt-2">
-                  <AiQuotaBadge />
-                </div>
-              )}
-            </>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { prompt: "" } }))}
+              className={`flex items-center gap-2 py-2.5 rounded-xl transition-all duration-200 font-semibold ${
+                effectiveCollapsed ? "w-10 h-10 justify-center p-0" : "w-full px-3"
+              } ${isDark ? "bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200"}`}
+              title={effectiveCollapsed ? "Mobibix AI Assistant" : ""}
+            >
+              <Sparkles size={15} className="flex-shrink-0" />
+              {!effectiveCollapsed && <span className="text-[13px] tracking-wide">Mobibix AI</span>}
+            </button>
+          )}
+
+          {!effectiveCollapsed && (authUser?.role === 'OWNER' || authUser?.role === 'MANAGER') && (
+            <AiQuotaBadge />
           )}
         </div>
-
       </aside>
-
-      {/* Content Shift */}
-      <div
-        className="ml-60 transition-all duration-300"
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          left: "240px",
-        }}
-      />
     </>
   );
 }

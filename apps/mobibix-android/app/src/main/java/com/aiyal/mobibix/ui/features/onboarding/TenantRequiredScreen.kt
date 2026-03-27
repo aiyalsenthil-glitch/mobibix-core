@@ -23,17 +23,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.data.network.BusinessCategory
 import com.aiyal.mobibix.data.network.CountryOption
 import com.aiyal.mobibix.data.network.INDIAN_STATES
 import com.aiyal.mobibix.data.network.CreateTenantRequest
-import com.aiyal.mobibix.ui.components.AuroraBackground
-import com.aiyal.mobibix.ui.components.GlassCard
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
+import com.aiyal.mobibix.R
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
-private val TealAccent = Color(0xFF00C896)
+private val BrandTeal   = Color(0xFF14B8A6)
+private val BrandDark   = Color(0xFF0D9488)
+private val TealAccent  = BrandTeal
 
 private val DEFAULT_COUNTRIES = listOf(
     CountryOption("IN",  "India",                 "INR", "₹",   "+91",  "GST",  "Asia/Kolkata",      true),
@@ -67,6 +71,7 @@ fun TenantRequiredScreen(
     // Form Data
     var businessName by remember { mutableStateOf("") }
     var legalName by remember { mutableStateOf("") }
+    var businessType by remember { mutableStateOf("") }
     var promoCode by remember { mutableStateOf("") }
     var categories by remember { mutableStateOf<List<BusinessCategory>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<BusinessCategory?>(null) }
@@ -137,42 +142,52 @@ fun TenantRequiredScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AuroraBackground()
-        
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(horizontal = 24.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.height(32.dp))
-            
-            // Header
-            Text(
-                text = "Business Setup",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Complete your profile to get started",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8FAFC))) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
 
-            Spacer(Modifier.height(32.dp))
+            // ── Teal brand header ──────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(BrandDark, BrandTeal)))
+                    .statusBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 28.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    // MobiBix logo on white circle background
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(id = R.drawable.mobibix_logo),
+                            contentDescription = "MobiBix",
+                            modifier = Modifier.size(44.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("Business Setup", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Let's get your business running on MobiBix", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                    Spacer(Modifier.height(20.dp))
 
-            // Stepper UI
-            OnboardingStepper(currentStep = currentStep)
+                    // ── Pill step indicator ────────────────────────────────
+                    OnboardingStepper(currentStep = currentStep)
+                }
+            }
 
-            Spacer(Modifier.height(32.dp))
-
-            // Main Card
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(24.dp)) {
+            // ── Form card (white, rounded top corners lift over header) ───
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-16).dp)
+                    .shadow(4.dp, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+                color = Color.White,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
                     AnimatedContent(
                         targetState = currentStep,
                         transitionSpec = {
@@ -199,7 +214,9 @@ fun TenantRequiredScreen(
                                 onCategorySelect = { selectedCategory = it },
                                 categoriesLoading = categoriesLoading,
                                 isExpanded = isExpanded,
-                                onExpandedChange = { isExpanded = it }
+                                onExpandedChange = { isExpanded = it },
+                                businessType = businessType,
+                                onBusinessTypeChange = { businessType = it }
                             )
                             2 -> LocationStep(
                                 countries = countries,
@@ -264,28 +281,12 @@ fun TenantRequiredScreen(
                         Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
 
-                    Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     // Buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (currentStep > 1) {
-                            TextButton(
-                                onClick = { currentStep--; error = null },
-                                enabled = !loading
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Back")
-                            }
-                        } else {
-                            Box(Modifier.size(1.dp)) // Spacer
-                        }
-
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
                             onClick = {
                                 if (currentStep < 3) {
                                     val err = validateStep(currentStep, businessName, contactPhone, selectedCountry, city, state, agreedToTerms, gstNumber)
@@ -315,8 +316,8 @@ fun TenantRequiredScreen(
                                             val response = tenantApi.createTenant(
                                                 CreateTenantRequest(
                                                     name = businessName.trim(),
-                                                    businessType = selectedCategory?.name ?: "Mobile Shop",
-                                                    businessCategoryId = selectedCategory?.id ?: "",
+                                                    businessType = businessType.trim().takeIf { it.isNotEmpty() },
+                                                    businessCategoryId = selectedCategory?.id,
                                                     legalName = legalName.trim().takeIf { it.isNotEmpty() },
                                                     contactPhone = finalPhone,
                                                     addressLine1 = addressLine1.trim().takeIf { it.isNotEmpty() },
@@ -334,9 +335,8 @@ fun TenantRequiredScreen(
                                             )
 
                                             tokenStore.saveToken(response.accessToken)
-                                            val tenantState = appStateResolver.resolve()
-                                            navController.navigate(tenantState.toRoute()) {
-                                                popUpTo("tenant_required") { inclusive = true }
+                                            navController.navigate("home") {
+                                                popUpTo(0) { inclusive = true }
                                             }
                                         } catch (e: Exception) {
                                             error = e.message ?: "Submission failed"
@@ -350,55 +350,81 @@ fun TenantRequiredScreen(
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = TealAccent, contentColor = Color.White)
                         ) {
-                            Text(if (currentStep == 3) (if (loading) "Creating..." else "Complete") else "Continue")
-                            if (currentStep < 3) {
+                            if (loading) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
                                 Spacer(Modifier.width(8.dp))
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("Creating...")
+                            } else {
+                                Text(if (currentStep == 3) "Complete Setup" else "Continue")
+                                if (currentStep < 3) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp))
+                                }
                             }
                         }
-                    }
+                        if (currentStep > 1) {
+                            TextButton(
+                                onClick = { currentStep--; error = null },
+                                enabled = !loading,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF64748B))
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Back", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    } // Column buttons
                 }
-            }
-            
-            Spacer(Modifier.height(48.dp))
-        }
-    }
+            } // Surface
+            Spacer(Modifier.height(32.dp))
+        } // Column scroll
+    } // Box
 }
 
 @Composable
 fun OnboardingStepper(currentStep: Int) {
+    val steps = listOf("Identity", "Location", "Regional")
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        StepIndicator(label = "Identity", icon = Icons.Default.Business, active = currentStep >= 1, completed = currentStep > 1)
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(if(currentStep > 1) TealAccent else MaterialTheme.colorScheme.outlineVariant))
-        StepIndicator(label = "Location", icon = Icons.Default.Place, active = currentStep >= 2, completed = currentStep > 2)
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(if(currentStep > 2) TealAccent else MaterialTheme.colorScheme.outlineVariant))
-        StepIndicator(label = "Regional", icon = Icons.Default.Public, active = currentStep >= 3, completed = currentStep > 3)
-    }
-}
-
-@Composable
-fun StepIndicator(label: String, icon: ImageVector, active: Boolean, completed: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            shape = CircleShape,
-            color = if (completed) TealAccent else if (active) TealAccent.copy(alpha = 0.15f) else Color.Transparent,
-            modifier = Modifier.size(40.dp),
-            border = if (!completed && !active) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)) else if (active && !completed) androidx.compose.foundation.BorderStroke(2.dp, TealAccent) else null
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (completed) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-                } else {
-                    Icon(icon, contentDescription = null, tint = if (active) TealAccent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+        steps.forEachIndexed { idx, label ->
+            val stepNum = idx + 1
+            val isCompleted = currentStep > stepNum
+            val isActive = currentStep == stepNum
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        when {
+                            isCompleted -> Color.White
+                            isActive    -> Color.White.copy(alpha = 0.25f)
+                            else        -> Color.White.copy(alpha = 0.1f)
+                        }
+                    )
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isCompleted) {
+                    Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp), tint = BrandTeal)
+                    Spacer(Modifier.width(4.dp))
                 }
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isActive || isCompleted) FontWeight.Bold else FontWeight.Normal,
+                    color = when {
+                        isCompleted -> BrandTeal
+                        isActive    -> Color.White
+                        else        -> Color.White.copy(alpha = 0.6f)
+                    }
+                )
             }
         }
-        Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = if (active) TealAccent else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
     }
 }
 
@@ -411,9 +437,10 @@ fun IdentityStep(
     promoChecking: Boolean,
     categories: List<BusinessCategory>, selectedCategory: BusinessCategory?,
     onCategorySelect: (BusinessCategory) -> Unit, categoriesLoading: Boolean,
-    isExpanded: Boolean, onExpandedChange: (Boolean) -> Unit
+    isExpanded: Boolean, onExpandedChange: (Boolean) -> Unit,
+    businessType: String, onBusinessTypeChange: (String) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         StepHeader("Business Identity", "How should customers identify you?")
 
         OutlinedTextField(
@@ -421,6 +448,7 @@ fun IdentityStep(
             onValueChange = onBusinessNameChange,
             label = { Text("Display Name *") },
             placeholder = { Text("e.g. Smart Tech Solutions") },
+            leadingIcon = { Icon(Icons.Default.Store, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -429,35 +457,25 @@ fun IdentityStep(
             onValueChange = onLegalNameChange,
             label = { Text("Legal Entity Name") },
             placeholder = { Text("e.g. Smart Tech Pvt Ltd") },
+            leadingIcon = { Icon(Icons.Default.AccountBalance, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
             modifier = Modifier.fillMaxWidth()
         )
 
-        @OptIn(ExperimentalMaterial3Api::class)
-        ExposedDropdownMenuBox(
-            expanded = isExpanded,
-            onExpandedChange = onExpandedChange,
+        OutlinedTextField(
+            value = businessType,
+            onValueChange = onBusinessTypeChange,
+            label = { Text("Business Category (Optional)") },
+            placeholder = { Text("e.g. Mobile Retailer, Electronics Repair") },
+            leadingIcon = { Icon(Icons.Default.Category, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
             modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = selectedCategory?.name ?: "Select Type",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Business Category") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
-            )
-            ExposedDropdownMenu(expanded = isExpanded, onDismissRequest = { onExpandedChange(false) }) {
-                categories.forEach { category ->
-                    DropdownMenuItem(text = { Text(category.name) }, onClick = { onCategorySelect(category); onExpandedChange(false) })
-                }
-            }
-        }
+        )
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = promoCode,
                 onValueChange = onPromoCodeChange,
                 label = { Text("Promo Code (Optional)") },
+                leadingIcon = { Icon(Icons.Default.LocalOffer, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = TealAccent, fontWeight = FontWeight.Bold),
                 trailingIcon = {
@@ -545,6 +563,7 @@ fun LocationStep(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Country *") },
+                leadingIcon = { Icon(Icons.Default.Public, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
@@ -559,14 +578,27 @@ fun LocationStep(
             value = contactPhone,
             onValueChange = onPhoneChange,
             label = { Text("Contact Phone *") },
+            leadingIcon = { Icon(Icons.Default.Phone, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
             prefix = { Text("${selectedCountry.phonePrefix} ", color = TealAccent, fontWeight = FontWeight.Bold) },
             modifier = Modifier.fillMaxWidth()
         )
 
-        OutlinedTextField(value = addressLine1, onValueChange = onAddressChange, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
-        
+        OutlinedTextField(
+            value = addressLine1,
+            onValueChange = onAddressChange,
+            label = { Text("Address") },
+            leadingIcon = { Icon(Icons.Default.Home, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(value = city, onValueChange = onCityChange, label = { Text("City *") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(
+                value = city,
+                onValueChange = onCityChange,
+                label = { Text("City *") },
+                leadingIcon = { Icon(Icons.Default.LocationCity, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
+                modifier = Modifier.weight(1f)
+            )
             if (selectedCountry.code == "IN") {
                 @OptIn(ExperimentalMaterial3Api::class)
                 ExposedDropdownMenuBox(
@@ -579,6 +611,7 @@ fun LocationStep(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("State *") },
+                        leadingIcon = { Icon(Icons.Default.Map, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStateExpanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
@@ -589,14 +622,32 @@ fun LocationStep(
                     }
                 }
             } else {
-                OutlinedTextField(value = state, onValueChange = onStateChange, label = { Text("State *") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = state,
+                    onValueChange = onStateChange,
+                    label = { Text("State *") },
+                    leadingIcon = { Icon(Icons.Default.Map, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
-        OutlinedTextField(value = pincode, onValueChange = onPincodeChange, label = { Text("Pincode / Zip") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = pincode,
+            onValueChange = onPincodeChange,
+            label = { Text("Pincode / Zip") },
+            leadingIcon = { Icon(Icons.Default.MailOutline, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         if (selectedCountry.hasGstField) {
-            OutlinedTextField(value = gstNumber, onValueChange = onGstChange, label = { Text("GST Number (Optional)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = gstNumber,
+                onValueChange = onGstChange,
+                label = { Text("GST Number (Optional)") },
+                leadingIcon = { Icon(Icons.Default.Receipt, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -616,6 +667,7 @@ fun regionalStep(
             onValueChange = {},
             readOnly = true,
             label = { Text("Local Currency") },
+            leadingIcon = { Icon(Icons.Default.AttachMoney, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -624,6 +676,7 @@ fun regionalStep(
             onValueChange = {},
             readOnly = true,
             label = { Text("Standard Timezone") },
+            leadingIcon = { Icon(Icons.Default.Schedule, null, tint = BrandTeal, modifier = Modifier.size(20.dp)) },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -644,11 +697,11 @@ fun regionalStep(
 @Composable
 fun StepHeader(title: String, subtitle: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+        Spacer(Modifier.height(4.dp))
+        Box(modifier = Modifier.width(32.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(BrandTeal))
         Spacer(Modifier.height(16.dp))
-        TextButton(onClick = {}, modifier = Modifier.height(1.dp).fillMaxWidth().background(TealAccent.copy(alpha=0.1f))) {}
-        Spacer(Modifier.height(8.dp))
     }
 }
 

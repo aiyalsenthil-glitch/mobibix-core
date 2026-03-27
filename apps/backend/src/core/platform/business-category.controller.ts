@@ -17,6 +17,8 @@ import { ModuleScope } from '../auth/decorators/module-scope.decorator';
 import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 import { PERMISSIONS } from '../../security/permission-registry';
+import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('platform/business-categories')
 @ModuleScope(ModuleType.CORE)
@@ -27,8 +29,9 @@ export class BusinessCategoryController {
     private readonly businessCategoryService: BusinessCategoryService,
   ) {}
 
-  // Public to authenticated users (used during onboarding)
-  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
+  // Used during onboarding — no tenant required
+  @Public()
+  @SkipSubscriptionCheck()
   @Get()
   async listActive() {
     return this.businessCategoryService.listActive();

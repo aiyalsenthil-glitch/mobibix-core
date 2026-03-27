@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown, Smartphone, AlertTriangle } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Search, ChevronDown, Smartphone, AlertTriangle, PlusCircle } from "lucide-react";
 import { authenticatedFetch } from "@/services/auth.api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -38,11 +38,64 @@ export function DeviceModelSelector({
   const ref = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const handleClear = useCallback(() => {
+    setSelected(null);
+    setQuery("");
+    setNotFound(false);
+    onChange("", "");
+    setResults([]);
+    setOpen(false);
+  }, [onChange]);
+
+  // Allow user to proceed with unregistered device + notify admin
+  const handleUseAnyway = useCallback(async () => {
+    if (!query.trim()) return;
+    const parts = query.trim().split(/\s+/);
+    const brand = parts[0] ?? query;
+    const model = parts.slice(1).join(" ") || query;
+
+    const unverifiedModel: DeviceModel = {
+      id: "unregistered",
+      brandName: brand,
+      modelName: model,
+      fullName: query,
+      unverified: true,
+    };
+
+    setSelected(unverifiedModel);
+    setNotFound(false);
+    setOpen(false);
+    onChange(brand, model);
+
+    // Fire-and-forget: notify admin
+    try {
+      await authenticatedFetch("/compatibility/request-model", {
+        method: "POST",
+        body: JSON.stringify({ rawInput: query }),
+      });
+    } catch {
+      // silent — don't block the user
+    }
+  }, [query, onChange]);
+
+  const handleSelect = useCallback((model: DeviceModel) => {
+    setSelected(model);
+    setQuery(model.fullName);
+    setNotFound(false);
+    onChange(model.brandName, model.modelName);
+    setOpen(false);
+    setResults([]);
+  }, [onChange]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
-        if (!selected) {
+        if (!selected && query.trim().length >= 2) {
+          // Modern UX: If user blurs without selecting, and there's text, 
+          // just auto-use it as a new device instead of wiping their work.
+          handleUseAnyway(); 
+        } else if (!selected) {
           setQuery("");
           onChange("", "");
           setNotFound(false);
@@ -53,9 +106,8 @@ export function DeviceModelSelector({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [selected, onChange]);
-
-  const handleInput = (val: string) => {
+  }, [selected, query, handleUseAnyway, onChange]);
+  const handleInput = useCallback((val: string) => {
     setQuery(val);
     setSelected(null);
     setNotFound(false);
@@ -86,55 +138,7 @@ export function DeviceModelSelector({
         setLoading(false);
       }
     }, 300);
-  };
-
-  const handleSelect = (model: DeviceModel) => {
-    setSelected(model);
-    setQuery(model.fullName);
-    setNotFound(false);
-    onChange(model.brandName, model.modelName);
-    setOpen(false);
-    setResults([]);
-  };
-
-  const handleClear = () => {
-    setSelected(null);
-    setQuery("");
-    setNotFound(false);
-    onChange("", "");
-    setResults([]);
-    setOpen(false);
-  };
-
-  // Allow user to proceed with unregistered device + notify admin
-  const handleUseAnyway = async () => {
-    const parts = query.trim().split(/\s+/);
-    const brand = parts[0] ?? query;
-    const model = parts.slice(1).join(" ") || query;
-
-    const unverifiedModel: DeviceModel = {
-      id: "unregistered",
-      brandName: brand,
-      modelName: model,
-      fullName: query,
-      unverified: true,
-    };
-
-    setSelected(unverifiedModel);
-    setNotFound(false);
-    setOpen(false);
-    onChange(brand, model);
-
-    // Fire-and-forget: notify admin
-    try {
-      await authenticatedFetch("/compatibility/request-model", {
-        method: "POST",
-        body: JSON.stringify({ rawInput: query }),
-      });
-    } catch {
-      // silent — don't block the user
-    }
-  };
+  }, [onChange]);
 
   const isValid = !!selected;
   const isUnverified = selected?.unverified === true;
@@ -157,8 +161,14 @@ export function DeviceModelSelector({
           placeholder="Search device e.g. Samsung A54, iPhone 13..."
           value={query}
           onChange={(e) => handleInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !selected && query.length >= 2) {
+              e.preventDefault();
+              handleUseAnyway();
+            }
+          }}
           onFocus={() => {
-            if (results.length > 0) setOpen(true);
+            if (results.length > 0 || (query.length >= 2 && !selected)) setOpen(true);
           }}
           required={required && !isValid}
         />
@@ -174,21 +184,6 @@ export function DeviceModelSelector({
         {!selected && <ChevronDown className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" />}
       </div>
 
-      {/* Not found — offer "Use anyway" */}
-      {notFound && !loading && query.length >= 2 && !selected && (
-        <div className="mt-1.5 rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
-          <p className="text-xs text-amber-700 dark:text-amber-400 mb-1.5">
-            <span className="font-semibold">"{query}"</span> not found in device database.
-          </p>
-          <button
-            type="button"
-            onMouseDown={(e) => { e.preventDefault(); handleUseAnyway(); }}
-            className="text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded transition-colors"
-          >
-            Use this device anyway →
-          </button>
-        </div>
-      )}
 
       {/* Selected badge — verified */}
       {selected && !isUnverified && (
@@ -222,22 +217,38 @@ export function DeviceModelSelector({
             </div>
           ) : (
             <div className="max-h-[240px] overflow-y-auto">
-              {results.map((m) => (
+              {results.length > 0 ? (
+                results.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className="w-full text-left px-4 py-2.5 hover:bg-teal-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-3 border-b dark:border-slate-800 last:border-0"
+                    onMouseDown={(e) => { e.preventDefault(); handleSelect(m); }}
+                  >
+                    <div className="w-7 h-7 rounded-md bg-gray-100 dark:bg-slate-700 flex items-center justify-center shrink-0">
+                      <Smartphone className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{m.modelName}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">{m.brandName}</p>
+                    </div>
+                  </button>
+                ))
+              ) : notFound && query.length >= 2 ? (
                 <button
-                  key={m.id}
                   type="button"
-                  className="w-full text-left px-4 py-2.5 hover:bg-teal-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-3 border-b dark:border-slate-800 last:border-0"
-                  onMouseDown={(e) => { e.preventDefault(); handleSelect(m); }}
+                  onMouseDown={(e) => { e.preventDefault(); handleUseAnyway(); }}
+                  className="w-full text-left px-4 py-4 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors flex items-center gap-3"
                 >
-                  <div className="w-7 h-7 rounded-md bg-gray-100 dark:bg-slate-700 flex items-center justify-center shrink-0">
-                    <Smartphone className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                  <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                    <PlusCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{m.modelName}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{m.brandName}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">Add as new device</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 italic">" {query} " not in database</p>
                   </div>
                 </button>
-              ))}
+              ) : null}
             </div>
           )}
         </div>

@@ -141,9 +141,8 @@ export class PartnersService {
     // 🔐 Email temp password — NEVER return it in API response
     try {
       await this.emailService.send({
-        targetType: 'SYSTEM',
-        tenantId: 'platform',
-        recipientType: 'PARTNER',
+        tenantId: null,
+        recipientType: 'PARTNER' as any,
         emailType: 'PARTNER_APPROVED',
         referenceId: updated.id,
         module: 'MOBILE_SHOP',
@@ -158,7 +157,7 @@ export class PartnersService {
           tempPassword,
           loginUrl: 'https://app.REMOVED_DOMAIN/partner/login',
         },
-      } as any);
+      });
       this.logger.log(`📧 Approval email sent to partner ${updated.email}`);
     } catch (emailErr) {
       this.logger.error(

@@ -26,7 +26,10 @@ export type EmailTemplateType =
   | 'JOBCARD_STATUS_UPDATED'
   | 'JOBCARD_COMPLETED'
   | 'EMAIL_VERIFICATION'
+  | 'META_TOKEN_EXPIRY_WARNING'
   | 'DELETION_REQUEST'
+  | 'PARTNER_APPROVED'
+  | 'PARTNER_PASSWORD_RESET'
   | 'CUSTOM_EMAIL';
 
 export interface EmailTemplateProps {
@@ -149,6 +152,14 @@ export interface EmailTemplateProps {
 
   // System Auth
   EMAIL_VERIFICATION: { name: string; verificationLink: string };
+  META_TOKEN_EXPIRY_WARNING: {
+    ownerName: string;
+    phoneNumber: string;
+    expiryDate: string;
+    daysLeft: number;
+    reconnectUrl: string;
+    systemUserGuideUrl: string;
+  };
   // Admin
   DELETION_REQUEST: {
     tenantName: string;
@@ -158,6 +169,21 @@ export interface EmailTemplateProps {
     ownerPhone: string;
     requestedAt: string;
     reason: string;
+  };
+  PARTNER_APPROVED: {
+    name: string;
+    businessName: string;
+    referralCode: string;
+    trialCode: string;
+    bonusCode: string;
+    tempPassword: string;
+    loginUrl: string;
+  };
+  PARTNER_PASSWORD_RESET: {
+    name: string;
+    businessName: string;
+    resetUrl: string;
+    expiresIn: string;
   };
   CUSTOM_EMAIL: {
     subject: string;
