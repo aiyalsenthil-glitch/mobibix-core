@@ -591,7 +591,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           subject: 'Action Required: Your subscription has been suspended',
           data: {
             name: subscription.tenant.name,
-            billingLink: `https://${subscription.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
+            billingLink: `https://${subscription.module === 'MOBILE_SHOP' ? 'REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
           },
         });
       }
@@ -799,7 +799,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
                 tenantName: internalPayment.tenant.name,
                 planName: activeSub.planId,
                 retryCount: 1,
-                payLink: `https://${activeSub.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
+                payLink: `https://${activeSub.module === 'MOBILE_SHOP' ? 'REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
               },
             });
           }

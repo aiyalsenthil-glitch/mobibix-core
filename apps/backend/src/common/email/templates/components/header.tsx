@@ -25,8 +25,8 @@ const BRAND: Record<string, { name: string; primaryColor: string; logo: string; 
   MOBILE_SHOP: {
     name: 'MobiBix',
     primaryColor: '#059669',
-    logo: 'https://app.REMOVED_DOMAIN/assets/mobibix-main-logo.png',
-    website: 'https://app.REMOVED_DOMAIN',
+    logo: 'https://REMOVED_DOMAIN/mobibix-main-logo.png',
+    website: 'https://REMOVED_DOMAIN',
     tagline: 'The modern OS for mobile retailers',
   },
   DIGITAL_LEDGER: {

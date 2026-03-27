@@ -108,7 +108,7 @@ export class PartnerAuthService {
     });
 
     const appUrl =
-      this.configService.get<string>('APP_URL') || 'https://app.REMOVED_DOMAIN';
+      this.configService.get<string>('APP_URL') || 'https://REMOVED_DOMAIN';
     const resetUrl = `${appUrl}/partner/reset-password?token=${rawToken}`;
 
     try {

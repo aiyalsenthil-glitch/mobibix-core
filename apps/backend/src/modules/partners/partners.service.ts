@@ -155,7 +155,7 @@ export class PartnersService {
           trialCode,
           bonusCode,
           tempPassword,
-          loginUrl: 'https://app.REMOVED_DOMAIN/partner/login',
+          loginUrl: 'https://REMOVED_DOMAIN/partner/login',
         },
       });
       this.logger.log(`📧 Approval email sent to partner ${updated.email}`);

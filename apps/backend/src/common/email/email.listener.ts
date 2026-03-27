@@ -51,7 +51,7 @@ export class EmailListener {
 
     const baseUrl =
       event.module === 'MOBILE_SHOP'
-        ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
+        ? this.configService.get('ERP_FRONTEND_URL') || 'https://REMOVED_DOMAIN'
         : event.module === 'DIGITAL_LEDGER'
           ? this.configService.get('LEDGER_FRONTEND_URL') || 'https://ledger.digitalled.in'
           : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
@@ -98,7 +98,7 @@ export class EmailListener {
     }
 
     const baseUrl = module === 'MOBILE_SHOP'
-      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://REMOVED_DOMAIN'
       : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     await this.emailService.send({
@@ -110,8 +110,8 @@ export class EmailListener {
       to: ownerEmail,
       subject: `Your ${module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'} Trial Expires in ${daysLeft} Days ⏳`,
       data: {
-        tenantName: tenant.name,
-        daysLeft,
+        name: tenant.users[0]?.fullName || tenant.name,
+        trialEndDate: subscription.endDate?.toDateString() ?? `in ${daysLeft} days`,
         upgradeLink: `${baseUrl}/settings/billing`,
       },
     });
@@ -125,9 +125,14 @@ export class EmailListener {
 
     const baseUrl = this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
+    const gymTenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
     await this.emailService.send({
       tenantId,
-      recipientType: 'CUSTOMER', // Member is a customer in this context
+      recipientType: 'CUSTOMER',
       emailType: 'MEMBER_EXPIRING',
       referenceId: `${member.id}-EXP-${expiryDate.toISOString().split('T')[0]}`,
       module,
@@ -135,6 +140,7 @@ export class EmailListener {
       subject: `Your Gym Membership Expires Soon! ⏳`,
       data: {
         name: member.fullName,
+        gymName: gymTenant?.name || 'your gym',
         expiryDate: expiryDate.toDateString(),
         renewLink: `${baseUrl}/pay/${tenantId}/${member.id}`,
       },
@@ -159,7 +165,7 @@ export class EmailListener {
     if (!ownerEmail) return;
 
     const baseUrl = module === 'MOBILE_SHOP'
-      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://REMOVED_DOMAIN'
       : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     await this.emailService.send({
@@ -202,7 +208,7 @@ export class EmailListener {
 
     const baseUrl =
       module === 'MOBILE_SHOP'
-        ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
+        ? this.configService.get('ERP_FRONTEND_URL') || 'https://REMOVED_DOMAIN'
         : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     // The invite link depends on the frontend being able to handle the token
@@ -254,8 +260,10 @@ export class EmailListener {
       data: {
         customerName: customer.name || 'Valued Customer',
         invoiceNumber: payload.invoiceNumber,
-        amount: payload.amount,
-        viewLink: `https://shop.REMOVED_DOMAIN/p/invoice/${invoiceId}`,
+        amount: `₹${payload.amount}`,
+        storeName: tenant?.name || 'our shop',
+        invoiceDate: new Date().toDateString(),
+        viewLink: `https://REMOVED_DOMAIN/p/invoice/${invoiceId}`,
       },
     });
   }
@@ -303,10 +311,9 @@ export class EmailListener {
       subject: `Service Request Received: ${jobNumber}`,
       data: {
         customerName: payload.customerName,
-        jobNumber,
-        deviceModel: payload.deviceModel,
-        shopName: tenant?.name || 'MobiBix Shop',
-        statusLink: `https://shop.REMOVED_DOMAIN/p/status/${job?.publicToken}`,
+        jobcardNumber: jobNumber,
+        storeName: tenant?.name || 'MobiBix Shop',
+        trackingLink: `https://REMOVED_DOMAIN/p/status/${job?.publicToken}`,
       },
     });
   }
@@ -359,11 +366,12 @@ export class EmailListener {
       subject,
       data: {
         customerName,
-        jobNumber: job?.jobNumber,
-        status,
-        deviceModel: payload.deviceModel,
-        shopName: tenant?.name || 'MobiBix Shop',
-        statusLink: `https://shop.REMOVED_DOMAIN/p/status/${job?.publicToken}`,
+        jobcardNumber: job?.jobNumber,
+        newStatus: status,
+        deviceName: payload.deviceModel || 'your device',
+        cost: '—',
+        storeName: tenant?.name || 'MobiBix Shop',
+        trackingLink: `https://REMOVED_DOMAIN/p/status/${job?.publicToken}`,
       },
     });
   }
