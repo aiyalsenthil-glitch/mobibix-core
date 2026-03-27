@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import Script from "next/script";
 import { Metadata } from 'next';
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 
 
 export const metadata: Metadata = {
@@ -136,6 +137,7 @@ export default function RootLayout({
           {children}
           <FacebookSDK />
           <SpeedInsights />
+          <Analytics />
         </Providers>
       </body>
 
