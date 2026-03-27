@@ -174,7 +174,7 @@ export default function PartnerTiersPage() {
   const yearlyPlanPrice = PLAN_PRICE;
   const firstPaymentEarning = Math.round((yearlyPlanPrice * currentTier.firstCommission) / 100);
   const recurringEarning = Math.round((yearlyPlanPrice * currentTier.recurringCommission) / 100);
-  const year1 = shops * firstPaymentEarning + shops * recurringEarning;
+  const year1 = shops * firstPaymentEarning; // first payment only — recurring starts at renewal (Year 2)
   const year2plus = shops * recurringEarning;
 
   return (
