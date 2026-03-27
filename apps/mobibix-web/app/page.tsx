@@ -1,8 +1,4 @@
-import dynamic from "next/dynamic";
-const HeroSlidesClient = dynamic(
-  () => import("../components/landing/HeroSlidesClient").then((m) => m.HeroSlidesClient),
-  { ssr: false }
-);
+import { HeroSlidesWrapper } from "../components/landing/HeroSlidesWrapper";
 import { WhatsAppWidget } from "../components/landing/WhatsAppWidget";
 import type { Metadata } from "next";
 import { getAllPosts } from "../lib/blog";
@@ -149,7 +145,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <HeroSlidesClient posts={posts} />
+      <HeroSlidesWrapper posts={posts} />
       <WhatsAppWidget />
     </main>
   );
