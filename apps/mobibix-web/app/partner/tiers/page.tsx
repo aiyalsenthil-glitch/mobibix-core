@@ -339,7 +339,7 @@ export default function PartnerTiersPage() {
               </div>
               <div className="p-5 bg-primary/10 border border-primary/20 rounded-2xl text-center">
                 <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-2">Year 2+ Passive</p>
-                <p className="text-4xl font-black text-foreground">₹{(year2plus .toLocaleString("en-IN")}</p>
+                <p className="text-4xl font-black text-foreground">₹{year2plus.toLocaleString("en-IN")}</p>
                 <p className="text-xs text-muted-foreground mt-1">yearly, no new effort</p>
               </div>
             </div>
@@ -347,18 +347,18 @@ export default function PartnerTiersPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between px-5 py-4 bg-muted/60 rounded-2xl">
                 <span className="text-sm font-bold text-muted-foreground">Year 1 total earnings ({shops} shops)</span>
-                <span className="text-xl font-black text-foreground">₹{(year1 .toLocaleString("en-IN")}</span>
+                <span className="text-xl font-black text-foreground">₹{year1.toLocaleString("en-IN")}</span>
               </div>
               <div className="flex items-center justify-between px-5 py-4 bg-primary/8 border border-primary/20 rounded-2xl">
                 <div>
                   <span className="text-sm font-bold text-primary">Year 2 onwards (recurring only)</span>
                   <span className="text-xs text-muted-foreground ml-2">— just keep them subscribed</span>
                 </div>
-                <span className="text-xl font-black text-primary">₹{(year2plus .toLocaleString("en-IN")}/yr</span>
+                <span className="text-xl font-black text-primary">₹{year2plus.toLocaleString("en-IN")}/yr</span>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground/50 text-center mt-4">
-              Based on ₹{(PLAN_PRICE .toLocaleString("en-IN")}/yr plan · All figures in INR · Illustrative only
+              Based on ₹{PLAN_PRICE.toLocaleString("en-IN")}/yr plan · All figures in INR · Illustrative only
             </p>
           </div>
         </div>
