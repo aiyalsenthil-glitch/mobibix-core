@@ -12,6 +12,7 @@ import {
   NotFoundException,
   Delete,
 } from '@nestjs/common';
+import { PrismaService } from '../../core/prisma/prisma.service';
 import { MembersService } from '../../core/members/members.service';
 import { CreateMemberDto } from '../../core/members/dto/create-member.dto';
 import { UpdateMemberDto } from '../../core/members/dto/update-member.dto';
@@ -39,7 +40,10 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
   TenantStatusGuard,
 )
 export class GymMembersController {
-  constructor(private readonly membersService: MembersService) {}
+  constructor(
+    private readonly membersService: MembersService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // ======================
   // CREATE / ADMISSION
@@ -262,5 +266,70 @@ export class GymMembersController {
   @Get(':id')
   getById(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberById(req.user.tenantId, id);
+  }
+
+  // ======================
+  // FREEZE / UNFREEZE
+  // ======================
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.CREATE)
+  @Roles(UserRole.OWNER)
+  @Post(':id/freeze')
+  freeze(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.freezeMember(req.user.tenantId, id);
+  }
+
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.CREATE)
+  @Roles(UserRole.OWNER)
+  @Post(':id/unfreeze')
+  unfreeze(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.unfreezeMember(req.user.tenantId, id);
+  }
+
+  // ======================
+  // UPI PAYMENT LINK
+  // ======================
+  /**
+   * GET /gym/members/:id/upi-payment
+   * Returns UPI deep-link URI + QR data for the member's due amount.
+   * Owner displays QR on screen — member scans with Google Pay / PhonePe / Paytm.
+   * Zero fees: money goes directly to owner's UPI ID.
+   */
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get(':id/upi-payment')
+  async getUpiPaymentLink(@Req() req: any, @Param('id') id: string) {
+    const tenantId = req.user.tenantId;
+
+    const [member, tenant] = await Promise.all([
+      this.prisma.member.findFirst({
+        where: { id, tenantId },
+        select: { id: true, fullName: true, feeAmount: true, paidAmount: true, paymentStatus: true },
+      }),
+      this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { gymUpiId: true, name: true },
+      }),
+    ]);
+
+    if (!member) throw new NotFoundException('Member not found');
+    if (!tenant?.gymUpiId) throw new BadRequestException('UPI ID not configured. Go to Settings → Gym Profile to add your UPI ID.');
+
+    const dueAmount = Math.max(0, (member.feeAmount - member.paidAmount) / 100); // paise → rupees
+    const note = `Membership-${member.fullName.replace(/\s+/g, '-')}`;
+
+    // UPI deep-link URI (works with all UPI apps)
+    const upiUri = `upi://pay?pa=${encodeURIComponent(tenant.gymUpiId)}&pn=${encodeURIComponent(tenant.name)}&am=${dueAmount.toFixed(2)}&tn=${encodeURIComponent(note)}&cu=INR`;
+
+    return {
+      upiId: tenant.gymUpiId,
+      gymName: tenant.name,
+      memberName: member.fullName,
+      dueAmount,
+      currency: 'INR',
+      note,
+      upiUri,
+      // QR content is the same URI — frontend encodes it with a QR library
+      qrContent: upiUri,
+    };
   }
 }

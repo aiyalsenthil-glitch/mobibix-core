@@ -5,9 +5,10 @@ import { CoreModule } from '../../../core/core.module';
 import { GymAttendanceCron } from '../attendance/gym-attendance.cron';
 import { GymAttendanceService } from '../attendance/gym-attendance.service';
 import { GymMembershipService } from '../membership/gym-membership.service';
+import { WhatsAppModule } from '../../whatsapp/whatsapp.module';
 
 @Module({
-  imports: [CoreModule],
+  imports: [CoreModule, WhatsAppModule],
   controllers: [GymDashboardController],
   providers: [
     GymAttendanceService,

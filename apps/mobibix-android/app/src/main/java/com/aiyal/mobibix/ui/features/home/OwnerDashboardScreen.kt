@@ -147,81 +147,39 @@ fun DashboardHeader(
     var showShopSelector by remember { mutableStateOf(false) }
     val selectedShopName = state.shops.find { it.id == state.selectedShopId }?.name ?: "All Businesses"
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Shop selector
-            Box {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.clickable { showShopSelector = true }
+        Box {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.clickable { showShopSelector = true }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Store,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = selectedShopName,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Icon(
-                            Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                DropdownMenu(
-                    expanded = showShopSelector,
-                    onDismissRequest = { showShopSelector = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("All Businesses") },
-                        onClick = { onShopSelected(null); showShopSelector = false }
-                    )
-                    state.shops.forEach { shop ->
-                        DropdownMenuItem(
-                            text = { Text(shop.name) },
-                            onClick = { onShopSelected(shop.id); showShopSelector = false }
-                        )
-                    }
+                    Icon(Icons.Default.Store, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(selectedShopName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.ArrowDropDown, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
             }
+            DropdownMenu(expanded = showShopSelector, onDismissRequest = { showShopSelector = false }) {
+                DropdownMenuItem(text = { Text("All Businesses") }, onClick = { onShopSelected(null); showShopSelector = false })
+                state.shops.forEach { shop ->
+                    DropdownMenuItem(text = { Text(shop.name) }, onClick = { onShopSelected(shop.id); showShopSelector = false })
+                }
+            }
+        }
 
-            // Reports link
-            TextButton(onClick = onNavigateToReports) {
-                Text(
-                    "Reports",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+        Spacer(Modifier.weight(1f))
+
+        TextButton(onClick = onNavigateToReports) {
+            Text("Reports", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
         }
     }
 }

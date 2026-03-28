@@ -289,6 +289,30 @@ export class WhatsAppVariableResolver {
         return member.feeAmount - member.paidAmount;
       }
 
+      case 'lastAttendanceDate': {
+        if (!memberId) throw new BadRequestException('Member context required');
+        const lastAttendance = await this.prisma.gymAttendance.findFirst({
+          where: { memberId, tenantId },
+          orderBy: { checkInTime: 'desc' },
+          select: { checkInTime: true },
+        });
+        return lastAttendance?.checkInTime ?? null;
+      }
+
+      case 'daysSinceLastVisit': {
+        if (!memberId) throw new BadRequestException('Member context required');
+        const lastAttendance = await this.prisma.gymAttendance.findFirst({
+          where: { memberId, tenantId },
+          orderBy: { checkInTime: 'desc' },
+          select: { checkInTime: true },
+        });
+        if (!lastAttendance) return null;
+        const msPerDay = 1000 * 60 * 60 * 24;
+        return Math.floor(
+          (Date.now() - lastAttendance.checkInTime.getTime()) / msPerDay,
+        );
+      }
+
       // MOBILE_SALES computed variables
       case 'invoicePaidAmount': {
         if (!invoiceId)

@@ -121,8 +121,8 @@ fun TenantRequiredScreen(
             if (categories.isNotEmpty()) {
                 selectedCategory = categories.firstOrNull { it.name == "Mobile Shop" } ?: categories.firstOrNull()
             }
-        } catch (e: Exception) {
-            error = "Failed to load business categories"
+        } catch (_: Exception) {
+            // Non-fatal: businessType is free-text, categories are optional
         } finally {
             categoriesLoading = false
         }

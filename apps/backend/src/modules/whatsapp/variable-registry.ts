@@ -219,6 +219,28 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         required: true,
       },
     },
+    ATTENDANCE_GAP: {
+      lastAttendanceDate: {
+        key: 'lastAttendanceDate',
+        label: 'Last Attendance Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'GymAttendance.lastCheckIn',
+        dataType: VariableDataType.DATE,
+        required: false,
+        description: 'Date of the member\'s most recent gym visit',
+      },
+      daysSinceLastVisit: {
+        key: 'daysSinceLastVisit',
+        label: 'Days Since Last Visit',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'GymAttendance.daysSinceLastCheckIn',
+        dataType: VariableDataType.NUMBER,
+        required: false,
+        description: 'Number of days since the member last visited',
+      },
+    },
   },
   [WhatsAppModule.MOBILE_SHOP]: {
     // 🔔 GLOBAL variables available to all MobileShop events

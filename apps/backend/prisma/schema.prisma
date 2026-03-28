@@ -42,6 +42,7 @@ model Tenant {
   kioskToken               String?                 @unique
   enabledModules           ModuleType[]
   maxMembers               Int                     @default(50)
+  gymUpiId                 String?
   whatsappEnabled          Boolean                 @default(true)
   whatsappCrmEnabled       Boolean                 @default(false)
   whatsappPhoneNumberId    String?
@@ -85,6 +86,8 @@ model Tenant {
   healthScore              TenantHealthScore?
   aiUsageLogs              AiUsageLog[]
   members                  Member[]                @relation("TenantMembers")
+  gymPlans                 GymPlan[]               @relation("TenantGymPlans")
+  gymExpenses              GymExpense[]            @relation("TenantGymExpenses")
   ledgerAccounts           LedgerAccount[]
   ledgerCustomers          LedgerCustomer[]
   ledgerPayments           LedgerPayment[]
@@ -313,15 +316,20 @@ model Member {
   paymentDueDate      DateTime
   paymentReminderSent Boolean             @default(false)
   isActive            Boolean             @default(true)
+  isFrozen            Boolean             @default(false)
+  frozenAt            DateTime?
+  frozenDays          Int                 @default(0)
   photoUrl            String?
   welcomeMessageSent  Boolean             @default(false)
   hasCoaching         Boolean             @default(false)
   customerId          String?
   contactId           String?
+  fitnessProfileId    String?
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
   contact             Contact?            @relation(fields: [contactId], references: [id])
   customer            Party?              @relation(fields: [customerId], references: [id])
+  fitnessProfile      FitnessProfile?     @relation(fields: [fitnessProfileId], references: [id])
   tenant              Tenant              @relation("TenantMembers", fields: [tenantId], references: [id])
   payments            MemberPayment[]
 
@@ -968,6 +976,42 @@ model GymMembership {
   @@index([tenantId])
   @@index([memberId])
   @@map("gp_gym_membership")
+}
+
+// Gym-specific membership plans (different from SaaS billing plans)
+model GymPlan {
+  id          String       @id @default(cuid())
+  tenantId    String
+  name        String       // e.g. "Monthly", "Quarterly VIP"
+  durationDays Int         // 30, 90, 180, 365
+  price       Int          // in paise (₹1000 = 100000)
+  type        GymPlanType  @default(MONTHLY)
+  description String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tenant      Tenant       @relation("TenantGymPlans", fields: [tenantId], references: [id])
+
+  @@index([tenantId, isActive])
+  @@map("gp_gym_plan")
+}
+
+// Gym expense tracking for P&L
+model GymExpense {
+  id          String             @id @default(cuid())
+  tenantId    String
+  category    GymExpenseCategory
+  amount      Int                // in paise
+  date        DateTime
+  note        String?
+  createdBy   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  tenant      Tenant             @relation("TenantGymExpenses", fields: [tenantId], references: [id])
+
+  @@index([tenantId, date])
+  @@index([tenantId, category])
+  @@map("gp_gym_expense")
 }
 
 model WhatsAppSetting {
@@ -3266,6 +3310,69 @@ enum AttendanceSource {
 enum MembershipStatus {
   ACTIVE
   EXPIRED
+}
+
+// Personal fitness account — standalone, no gym required
+model FitnessProfile {
+  id           String              @id @default(cuid())
+  REMOVED_AUTH_PROVIDERUid  String              @unique
+  email        String?
+  fullName     String?
+  phone        String?
+  goalType     FitnessGoal?
+  tier         FitnessTier         @default(FREE)
+  proExpiresAt DateTime?           // null = lifetime Pro; date = subscription expiry
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  members      Member[]
+  bodyMetrics  FitnessBodyMetric[]
+
+  @@index([phone])
+  @@map("gp_fitness_profile")
+}
+
+model FitnessBodyMetric {
+  id          String         @id @default(cuid())
+  profileId   String
+  date        DateTime       @default(now())
+  weightKg    Float?
+  heightCm    Float?
+  bodyFatPct  Float?
+  bmi         Float?
+  waistCm     Float?
+  hipCm       Float?
+  armCm       Float?
+  chestCm     Float?
+  note        String?
+  createdAt   DateTime       @default(now())
+  profile     FitnessProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, date])
+  @@map("gp_fitness_body_metric")
+}
+
+enum FitnessTier {
+  FREE
+  PRO
+}
+
+enum GymPlanType {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  ANNUAL
+  CUSTOM
+}
+
+enum GymExpenseCategory {
+  RENT
+  SALARY
+  EQUIPMENT
+  UTILITY
+  MAINTENANCE
+  MARKETING
+  SUPPLEMENT
+  OTHER
 }
 
 enum LedgerInstallmentType {

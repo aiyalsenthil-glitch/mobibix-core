@@ -1067,4 +1067,47 @@ export class MembersService {
       },
     });
   }
+
+  // Freeze membership — stops expiry clock
+  async freezeMember(tenantId: string, memberId: string) {
+    const member = await this.prisma.member.findFirst({
+      where: { id: memberId, tenantId, isActive: true },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+    if (member.isFrozen) return { success: true, message: 'Already frozen' };
+
+    await this.prisma.member.update({
+      where: { id: memberId },
+      data: { isFrozen: true, frozenAt: new Date() },
+    });
+    return { success: true };
+  }
+
+  // Unfreeze membership — extends expiry by days frozen
+  async unfreezeMember(tenantId: string, memberId: string) {
+    const member = await this.prisma.member.findFirst({
+      where: { id: memberId, tenantId, isActive: true },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+    if (!member.isFrozen || !member.frozenAt) {
+      return { success: true, message: 'Not frozen' };
+    }
+
+    const daysFrozen = Math.floor(
+      (Date.now() - member.frozenAt.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const newEndAt = new Date(member.membershipEndAt);
+    newEndAt.setDate(newEndAt.getDate() + daysFrozen);
+
+    await this.prisma.member.update({
+      where: { id: memberId },
+      data: {
+        isFrozen: false,
+        frozenAt: null,
+        frozenDays: member.frozenDays + daysFrozen,
+        membershipEndAt: newEndAt,
+      },
+    });
+    return { success: true, daysExtended: daysFrozen, newEndAt };
+  }
 }

@@ -46,4 +46,30 @@ export class GymDashboardController {
       numDays,
     );
   }
+
+  // Daily cash collection report
+  @RequirePermission(PERMISSIONS.CORE.DASHBOARD.VIEW)
+  @Get('daily-collection')
+  getDailyCollection(@Req() req: any, @Query('date') date?: string) {
+    return this.dashboardService.getDailyCollection(req.user.tenantId, date);
+  }
+
+  // Android app quick-count endpoints
+  @RequirePermission(PERMISSIONS.CORE.DASHBOARD.VIEW)
+  @Get('membership-due')
+  getMembershipDueCount(@Req() req: any) {
+    return this.dashboardService.getMembershipDueCount(req.user.tenantId);
+  }
+
+  @RequirePermission(PERMISSIONS.CORE.DASHBOARD.VIEW)
+  @Get('payment-pending')
+  getPaymentPendingCount(@Req() req: any) {
+    return this.dashboardService.getPaymentPendingCount(req.user.tenantId);
+  }
+
+  @RequirePermission(PERMISSIONS.CORE.DASHBOARD.VIEW)
+  @Get('expiring-week')
+  getExpiringThisWeekCount(@Req() req: any) {
+    return this.dashboardService.getExpiringThisWeekCount(req.user.tenantId);
+  }
 }

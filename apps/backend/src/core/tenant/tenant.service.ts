@@ -455,6 +455,7 @@ export class TenantService {
         // taxSystem will be available after: npx prisma generate
         logoUrl: data.logoUrl,
         marketingConsent: data.marketingConsent,
+        gymUpiId: data.gymUpiId,
       },
     });
   }

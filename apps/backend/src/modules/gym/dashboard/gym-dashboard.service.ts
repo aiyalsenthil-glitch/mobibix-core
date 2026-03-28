@@ -319,4 +319,51 @@ export class GymDashboardService {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }
+
+  async getDailyCollection(tenantId: string, dateStr?: string) {
+    const date = dateStr ? new Date(dateStr) : new Date();
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const payments = await this.prisma.memberPayment.findMany({
+      where: { tenantId, createdAt: { gte: start, lte: end } },
+      select: { amount: true, method: true },
+    });
+
+    const byMethod: Record<string, number> = {};
+    let total = 0;
+    for (const p of payments) {
+      const method = p.method ?? 'CASH';
+      byMethod[method] = (byMethod[method] ?? 0) + p.amount;
+      total += p.amount;
+    }
+
+    return {
+      date: start.toISOString().slice(0, 10),
+      total,
+      count: payments.length,
+      breakdown: Object.entries(byMethod).map(([method, amount]) => ({ method, amount })),
+    };
+  }
+
+  async getMembershipDueCount(tenantId: string) {
+    const count = await this.membersService.countMembershipsDue(tenantId);
+    return { count };
+  }
+
+  async getPaymentPendingCount(tenantId: string) {
+    const members = await this.membersService.getPaymentsPending(tenantId);
+    const totalDue = members.reduce((sum, m) => {
+      const due = (m.feeAmount ?? 0) - (m.paidAmount ?? 0);
+      return due > 0 ? sum + due : sum;
+    }, 0);
+    return { count: members.length, totalDue };
+  }
+
+  async getExpiringThisWeekCount(tenantId: string) {
+    const count = await this.membersService.countExpiringThisWeek(tenantId, 7);
+    return { count };
+  }
 }

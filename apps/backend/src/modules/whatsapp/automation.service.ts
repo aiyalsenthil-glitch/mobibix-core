@@ -39,6 +39,7 @@ export class AutomationService {
       'PAYMENT_DUE_BEFORE',
       'PAYMENT_DUE_AFTER',
       'COACHING_FOLLOWUP',
+      'ATTENDANCE_GAP',
     ],
     MOBILE_SHOP: [
       'FOLLOW_UP_SCHEDULED',
@@ -107,6 +108,7 @@ export class AutomationService {
       case 'WARRANTY_EXPIRY':
       case 'POST_REPAIR_SURVEY':
       case 'CUSTOMER_WIN_BACK':
+      case 'ATTENDANCE_GAP':
         return ReminderTriggerType.EVENT_BASED;
       default:
         return ReminderTriggerType.DATE; // Fallback
@@ -384,13 +386,13 @@ export class AutomationService {
     }
 
     // 2️⃣ Resolve Customer ID based on Entity
-    // (For MEMBER_CREATED, entityId is memberId)
-    if (!customerId && moduleType === 'GYM' && eventType === 'MEMBER_CREATED') {
+    if (!customerId && moduleType === 'GYM') {
+      // For most GYM events, entityId is the MemberId
       const member = await this.prisma.member.findUnique({
         where: { id: entityId },
+        select: { customerId: true },
       });
-      // Force cast to access customerId (recently added)
-      customerId = (member as any)?.customerId || undefined;
+      customerId = member?.customerId || undefined;
     }
 
     // fallback or other modules...

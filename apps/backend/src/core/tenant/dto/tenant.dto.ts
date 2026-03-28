@@ -162,4 +162,8 @@ export class UpdateTenantSettingsDto {
   @IsOptional()
   @IsString()
   acceptedPolicyVersion?: string;
+
+  @IsOptional()
+  @IsString()
+  gymUpiId?: string;
 }

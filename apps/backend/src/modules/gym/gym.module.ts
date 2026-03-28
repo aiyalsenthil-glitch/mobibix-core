@@ -7,26 +7,35 @@ import { GymAttendanceService } from './attendance/gym-attendance.service';
 
 import { GymMembershipController } from './membership/gym-membership.controller';
 import { GymMembershipService } from './membership/gym-membership.service';
-import { GymDashboardController } from './dashboard/gym-dashboard.controller';
-import { GymDashboardService } from './dashboard/gym-dashboard.service';
 import { GymMembersController } from './gym-members.controller';
 import { PublicCheckinModule } from './public-checkin/public-checkin.module';
 import { PaymentsModule } from '../../core/billing//payments/payments.module';
 import { PaymentsController } from './payments/payments.controller';
+import { GymPlansController } from './plans/gym-plans.controller';
+import { GymPlansService } from './plans/gym-plans.service';
+import { GymExpensesController } from './expenses/gym-expenses.controller';
+import { GymExpensesService } from './expenses/gym-expenses.service';
 
 @Module({
   imports: [
     CoreModule,
     GymDashboardModule,
     PublicCheckinModule,
-
     PaymentsModule,
   ],
   controllers: [
-    GymDashboardController,
+    GymAttendanceController,
+    GymMembershipController,
     GymMembersController,
     PaymentsController,
+    GymPlansController,
+    GymExpensesController,
   ],
-  providers: [GymAttendanceService, GymMembershipService, GymDashboardService],
+  providers: [
+    GymAttendanceService,
+    GymMembershipService,
+    GymPlansService,
+    GymExpensesService,
+  ],
 })
 export class GymModule {}

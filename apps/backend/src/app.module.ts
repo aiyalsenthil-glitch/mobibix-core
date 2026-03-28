@@ -45,6 +45,7 @@ import { BullModule } from '@nestjs/bullmq';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DistributorModule } from './modules/distributor/distributor.module';
+import { FitnessModule } from './modules/fitness/fitness.module';
 
 type RequestUserContext = {
   tenantId?: string;
@@ -221,6 +222,7 @@ type LoggerRequest = {
       },
     }),
     DistributorModule,
+    FitnessModule,
   ],
   controllers: [AppController],
   providers: [

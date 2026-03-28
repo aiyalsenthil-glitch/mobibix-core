@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Req,
   UseGuards,
   Param,
@@ -166,6 +167,28 @@ export class StaffController {
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
     return this.staffService.revokeInvite(req.user.tenantId, inviteId);
   }
+  // OWNER: Disable (soft-remove) staff — same as remove but via PATCH for UI semantics
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+  )
+  @RequirePermission(PERMISSIONS.CORE.STAFF.MANAGE)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Patch(':staffUserId/disable')
+  async disableStaff(
+    @Req() req: any,
+    @Param('staffUserId') staffUserId: string,
+  ) {
+    return this.staffService.removeStaff(
+      req.user.tenantId,
+      staffUserId,
+      req.user.id,
+    );
+  }
+
   // OWNER: Remove staff from tenant
   @UseGuards(
     JwtAuthGuard,
