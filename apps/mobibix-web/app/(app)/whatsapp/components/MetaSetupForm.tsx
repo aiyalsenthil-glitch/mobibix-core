@@ -32,12 +32,8 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
   const [result, setResult] = useState<{ phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' } | null>(null);
 
   useEffect(() => {
-    if (window.FB) {
-      setState("ready");
-      return;
-    }
-
-    window.fbAsyncInit = () => {
+    const initFB = () => {
+      // Always re-init with correct app ID + version in case SDK was pre-loaded with wrong config
       window.FB.init({
         appId: FB_APP_ID,
         cookie: true,
@@ -47,6 +43,13 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
       setState("ready");
     };
 
+    if (window.FB) {
+      initFB();
+      return;
+    }
+
+    window.fbAsyncInit = initFB;
+
     if (!document.getElementById("facebook-jssdk")) {
       const js = document.createElement("script");
       js.id = "facebook-jssdk";
@@ -54,6 +57,12 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
       js.async = true;
       js.defer = true;
       document.head.appendChild(js);
+    } else {
+      // Script tag exists but FB not ready yet — wait for fbAsyncInit
+      const poll = setInterval(() => {
+        if (window.FB) { clearInterval(poll); initFB(); }
+      }, 100);
+      setTimeout(() => clearInterval(poll), 10000);
     }
   }, []);
 

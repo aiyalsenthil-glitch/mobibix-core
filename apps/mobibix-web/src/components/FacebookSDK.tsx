@@ -27,10 +27,9 @@ export default function FacebookSDK() {
             FB.init({
               appId      : '${FACEBOOK_APP_ID}',
               cookie     : true,
-              xfbml      : true,
-              version    : 'v19.0'
+              xfbml      : false,
+              version    : 'v22.0'
             });
-            FB.AppEvents.logPageView();   
           };
         `}
       </Script>
