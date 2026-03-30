@@ -43,8 +43,23 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
     new Date().toISOString().split("T")[0]
   );
   
-  // Product Items
-  const [items, setItems] = useState<ProductItem[]>([]);
+  // Product Items (Initialize with one empty row for better UX)
+  const [items, setItems] = useState<ProductItem[]>(() => [
+    {
+      id: "initial-empty-row", // Use a static ID to avoid SSR/Impure function errors during first render
+      shopProductId: "",
+      productName: "",
+      hsnSac: "",
+      quantity: 1,
+      rate: 0,
+      gstRate: shopGstEnabled ? 18 : 0,
+      gstAmount: 0,
+      total: 0,
+      imeis: [],
+      serialNumbers: [],
+      costPrice: null,
+    }
+  ]);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(true);
 
   // Payment State
