@@ -228,10 +228,10 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-16">
                  {[
-                    { q: "Setup duration?", a: "5 minutes. Simple data import, zero downtime." },
-                    { q: "Anti-theft protocol?", a: "Serial-locked inventory means zero stock leakage." },
-                    { q: "Device compatibility?", a: "Web-native. Runs on tablets, laptops, and mobile." },
-                    { q: "WhatsApp Cost?", a: "Integrated. Send notifications for free directly." }
+                    { q: "How long does it take to setup MobiBix?", a: "You can be fully set up in under 5 minutes. We support simple data import from Excel, ensuring zero downtime for your retail operations." },
+                    { q: "How does MobiBix protect my mobile shop inventory?", a: "MobiBix uses a serial-locked inventory system (IMEI/SN). Every device is tracked from purchase to sale, ensuring 100% accuracy and preventing stock leakage." },
+                    { q: "Which devices are compatible with MobiBix?", a: "MobiBix is a web-native Retail OS. It runs seamlessly on any device with a browser, including laptops, tablets, and Android smartphones." },
+                    { q: "How much does WhatsApp integration cost?", a: "MobiBix provides built-in WhatsApp automation at no extra cost. You can send payment reminders and repair status updates for free." }
                  ].map((faq, i) => (
                     <motion.div 
                       key={i} 
