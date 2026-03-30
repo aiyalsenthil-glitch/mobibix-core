@@ -29,9 +29,11 @@ https://*.REMOVED_AUTH_PROVIDERio.com
 http://localhost_REPLACED:3000 
 http://localhost_REPLACED:3001 
 http://localhost_REPLACED:3005 
-https://www.google-analytics.com;
-img-src 'self' data: https://*.googleusercontent.com https://www.googletagmanager.com https://grainy-gradients.vercel.app;
-frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com;
+https://www.google-analytics.com
+https://www.facebook.com
+https://*.facebook.com;
+img-src 'self' data: https://*.googleusercontent.com https://www.googletagmanager.com https://grainy-gradients.vercel.app https://www.facebook.com https://*.facebook.com;
+frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com https://www.facebook.com https://*.facebook.com;
 frame-ancestors 'none';
             `.replace(/\n/g, " "),
           },

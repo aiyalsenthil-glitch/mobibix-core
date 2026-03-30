@@ -67,63 +67,84 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
     setError(null);
 
     let embeddedData: { waba_id?: string; phone_number_id?: string } = {};
+
+    // Message listener for Embedded Signup (all versions)
     const sessionListener = (event: MessageEvent) => {
+      // In production, also check event.srcElement === popupWindow if needed
       if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         if (data?.type === "WA_EMBEDDED_SIGNUP") {
-          embeddedData = { waba_id: data.data?.waba_id, phone_number_id: data.data?.phone_number_id };
+          const { waba_id, phone_number_id, code } = data.data || {};
+          
+          // Complete the exchange if we have all needed parts
+          if (code) {
+            window.removeEventListener("message", sessionListener);
+            void handleMetaExchange(code, waba_id, phone_number_id);
+          } else {
+            // Older versions or intermediate steps might not have the code yet
+            embeddedData = { waba_id, phone_number_id };
+          }
         }
-      } catch {}
+      } catch (err) {
+        console.error("Message listener error:", err);
+      }
     };
+
     window.addEventListener("message", sessionListener);
 
-    const loginParams: any = {
-      config_id: FB_CONFIG_ID,
-      response_type: "code",
-      override_default_response_type: true,
-      return_scopes: true,
-      scope: "whatsapp_business_management,whatsapp_business_messaging",
-      extras: { feature: "whatsapp_embedded_signup", sessionInfoVersion: "3", version: "v3", setup: {} },
-    };
+    // Modern "Direct Onboarding URL" flow parameters
+    const extras = JSON.stringify({ sessionInfoVersion: "3", version: "v3" });
+    const scopes = "whatsapp_business_management,whatsapp_business_messaging";
+    
+    // Construct the working Direct URL that showed the correct UI
+    const directUrl = new URL("https://business.facebook.com/messaging/whatsapp/onboard/");
+    directUrl.searchParams.set("app_id", FB_APP_ID);
+    directUrl.searchParams.set("config_id", FB_CONFIG_ID);
+    directUrl.searchParams.set("extras", extras);
+    directUrl.searchParams.set("scope", scopes);
+    directUrl.searchParams.set("response_type", "code");
+    directUrl.searchParams.set("override_default_response_type", "true");
 
-    window.FB.login((response: any) => {
-      window.removeEventListener("message", sessionListener);
+    // Open the popup
+    const popup = window.open(directUrl.toString(), "fb_login", "width=600,height=700");
 
-      if (response.status !== "connected") {
-        setState("ready"); setError("Facebook login was cancelled. Please try again."); return;
+    // Helper to finish the process
+    async function handleMetaExchange(authCode: string, wabaId?: string, phoneId?: string) {
+      if (popup) popup.close();
+      try {
+        const res = await metaExchange({
+          code: authCode,
+          wabaId: wabaId || embeddedData.waba_id,
+          phoneNumberId: phoneId || embeddedData.phone_number_id,
+          mode,
+        });
+        setResult({ phoneNumber: res.phoneNumber, wabaId: res.wabaId, tokenType: res.tokenType });
+        setState("success");
+      } catch (err: any) {
+        setState("ready");
+        setError(err.message || "Failed to connect Meta WhatsApp. Please try again.");
       }
+    }
 
-      const grantedScopes: string[] = response.authResponse?.grantedScopes?.split(",") ?? [];
-      if (grantedScopes.length > 0) {
-        const missing = REQUIRED_SCOPES.filter((s) => !grantedScopes.includes(s));
-        if (missing.length > 0) {
-          setState("ready");
-          setError(`Missing permissions: ${missing.join(", ")}. Please reconnect and allow all permissions.`);
-          return;
+    // Safety fallback for SDK-based completions (if popup closes without code but FB.login works)
+    // Note: window.FB.login is kept here as a secondary mechanism if the direct URL redirects back differently
+    if (window.FB && !popup) {
+      window.FB.login((response: any) => {
+        if (response.status === "connected" && response.authResponse?.code) {
+          void handleMetaExchange(response.authResponse.code);
+        } else if (state === "connecting") {
+           setState("ready"); // Reset if window didn't open and login failed
         }
-      }
-
-      if (!response.authResponse?.code) {
-        setState("ready"); setError("No authorization code received. Please try again."); return;
-      }
-
-      void (async () => {
-        try {
-          const res = await metaExchange({
-            code: response.authResponse.code,
-            wabaId: embeddedData.waba_id,
-            phoneNumberId: embeddedData.phone_number_id,
-            mode,
-          });
-          setResult({ phoneNumber: res.phoneNumber, wabaId: res.wabaId, tokenType: res.tokenType });
-          setState("success");
-        } catch (err: any) {
-          setState("ready");
-          setError(err.message || "Failed to connect Meta WhatsApp. Please try again.");
-        }
-      })();
-    }, loginParams);
+      }, {
+        config_id: FB_CONFIG_ID,
+        response_type: "code",
+        override_default_response_type: true,
+        scope: scopes,
+        extras: { sessionInfoVersion: "3", version: "v3" }
+      });
+    }
   }
 
   if (state === "success" && result) {
