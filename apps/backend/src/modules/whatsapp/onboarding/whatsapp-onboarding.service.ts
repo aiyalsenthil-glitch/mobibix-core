@@ -407,7 +407,8 @@ export class WhatsAppOnboardingService {
       throw new BadRequestException('Failed to retrieve WhatsApp Business Account details.');
     }
 
-    // 6. Persist + enable
+    // 6. Persist + enable (disable any other active provider first)
+    await this.disableOtherProviders(tenantId, phoneNumberId);
     const encryptedToken = encrypt(accessToken);
     const isSystemToken = tokenExpiresAt === null;
     await this.prisma.$transaction([
@@ -459,6 +460,21 @@ export class WhatsAppOnboardingService {
       wabaId,
       tokenType: (tokenExpiresAt === null ? 'system' : 'user') as 'user' | 'system',
     };
+  }
+
+  /**
+   * Disables all active WhatsApp numbers for a tenant except the one being configured.
+   * Enforces one-provider-at-a-time rule.
+   */
+  private async disableOtherProviders(tenantId: string, keepPhoneNumberId: string) {
+    await this.prisma.whatsAppNumber.updateMany({
+      where: {
+        tenantId,
+        isEnabled: true,
+        phoneNumberId: { not: keepPhoneNumberId },
+      },
+      data: { isEnabled: false, setupStatus: 'DISCONNECTED' as any },
+    });
   }
 
   /**
@@ -631,6 +647,9 @@ export class WhatsAppOnboardingService {
 
     // Authkey numbers don't have a Meta phoneNumberId — use phone as unique key
     const placeholderPhoneNumberId = `REMOVED_TOKEN:${tenantId}:${phoneNumber.replace(/\D/g, '')}`;
+
+    // Disable any other active provider before enabling Authkey
+    await this.disableOtherProviders(tenantId, placeholderPhoneNumberId);
 
     const record = await this.prisma.whatsAppNumber.upsert({
       where: { phoneNumberId: placeholderPhoneNumberId },
