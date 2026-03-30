@@ -2,7 +2,7 @@
 -- Adds: campaign fields, per-recipient logs, Authkey number fields
 
 -- AlterTable: WhatsAppNumber — Authkey connection tracking
-ALTER TABLE "WhatsAppNumber"
+ALTER TABLE "WhatsAppPhoneNumber"
   ADD COLUMN IF NOT EXISTS "REMOVED_TOKENCountryCode" TEXT DEFAULT '91',
   ADD COLUMN IF NOT EXISTS "REMOVED_TOKENVerifiedAt"  TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "lastTestSentAt"     TIMESTAMP(3);
@@ -26,7 +26,7 @@ ALTER TABLE "WhatsAppCampaign"
 -- FK: WhatsAppCampaign → WhatsAppNumber
 ALTER TABLE "WhatsAppCampaign"
   ADD CONSTRAINT "WhatsAppCampaign_whatsAppNumberId_fkey"
-  FOREIGN KEY ("whatsAppNumberId") REFERENCES "WhatsAppNumber"("id")
+  FOREIGN KEY ("whatsAppNumberId") REFERENCES "WhatsAppPhoneNumber"("id")
   ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- CreateTable: WhatsAppCampaignLog (per-recipient send results)
