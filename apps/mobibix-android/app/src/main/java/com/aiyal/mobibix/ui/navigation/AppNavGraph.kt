@@ -420,7 +420,8 @@ fun AppNavGraph(
         // Inventory Routes
         composable("product_list") {
             com.aiyal.mobibix.ui.features.products.ProductListScreen(
-                navController = navController
+                navController = navController,
+                onOpenDrawer = {}
             )
         }
 

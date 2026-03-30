@@ -41,7 +41,7 @@ import {
 export class LedgerController {
   constructor(private readonly ledgerService: LedgerService) {}
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.CREATE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.CUSTOMER.CREATE)
   @Post('customers')
   createCustomer(
     @Req() req: any,
@@ -50,7 +50,7 @@ export class LedgerController {
     return this.ledgerService.createCustomer(req.user.tenantId, body);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.MANAGE)
   @Post('accounts')
   createAccount(
     @Req() req: any,
@@ -58,13 +58,13 @@ export class LedgerController {
   ) {
     return this.ledgerService.createAccount(req.user.tenantId, body);
   }
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.CUSTOMER.VIEW)
   @Get('dashboard/stats')
   getDashboardStats(@Req() req: any) {
     return this.ledgerService.getDashboardStats(req.user.tenantId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.CUSTOMER.VIEW)
   @Get('customers')
   listCustomers(
     @Req() req: any,
@@ -78,7 +78,7 @@ export class LedgerController {
     );
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.MANAGE)
   @Get('accounts')
   listAccounts(
     @Req() req: any,
@@ -94,24 +94,24 @@ export class LedgerController {
     );
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.CUSTOMER.VIEW)
   @Get('customers/search')
   searchCustomers(@Req() req: any, @Query('q') q: string) {
     return this.ledgerService.searchCustomers(req.user.tenantId, q);
   }
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.MANAGE)
   @Get('accounts/search')
   searchAccounts(@Req() req: any, @Query('q') q: string) {
     return this.ledgerService.searchAccounts(req.user.tenantId, q);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.COLLECT)
   @Get('accounts/:ledgerId/collect')
   getCollectScreen(@Req() req: any, @Param('ledgerId') ledgerId: string) {
     return this.ledgerService.getCollectScreen(req.user.tenantId, ledgerId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.MANAGE)
   @Post('accounts/:ledgerId/foreclose')
   @HttpCode(200)
   forecloseAccount(
@@ -124,7 +124,7 @@ export class LedgerController {
       collectedBy: req.user.id,
     });
   }
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.COLLECT)
   @Post('collections/collect')
   collectAmount(
     @Req() req: any,
@@ -135,25 +135,25 @@ export class LedgerController {
       collectedBy: req.user.id,
     });
   }
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.CUSTOMER.VIEW)
   @Get('customers/:customerId/profile')
   getCustomerProfile(@Req() req: any, @Param('customerId') customerId: string) {
     return this.ledgerService.getCustomerProfile(req.user.tenantId, customerId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.CUSTOMER.VIEW)
   @Get('customers/:customerId/performance')
   getCustomerPerformance(@Req() req: any, @Param('customerId') customerId: string) {
     return this.ledgerService.getCustomerPerformance(req.user.tenantId, customerId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.REPORT.VIEW)
   @Get('reports/portfolio')
   getPortfolioReport(@Req() req: any) {
     return this.ledgerService.getPortfolioReport(req.user.tenantId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.REPORT.VIEW)
   @Get('reports/pl')
   getProfitLossReport(
     @Req() req: any,
@@ -163,13 +163,13 @@ export class LedgerController {
     return this.ledgerService.getProfitLossReport(req.user.tenantId, from, to);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.LEDGER.COLLECT)
   @Get('reports/today')
   getTodayCollectionSheet(@Req() req: any) {
     return this.ledgerService.getTodayCollectionSheet(req.user.tenantId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @RequirePermission(PERMISSIONS.DIGITAL_LEDGER.REPORT.VIEW)
   @Get('reports/alerts')
   getIntelligenceAlerts(@Req() req: any) {
     return this.ledgerService.getIntelligenceAlerts(req.user.tenantId);

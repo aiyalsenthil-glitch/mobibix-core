@@ -165,6 +165,34 @@ export class WhatsAppOnboardingController {
   }
 
   /**
+   * Authkey onboarding Step 3 — send a test message to verify credentials.
+   * POST /integrations/whatsapp/REMOVED_TOKEN/verify
+   * Body: { testPhone: "919876543210" }
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
+  @Post('REMOVED_TOKEN/verify')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async verifyAuthkey(
+    @Req() req,
+    @Body() body: { testPhone: string },
+  ) {
+    return this.onboardingService.verifyAuthkey(req.user.tenantId, body.testPhone);
+  }
+
+  /**
+   * GET /integrations/whatsapp/REMOVED_TOKEN/balance
+   * Returns Authkey account balance + estimated messages remaining.
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
+  @Get('REMOVED_TOKEN/balance')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async getBalance(@Req() req) {
+    return this.onboardingService.getAuthkeyBalance(req.user.tenantId);
+  }
+
+  /**
    * Meta Embedded Signup — called from frontend after FB.login() succeeds.
    * Accepts the authorization code returned by the FB SDK popup.
    * POST /integrations/whatsapp/meta-exchange

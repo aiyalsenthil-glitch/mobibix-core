@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { encrypt, decrypt } from '../../../common/utils/crypto.util';
+import { encrypt, decrypt } from '../../../common/utils/crypto.util'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { PlanRulesService } from '../../../core/billing/plan-rules.service';
 import { WhatsAppFeature } from '../../../core/billing/whatsapp-rules';
 import { ModuleType } from '@prisma/client';
@@ -666,6 +666,151 @@ export class WhatsAppOnboardingService {
 
     this.logger.log(`Authkey configured for tenant ${tenantId}, number: ${phoneNumber}`);
     return { success: true, numberId: record.id };
+  }
+
+  /**
+   * Send a test WhatsApp message to verify Authkey credentials.
+   * Called in onboarding Step 3 — verify connection.
+   * On success, sets REMOVED_TOKENVerifiedAt and lastTestSentAt.
+   */
+  async verifyAuthkey(tenantId: string, testPhone: string): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: string;
+  }> {
+    const waNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, provider: 'AUTHKEY' as any, isEnabled: true },
+      select: { id: true, REMOVED_TOKENApiKey: true, REMOVED_TOKENSenderId: true, REMOVED_TOKENCountryCode: true },
+    } as any);
+
+    if (!waNumber) {
+      throw new BadRequestException('No Authkey number configured. Complete Step 2 first.');
+    }
+    if (!(waNumber as any).REMOVED_TOKENApiKey) {
+      throw new BadRequestException('API key not set. Complete Step 2 first.');
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = decrypt((waNumber as any).REMOVED_TOKENApiKey);
+    } catch {
+      throw new BadRequestException('Stored API key is invalid. Re-enter your Authkey credentials.');
+    }
+
+    const phone = testPhone.replace(/\D/g, '');
+    const countryCode = (waNumber as any).REMOVED_TOKENCountryCode ?? '91';
+
+    // Use Authkey GET API to send a simple text test
+    try {
+      const params = new URLSearchParams({
+        REMOVED_TOKEN: apiKey,
+        mobile: phone,
+        country_code: countryCode,
+        type: 'whatsapp',
+        message: 'MobiBix WhatsApp connection verified successfully. ✅',
+      });
+
+      const { data } = await axios.get(
+        `https://api.REMOVED_TOKEN.io/request?${params.toString()}`,
+        { timeout: 15_000 },
+      );
+
+      const success =
+        data?.type === 'success' ||
+        data?.status === 'success' ||
+        data?.status === '1' ||
+        (data?.id && Number(data.id) > 0);
+
+      if (!success) {
+        const error = data?.message || data?.error || JSON.stringify(data);
+        this.logger.warn(`[Authkey verify] failed for tenant ${tenantId}: ${error}`);
+        return { success: false, error };
+      }
+
+      // Mark as verified
+      await this.prisma.whatsAppNumber.update({
+        where: { id: waNumber.id },
+        data: {
+          REMOVED_TOKENVerifiedAt: new Date(),
+          lastTestSentAt: new Date(),
+        } as any,
+      });
+
+      this.logger.log(`Authkey verified for tenant ${tenantId}`);
+      return { success: true, messageId: String(data.id ?? data.message_id ?? '') };
+    } catch (err: any) {
+      const error = err.response?.data
+        ? JSON.stringify(err.response.data)
+        : err.message;
+      this.logger.error(`[Authkey verify] exception for tenant ${tenantId}: ${error}`);
+      return { success: false, error };
+    }
+  }
+
+  /**
+   * Fetch Authkey account balance.
+   * GET /whatsapp/REMOVED_TOKEN/balance
+   */
+  async getAuthkeyBalance(tenantId: string): Promise<{
+    connected: boolean;
+    balance?: number;
+    currency?: string;
+    estimatedMessages?: number;
+    lastTestSentAt?: Date | null;
+    verifiedAt?: Date | null;
+    error?: string;
+  }> {
+    const waNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, provider: 'AUTHKEY' as any, isEnabled: true },
+      select: {
+        id: true,
+        REMOVED_TOKENApiKey: true,
+        REMOVED_TOKENVerifiedAt: true,
+        lastTestSentAt: true,
+      } as any,
+    });
+
+    if (!waNumber || !(waNumber as any).REMOVED_TOKENApiKey) {
+      return { connected: false, error: 'Authkey not configured' };
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = decrypt((waNumber as any).REMOVED_TOKENApiKey);
+    } catch {
+      return { connected: false, error: 'Invalid API key stored' };
+    }
+
+    try {
+      // Authkey balance API
+      const { data } = await axios.get('https://api.REMOVED_TOKEN.io/balance', {
+        params: { REMOVED_TOKEN: apiKey },
+        timeout: 10_000,
+      });
+
+      // Authkey returns: { status: "success", balance: "10.50", currency: "INR" }
+      const balance = parseFloat(data?.balance ?? '0');
+      const currency = data?.currency ?? 'INR';
+      const COST_PER_MSG = 0.35; // INR per WhatsApp template
+      const estimatedMessages = Math.floor(balance / COST_PER_MSG);
+
+      return {
+        connected: true,
+        balance,
+        currency,
+        estimatedMessages,
+        lastTestSentAt: (waNumber as any).lastTestSentAt ?? null,
+        verifiedAt: (waNumber as any).REMOVED_TOKENVerifiedAt ?? null,
+      };
+    } catch (err: any) {
+      // Balance API failure doesn't mean disconnected — network/endpoint may vary
+      return {
+        connected: true,
+        error: 'Could not fetch balance. Check Authkey account.',
+        lastTestSentAt: (waNumber as any).lastTestSentAt ?? null,
+        verifiedAt: (waNumber as any).REMOVED_TOKENVerifiedAt ?? null,
+      };
+    }
   }
 
   /**

@@ -52,56 +52,25 @@
 }
 
 .dark {
-  /* Dark Theme: Deep Zinc + Neon Teal */
   --background: oklch(0.1 0.002 247.88); 
   --foreground: oklch(0.985 0 0);
-
   --card: oklch(0.14 0.004 285.82);
   --card-foreground: oklch(0.985 0 0);
-
   --popover: oklch(0.14 0.004 285.82);
   --popover-foreground: oklch(0.985 0 0);
-
-  --primary: oklch(0.75 0.15 175); /* Neon Teal */
+  --primary: oklch(0.7 0.17 175); 
   --primary-foreground: oklch(0.1 0.002 247.88);
-
   --secondary: oklch(0.2 0.004 285.82);
   --secondary-foreground: oklch(0.985 0 0);
-
   --muted: oklch(0.2 0.004 285.82);
   --muted-foreground: oklch(0.7 0.01 285.82);
-
   --accent: oklch(0.2 0.004 285.82);
   --accent-foreground: oklch(0.985 0 0);
-
-  --destructive: oklch(0.3 0.2 25);
-  --destructive-foreground: oklch(0.985 0 0);
-
-  --border: oklch(0.2 0.004 285.82);
-  --input: oklch(0.2 0.004 285.82);
-  --ring: oklch(0.75 0.15 175);
-
-  --popover: oklch(0.14 0.004 285.82);
-  --popover-foreground: oklch(0.985 0 0);
-
-  --primary: oklch(0.65 0.22 270); /* Lighter Violet for Dark Mode */
-  --primary-foreground: oklch(0.985 0 0);
-
-  --secondary: oklch(0.2 0.004 285.82); /* Zinc 800 */
-  --secondary-foreground: oklch(0.985 0 0);
-
-  --muted: oklch(0.2 0.004 285.82);
-  --muted-foreground: oklch(0.65 0.01 285.82); /* Zinc 400 */
-
-  --accent: oklch(0.2 0.004 285.82);
-  --accent-foreground: oklch(0.985 0 0);
-
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.985 0 0);
-
   --border: oklch(0.2 0.004 285.82);
   --input: oklch(0.2 0.004 285.82);
-  --ring: oklch(0.55 0.22 270);
+  --ring: oklch(0.7 0.17 175);
 }
 
 @layer utilities {
@@ -120,25 +89,16 @@
     @apply bg-zinc-50 dark:bg-white/[0.07] backdrop-blur-md border border-zinc-200 dark:border-white/10 focus:border-emerald-500/50 focus:bg-white dark:focus:bg-white/[0.12] focus:-translate-y-[2px] focus:ring-8 focus:ring-emerald-500/10 dark:focus:ring-emerald-500/5 transition-all duration-300 outline-none;
   }
   
-  .aurora-bg {
-    background-size: 300% 300%;
-    animation: aurora-shift 30s ease-in-out infinite;
-    filter: blur(100px);
-    background-image: 
-      radial-gradient(at 10% 10%, rgba(16, 185, 129, 0.25) 0px, transparent 40%),
-      radial-gradient(at 90% 10%, rgba(56, 189, 248, 0.25) 0px, transparent 40%),
-      radial-gradient(at 50% 50%, rgba(250, 204, 21, 0.15) 0px, transparent 50%),
-      radial-gradient(at 10% 90%, rgba(16, 185, 129, 0.15) 0px, transparent 40%),
-      radial-gradient(at 90% 90%, rgba(56, 189, 248, 0.15) 0px, transparent 40%);
+  .human-card {
+    @apply bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-white/5 rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-300;
   }
-  
-  .dark .aurora-bg {
-    background-image: 
-      radial-gradient(at 10% 10%, rgba(16, 185, 129, 0.12) 0px, transparent 40%),
-      radial-gradient(at 90% 10%, rgba(99, 102, 241, 0.12) 0px, transparent 40%),
-      radial-gradient(at 50% 50%, rgba(79, 70, 229, 0.08) 0px, transparent 50%),
-      radial-gradient(at 10% 90%, rgba(236, 72, 153, 0.08) 0px, transparent 40%),
-      radial-gradient(at 90% 90%, rgba(45, 212, 191, 0.08) 0px, transparent 40%);
+
+  .workspace-bg {
+    @apply bg-[#F9FAFB] dark:bg-black;
+  }
+
+  .glass-pill {
+    @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/50 dark:border-white/5 rounded-full;
   }
 }
 

@@ -27,339 +27,291 @@ function StatItem({ value, unit, label }: { value: string; unit: string; label: 
 export function HeroSlidesClient({ posts }: { posts: any[] }) {
   const { theme: _theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [activeSection, setActiveSection] = useState(0);
+  const [isScrolling, setIsScrolling] = useState(false);
   const scrollCooldown = useRef(0);
-  const slideRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
-  // Reset internal scroll positions when currentSlide changes
-  useEffect(() => {
-    Object.values(slideRefs.current).forEach((ref) => {
-      if (ref instanceof HTMLDivElement) {
-        ref.scrollTop = 0;
-      }
-    });
-  }, [currentSlide]);
+  const sections = [
+    { id: "hero", label: "Hero" },
+    { id: "features", label: "Features" },
+    { id: "stats", label: "Impact" },
+    { id: "testimonials", label: "Wall of Love" },
+    { id: "blog", label: "Insights" },
+    { id: "faq", label: "FAQ" },
+    { id: "cta", label: "Launch" },
+    { id: "footer", label: "Closure" },
+  ];
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" && currentSlide < 6) setCurrentSlide(currentSlide + 1);
-      else if (e.key === "ArrowUp" && currentSlide > 0) setCurrentSlide(currentSlide - 1);
-    };
-
     const handleWheel = (e: WheelEvent) => {
       const now = Date.now();
-      if (now - scrollCooldown.current < 800) return;
+      if (now - scrollCooldown.current < 1000) return;
 
-      const activeSlideRef = slideRefs.current[currentSlide];
-
-      // Handle internal scroll scrolling
-      if (activeSlideRef) {
-        const isAtBottom = Math.abs(activeSlideRef.scrollHeight - activeSlideRef.clientHeight - activeSlideRef.scrollTop) < 2;
-        const isAtTop = activeSlideRef.scrollTop <= 0;
-
-        // If scrolling down but not at bottom yet, let native scroll happen
-        if (e.deltaY > 0 && !isAtBottom) return;
-        // If scrolling up but not at top yet, let native scroll happen
-        if (e.deltaY < 0 && !isAtTop) return;
-      }
-
-      if (e.deltaY > 30 && currentSlide < 6) { 
-        setCurrentSlide((prev: number) => prev + 1); 
-        scrollCooldown.current = now; 
-      }
-      else if (e.deltaY < -30 && currentSlide > 0) { 
-        setCurrentSlide((prev: number) => prev - 1); 
-        scrollCooldown.current = now; 
+      if (e.deltaY > 50 && activeSection < sections.length - 1) {
+        setActiveSection(prev => prev + 1);
+        scrollCooldown.current = now;
+      } else if (e.deltaY < -50 && activeSection > 0) {
+        setActiveSection(prev => prev - 1);
+        scrollCooldown.current = now;
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" && activeSection < sections.length - 1) setActiveSection(activeSection + 1);
+      else if (e.key === "ArrowUp" && activeSection > 0) setActiveSection(activeSection - 1);
+    };
+
     window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => { 
-      window.removeEventListener("keydown", handleKeyDown); 
-      window.removeEventListener("wheel", handleWheel); 
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [currentSlide]);
+  }, [activeSection, sections.length]);
 
-  // if (!mounted) return null; // MOVED: Now allow SSR of the first slide for SEO/AEO visibility.
-
-  const slides = [0, 1, 2, 3, 4, 5, 6];
+  if (!mounted) return null;
 
   return (
-    <div className="bg-background text-foreground selection:bg-primary/30 min-h-screen overflow-hidden transition-colors duration-500">
+    <div className="bg-background text-foreground selection:bg-primary/30 h-screen w-screen overflow-hidden transition-colors duration-500">
       <Header />
 
-      {/* Slide Container */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <motion.div 
-          className="h-full w-full"
-          animate={{ y: `-${currentSlide * 100}vh` }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 100, 
-            damping: 20, 
-            mass: 1,
-            restDelta: 0.001 
-          }}
-        >
-          {/* Slide 1: Hero */}
-          <div className="h-screen w-screen flex flex-col items-center justify-start overflow-hidden relative pt-24 md:pt-32">
-            <motion.div 
-               animate={currentSlide === 0 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.9, y: 50 }}
-               transition={{ duration: 0.8, delay: 0.2 }}
-               className="relative z-10 w-full max-w-5xl px-6 text-center"
-            >
-                <div className="mb-8 inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-border bg-muted/30 backdrop-blur-xl">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                    </span>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Trusted by 500+ Mobile Retailers</span>
-                </div>
-                
-                <h1 className="text-4xl md:text-8xl font-black mb-6 md:mb-8 tracking-tighter leading-tight text-foreground uppercase">
-                    Run Your Mobile Shop <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-indigo-500">Without the Chaos.</span>
-                </h1>
-                
-                <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-2xl mx-auto mb-10 md:mb-12 leading-relaxed italic">
-                    Mobibix — The Retail OS for Mobile Shops. Stop losing track of IMEIs, repairs, and stock. Generate GST bills in 5 seconds. The #1 Billing & Inventory app for Indian Mobile Retailers.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                    <Link href="/auth" className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20 text-center">
-                        Start Free Trial
-                    </Link>
-                    <Link href="/pricing" className="w-full sm:w-auto px-10 py-5 rounded-2xl border border-border text-foreground text-center font-black uppercase tracking-widest hover:bg-muted transition-all">
-                        View Pricing
-                    </Link>
-                </div>
-            </motion.div>
-            {/* Background Effects */}
-            <div className="absolute top-[20%] -left-[10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[10%] -right-[10%] w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
-          </div>
-
-          {/* Slide 2: Features */}
-          <div className="h-screen w-screen flex flex-col items-center justify-start overflow-hidden relative pt-24 md:pt-32">
-            <motion.div 
-              animate={currentSlide === 1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8 }}
-              className="w-full max-w-7xl px-6 pb-20"
-            >
-              <div className="mb-14 text-center">
-                <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Stop Leaking Profits</span>
-                <h2 className="text-4xl md:text-6xl font-black text-foreground mt-4 tracking-tight uppercase leading-none italic">Protect Your Inventory.</h2>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {[
-                  { title: "Never Lose Stock", desc: "Track every IMEI. Stop theft with serial-perfect accuracy.", icon: "/assets/landing/inventory-icon.png", alt: "IMEI tracking and inventory management interface icon" },
-                  { title: "Control Repairs", desc: "Track technician parts. Stop disputes with digital proof.", icon: "/assets/landing/repairs-icon.png", alt: "Mobile repair job tracking and technician management icon" },
-                  { title: "Instant GST Bill", desc: "Generate professional bills in 5 seconds. Look premium.", icon: "/assets/landing/billing-icon.png", alt: "GST compliant billing and invoice generation icon" },
-                  { title: "WhatsApp Marketing", desc: "Auto-send reminders. Get paid faster and sell accessories.", icon: "/assets/landing/marketing-icon.png", alt: "WhatsApp CRM and automated customer notifications icon" },
-                  { title: "Distributor Network", desc: "Link wholesalers, share stock visibility, get restock suggestions — free for distributors.", icon: "/assets/landing/inventory-icon.png", alt: "B2B distributor network and wholesale management icon" },
-                ].map((feat, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1, duration: 0.5 }}
-                    className="p-10 rounded-[2.5rem] bg-muted/20 border border-border hover:border-primary/50 transition-all duration-500 group relative overflow-hidden"
-                  >
-                      {/* Suble hover gradient effect */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      
-                      <div className="relative z-10">
-                        <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm relative">
-                            <NextImage src={feat.icon} alt={feat.alt} fill sizes="80px" className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
-                        </div>
-                        <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
-                        <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>
-                      </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Slide 3: Stats */}
-          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
-            <motion.div 
-               animate={currentSlide === 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: -50 }}
-               transition={{ duration: 0.8 }}
-               className="w-full max-w-7xl px-6 pt-32 pb-32"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                <div>
-                    <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Proven Impact</span>
-                    <h2 className="text-5xl md:text-7xl font-black text-foreground mt-6 mb-8 tracking-tighter leading-tight uppercase">Build A Retail <br />Empire.</h2>
-                    <p className="text-muted-foreground text-lg font-bold mb-12 max-w-lg">Indian shop owners using Mobibix report a 3x increase in repair turnaround and zero lost inventory.</p>
-                    <div className="grid grid-cols-2 gap-8">
-                        <StatItem value="5" unit="min" label="Setup Time" />
-                        <StatItem value="3x" unit="" label="Efficiency" />
-                        <StatItem value="0" unit="₹" label="Initial Cost" />
-                        <StatItem value="24/7" unit="" label="Support" />
-                    </div>
-                </div>
-                <motion.div 
-                  initial={{ opacity: 0, x: 50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: 0.2 }}
-                  className="relative group"
-                >
-                    <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-100 transition duration-1000" />
-                    <div className="relative p-10 rounded-[3rem] border border-border bg-card/50 backdrop-blur-3xl">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-8 border-b border-border pb-4 font-mono">Inventory Report</h4>
-                        <div className="space-y-6">
-                            {[
-                                { l: "iPhone 15 Pro", v: "85%", c: "bg-primary" },
-                                { l: "S24 Ultra", v: "45%", c: "bg-blue-500" },
-                                { l: "Pixel 8 Pro", v: "65%", c: "bg-indigo-500" }
-                            ].map((row, i) => (
-                                <div key={i} className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span>{row.l}</span>
-                                        <span>{row.v}</span>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-muted rounded-full">
-                                        <div className={`h-full ${row.c} rounded-full`} style={{ width: row.v }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Slide 4: Testimonials */}
-          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
-             <TestimonialsSection />
-          </div>
-
-          {/* Slide 5: Blog */}
-          <div 
-            ref={(el) => { if (el) slideRefs.current[4] = el; }}
-            className="h-screen w-screen overflow-y-auto overflow-x-hidden relative bg-background scrolls-custom"
-          >
-             <BlogSection posts={posts} />
-          </div>
-
-          {/* Slide 6: FAQ (AEO & GEO Optimization) */}
-          <div 
-            ref={(el) => { if (el) slideRefs.current[5] = el; }}
-            className="h-screen w-screen flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden relative pt-24 md:pt-32 px-6"
-          >
-             <div className="w-full max-w-4xl pt-10 pb-20">
-                <div className="mb-14 text-center">
-                    <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Frequently Asked Questions</span>
-                    <h2 className="text-4xl md:text-5xl font-black text-foreground mt-4 tracking-tight uppercase leading-none italic">Still Have Questions?</h2>
-                </div>
-                <div className="space-y-12">
-                   {[
-                      { q: "What is Mobibix and how does it help?", a: "Mobibix is a specialized Retail OS that solves three main problems: inventory leakage, slow billing, and unorganized repair management. It lets you run your shop from anywhere." },
-                      { q: "How do I manage IMEI tracking efficiently?", a: "Mobibix tracks every IMEI from purchase to sale. You scan the number once, and our system tracks its history, owner, and warranty status automatically." },
-                      { q: "Can I generate GST bills without an accountant?", a: "Yes. Our billing engine is pre-configured with GST rules. You just select the item, and Mobibix calculates the tax and generates a professional invoice in 5 seconds." },
-                      { q: "Is repair management digital?", a: "Absolutely. Create digital job cards, assign technicians, track parts used, and send automated WhatsApp updates to customers when their device is ready." }
-                   ].map((faq, i) => (
-                      <div key={i} className="group border-l-2 border-border pl-8 hover:border-primary transition-colors">
-                         <h3 className="text-xl md:text-2xl font-black text-foreground mb-4 group-hover:text-primary transition-colors uppercase italic">{faq.q}</h3>
-                         <p className="text-muted-foreground font-bold leading-relaxed">{faq.a}</p>
-                      </div>
-                   ))}
-                </div>
-             </div>
-          </div>
-
-          {/* Slide 7: CTA + Footer */}
-          <div 
-            ref={(el) => { if (el) slideRefs.current[6] = el; }}
-            className="h-screen w-screen overflow-y-auto overflow-x-hidden relative bg-background scrolls-custom"
-          >
-             <div className="min-h-screen flex flex-col items-center justify-center py-32 md:py-48 px-6">
-                <motion.div 
-                  animate={currentSlide === 6 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-                  transition={{ duration: 0.8 }}
-                  className="flex flex-col items-center justify-center w-full max-w-5xl"
-                >
-                  <h2 className="text-5xl md:text-8xl font-black text-foreground mb-10 tracking-tighter leading-tight uppercase italic text-center">
-                    Stop Losing <br />Profits.
-                  </h2>
-                  <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12 text-center leading-relaxed">
-                    Join 5,000+ successful shop owners across India. Set up your digital store in exactly 5 minutes.
-                  </p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
-                    <Link href="/auth" className="w-full sm:w-auto px-12 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20 text-center">
-                        Get Started Free
-                    </Link>
-                    <Link href="/pricing" className="w-full sm:w-auto px-12 py-5 rounded-2xl border border-border text-foreground font-black uppercase tracking-widest hover:bg-muted transition-all text-center">
-                        View Pricing
-                    </Link>
-                  </div>
-                  <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">No credit card required · 14-day free trial</p>
-                </motion.div>
-             </div>
-             <Footer compact={true} />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Refined Side Navigation */}
-      <div 
-        className={`fixed right-8 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-8 transition-all duration-700 ${
-          currentSlide === 6 ? "opacity-0 pointer-events-none translate-x-12" : "opacity-100 translate-x-0"
-        }`}
+      {/* Main Container for Sliding Sections */}
+      <motion.div 
+        className="h-full w-full flex flex-col"
+        animate={{ y: `-${activeSection * 100}vh` }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 70, 
+          damping: 20, 
+          mass: 1 
+        }}
+        onAnimationStart={() => setIsScrolling(true)}
+        onAnimationComplete={() => setIsScrolling(false)}
       >
-        {/* Scroll Up Arrow */}
-        <button
-          onClick={() => currentSlide > 0 && setCurrentSlide(currentSlide - 1)}
-          className={`p-3 rounded-full border border-border/50 bg-muted/20 backdrop-blur-3xl transition-all duration-500 hover:bg-primary/10 hover:border-primary/50 group ${
-            currentSlide === 0 ? "opacity-30 cursor-not-allowed" : "opacity-100 cursor-pointer"
-          }`}
-          disabled={currentSlide === 0}
-          aria-label="Scroll Up"
-        >
-          <ChevronUp className="w-5 h-5 text-foreground/60 group-hover:text-primary transition-colors" />
-        </button>
-
-        {/* Vertical Pagination Dots */}
-        <div className="flex flex-col gap-4 bg-muted/20 backdrop-blur-3xl p-3 rounded-full border border-border/50 shadow-2xl">
-          {slides.map((slide) => (
-            <button 
-              key={slide} 
-              onClick={() => setCurrentSlide(slide)}
-              className={`w-2 transition-all duration-700 relative group ${
-                currentSlide === slide 
-                  ? "bg-primary h-12 shadow-[0_0_20px_rgba(20,184,166,0.6)] rounded-full" 
-                  : "bg-foreground/20 h-2 hover:bg-foreground/40 rounded-full"
-              }`}
-              aria-label={`Go to slide ${slide + 1}`}
-            >
-              {/* Tooltip on hover */}
-              <span className="absolute right-8 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-md border border-border text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all pointer-events-none whitespace-nowrap hidden md:block">
-                Slide {slide + 1}
-              </span>
-            </button>
-          ))}
+        {/* Section 1: Hero */}
+        <div className="h-screen w-screen flex flex-col items-center justify-center relative pt-24 px-6 shrink-0 overflow-hidden">
+          <motion.div 
+             animate={activeSection === 0 ? { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, scale: 0.9, y: 50, filter: "blur(10px)" }}
+             transition={{ duration: 0.8 }}
+             className="relative z-10 w-full max-w-5xl text-center"
+          >
+              <div className="mb-10 inline-flex items-center gap-3 px-5 py-2 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-3xl shadow-2xl shadow-primary/10">
+                  <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Trusted by 500+ Mobile Retailers</span>
+              </div>
+              
+              <h1 className="text-5xl md:text-[8rem] font-black mb-10 tracking-tighter leading-[0.8] text-foreground uppercase italic text-glow-indigo">
+                  Run Your <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-indigo-500 drop-shadow-2xl">Mobile Shop.</span>
+              </h1>
+              
+              <p className="text-muted-foreground text-xl md:text-2xl font-bold max-w-2xl mx-auto mb-16 leading-relaxed italic opacity-80">
+                  The SaaS-grade Retail OS. Stop losing track of IMEIs, repairs, and stock. Generate GST bills in 5 seconds.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+                  <Link href="/auth" className="group relative w-full sm:w-auto px-12 py-6 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest transition-all shadow-2xl shadow-primary/20 overflow-hidden">
+                      <span className="relative z-10">Start Free Trial</span>
+                      <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                  </Link>
+                  <Link href="/pricing" className="w-full sm:w-auto px-12 py-6 rounded-2xl border-2 border-border text-foreground text-center font-black uppercase tracking-widest hover:bg-muted transition-all backdrop-blur-md">
+                      Pricing Plans
+                  </Link>
+              </div>
+          </motion.div>
+          
+          {/* Animated Background Orbs */}
+          <div className="absolute top-[20%] -left-[10%] w-[600px] h-[600px] bg-primary/20 rounded-full blur-[150px] animate-pulse pointer-events-none" />
+          <div className="absolute bottom-[10%] -right-[10%] w-[700px] h-[700px] bg-blue-500/20 rounded-full blur-[180px] animate-pulse pointer-events-none delay-1000" />
         </div>
 
-        {/* Scroll Down Arrow */}
-        <button
-          onClick={() => currentSlide < 5 && setCurrentSlide(currentSlide + 1)}
-          className={`p-3 rounded-full border border-border/50 bg-muted/20 backdrop-blur-3xl transition-all duration-500 hover:bg-primary/10 hover:border-primary/50 group ${
-            currentSlide === 5 ? "opacity-30 cursor-not-allowed" : "opacity-100 cursor-pointer"
-          }`}
-          disabled={currentSlide === 5}
-          aria-label="Scroll Down"
-        >
-          <ChevronDown className="w-5 h-5 text-foreground/60 group-hover:text-primary transition-colors" />
-        </button>
+        {/* Section 2: Features */}
+        <div className="h-screen w-screen flex flex-col items-center justify-center px-6 shrink-0 bg-muted/5 relative overflow-hidden">
+          <motion.div 
+            animate={activeSection === 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
+            className="w-full max-w-7xl relative z-10"
+          >
+            <div className="mb-20 text-center">
+              <span className="text-primary text-[10px] font-black uppercase tracking-[0.6em] mb-4 block">Engineered for Growth</span>
+              <h2 className="text-5xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.8]">Protect <br />Inventory.</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+              {[
+                { title: "IMEI TRACK", desc: "Digital ownership.", icon: "/assets/landing/inventory-icon.png" },
+                { title: "REPAIR HUB", desc: "Live job tracking.", icon: "/assets/landing/repairs-icon.png" },
+                { title: "GST READY", desc: "Auto-tax calc.", icon: "/assets/landing/billing-icon.png" },
+                { title: "HYPER CRM", desc: "WhatsApp reach.", icon: "/assets/landing/marketing-icon.png" },
+                { title: "B2B SYNC", desc: "Stock sharing.", icon: "/assets/landing/inventory-icon.png" },
+              ].map((feat, i) => (
+                <motion.div 
+                  key={i}
+                  animate={activeSection === 1 ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.9 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-10 rounded-[3rem] bg-card/40 backdrop-blur-2xl border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center"
+                >
+                    <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-8 mx-auto border border-primary/20 overflow-hidden p-4 group-hover:scale-110 transition-transform">
+                        <NextImage src={feat.icon} alt={feat.title} width={80} height={80} className="object-contain filter drop-shadow-xl" />
+                    </div>
+                    <h3 className="text-lg font-black uppercase tracking-tight mb-2 leading-none">{feat.title}</h3>
+                    <p className="text-muted-foreground font-bold text-[9px] uppercase tracking-widest opacity-60 leading-relaxed">{feat.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Section 3: Stats */}
+        <div className="h-screen w-screen flex items-center justify-center px-6 shrink-0 bg-background">
+          <motion.div 
+             animate={activeSection === 2 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+             className="w-full max-w-7xl"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-32 items-center">
+              <div>
+                  <span className="text-primary text-[10px] font-black uppercase tracking-[0.6em] mb-6 block">The Multiplier</span>
+                  <h2 className="text-6xl md:text-[8rem] font-black text-foreground mb-12 tracking-tighter leading-[0.8] uppercase italic">3x ROI.</h2>
+                  <div className="grid grid-cols-2 gap-12">
+                      <StatItem value="5" unit="min" label="Setup" />
+                      <StatItem value="100" unit="%" label="Uptime" />
+                      <StatItem value="3x" unit="" label="Turnover" />
+                      <StatItem value="0" unit="₹" label="Leads" />
+                  </div>
+              </div>
+              <div className="relative p-12 rounded-[4rem] border border-border/60 bg-muted/10 backdrop-blur-3xl shadow-2xl">
+                  <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-primary mb-10 text-center">Efficiency Growth</h4>
+                  <div className="space-y-8">
+                      {["Billing", "Repairs", "Inventory"].map((l, i) => (
+                          <div key={i} className="space-y-3">
+                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-foreground/70">
+                                  <span>{l}</span>
+                                  <span>{75 + (i * 10)}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
+                                  <motion.div 
+                                    animate={activeSection === 2 ? { width: `${75 + (i * 10)}%` } : { width: 0 }}
+                                    transition={{ duration: 1.5, ease: "circOut", delay: 0.5 }}
+                                    className="h-full bg-primary" 
+                                  />
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Section 4: Testimonials */}
+        <div className="h-screen w-screen flex items-center justify-center shrink-0 bg-muted/5">
+           <TestimonialsSection />
+        </div>
+
+        {/* Section 5: Blog */}
+        <div className="h-screen w-screen px-6 shrink-0 flex items-center justify-center bg-background">
+           <BlogSection posts={posts} />
+        </div>
+
+        {/* Section 6: FAQ */}
+        <div className="h-screen w-screen flex flex-col items-center justify-center px-6 shrink-0 bg-muted/5 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+           <div className="w-full max-w-4xl pt-20 relative z-10">
+              <div className="mb-24 text-center">
+                  <span className="text-primary text-[10px] font-black uppercase tracking-[0.6em] mb-4 block">Operations Mastery</span>
+                  <h2 className="text-5xl md:text-[6rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.8] mb-8">The FAQ.</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-16">
+                 {[
+                    { q: "Setup duration?", a: "5 minutes. Simple data import, zero downtime." },
+                    { q: "Anti-theft protocol?", a: "Serial-locked inventory means zero stock leakage." },
+                    { q: "Device compatibility?", a: "Web-native. Runs on tablets, laptops, and mobile." },
+                    { q: "WhatsApp Cost?", a: "Integrated. Send notifications for free directly." }
+                 ].map((faq, i) => (
+                    <motion.div 
+                      key={i} 
+                      animate={activeSection === 5 ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="group border-l-4 border-primary/20 pl-8 hover:border-primary transition-colors"
+                    >
+                       <h3 className="text-xl font-black text-foreground mb-4 group-hover:text-primary transition-colors uppercase italic leading-tight">{faq.q}</h3>
+                       <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest leading-loose opacity-60">{faq.a}</p>
+                    </motion.div>
+                 ))}
+              </div>
+           </div>
+        </div>
+
+        {/* Section 7: CTA Only - Theme Consistent */}
+        <div className="h-screen w-screen flex flex-col items-center justify-center relative shrink-0 overflow-hidden">
+           <motion.div 
+              animate={activeSection === 6 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 1.1, y: 50 }}
+              className="flex flex-col items-center justify-center text-center px-6 relative z-10"
+           >
+              <h2 className="text-7xl md:text-[11rem] font-black text-foreground mb-16 tracking-tighter leading-[0.7] uppercase italic drop-shadow-2xl">
+                STOP <br />LEAKING.
+              </h2>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-10">
+                <Link href="/auth" className="w-full sm:w-auto px-16 py-8 rounded-3xl bg-primary text-primary-foreground font-black uppercase tracking-[0.2em] hover:brightness-110 transition-all shadow-[0_20px_80px_rgba(20,184,166,0.3)] text-center text-xl">
+                    Deploy Now
+                </Link>
+                <Link href="/pricing" className="w-full sm:w-auto px-16 py-8 rounded-3xl border-4 border-border text-foreground font-black uppercase tracking-[0.2em] hover:bg-muted transition-all text-center text-xl">
+                    Plans
+                </Link>
+              </div>
+           </motion.div>
+           
+           {/* High-Impact Focal Glow */}
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-[160px] pointer-events-none" />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[400px] bg-blue-600/5 rounded-full blur-[200px] rotate-12 pointer-events-none" />
+        </div>
+
+        {/* Section 8: Dedicated Footer Closure */}
+        <div className="h-screen w-screen flex flex-col items-center justify-center relative shrink-0 bg-background pt-20">
+           <div className="w-full mt-auto mb-auto overflow-y-auto max-h-full py-10">
+              <Footer compact={false} />
+           </div>
+        </div>
+      </motion.div>
+
+      {/* SaaS-Grade Minimalist Section Rail - Desktop */}
+      <div className="fixed right-10 top-1/2 -translate-y-1/2 z-[100] hidden lg:flex flex-col items-center gap-5">
+        {sections.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveSection(index)}
+            className="relative group flex items-center justify-center w-12 py-2"
+            aria-label={`Go to section ${index + 1}`}
+          >
+            <div className={`w-[3px] transition-all duration-700 ease-out rounded-full shadow-lg
+              ${activeSection === index 
+                ? "h-12 bg-primary shadow-[0_0_25px_rgba(20,184,166,1)]" 
+                : "h-3 bg-foreground/10 group-hover:bg-foreground/30"}
+            `} />
+          </button>
+        ))}
+      </div>
+
+      {/* Premium Bottom Progress Pill - Mobile */}
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] lg:hidden flex items-center px-6 py-4 rounded-full bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+          <div className="flex gap-4">
+              {sections.map((_, index) => (
+                  <button 
+                      key={index}
+                      onClick={() => setActiveSection(index)}
+                      className={`h-2 rounded-full transition-all duration-500
+                          ${activeSection === index ? "w-12 bg-primary glow-primary" : "w-2 bg-white/20"}
+                      `}
+                  />
+              ))}
+          </div>
       </div>
     </div>
   );
 }
+

@@ -15,6 +15,8 @@ import { GymPlansController } from './plans/gym-plans.controller';
 import { GymPlansService } from './plans/gym-plans.service';
 import { GymExpensesController } from './expenses/gym-expenses.controller';
 import { GymExpensesService } from './expenses/gym-expenses.service';
+import { GymClassesController, GymLeaderboardController, FitnessClassesController } from './classes/gym-classes.controller';
+import { GymEngagementController } from './engagement/gym-engagement.controller';
 
 @Module({
   imports: [
@@ -30,6 +32,10 @@ import { GymExpensesService } from './expenses/gym-expenses.service';
     PaymentsController,
     GymPlansController,
     GymExpensesController,
+    GymClassesController,
+    GymLeaderboardController,
+    FitnessClassesController,
+    GymEngagementController,
   ],
   providers: [
     GymAttendanceService,

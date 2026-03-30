@@ -325,6 +325,29 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
+export async function updateFirebaseProfile(name: string): Promise<void> {
+  const { updateProfile } = await import("REMOVED_AUTH_PROVIDER/auth");
+  const { auth } = await import("@/lib/REMOVED_AUTH_PROVIDER");
+  
+  if (auth.currentUser) {
+    await updateProfile(auth.currentUser, { displayName: name });
+  }
+}
+
+export async function updateUserProfile(data: { fullName?: string; phone?: string; avatar?: string }): Promise<any> {
+  const response = await authenticatedFetch("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const err = await extractData(response);
+    throw new Error(err.message || "Failed to update profile in database");
+  }
+
+  return extractData(response);
+}
+
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   const response = await fetch(`${API_BASE_URL}/users/me`, {
     method: "GET",

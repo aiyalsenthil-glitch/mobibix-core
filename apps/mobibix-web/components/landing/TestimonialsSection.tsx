@@ -65,7 +65,7 @@ const testimonials: Testimonial[] = [
 
 export function TestimonialsSection() {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center pt-32 pb-32 px-6 relative overflow-hidden overflow-y-auto">
+    <div className="w-full flex flex-col items-center justify-center px-6 relative">
       <div className="text-center mb-10 relative z-10 max-w-2xl px-4">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}

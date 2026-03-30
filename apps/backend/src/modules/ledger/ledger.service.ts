@@ -41,14 +41,23 @@ export class LedgerService {
   private calcHealth(
     status: string,
     unpaid: { dueDate: Date }[],
+    gracePeriodDays = 0,
   ): 'OK' | 'DUE' | 'OVERDUE' | 'CRITICAL' | 'CLOSED' {
     if (status !== 'ACTIVE') return 'CLOSED';
     if (unpaid.length === 0) return 'OK';
     const now = new Date();
-    const overdue = unpaid.filter((c) => c.dueDate < now);
-    if (overdue.length === 0) return 'DUE';
-    const maxDays = Math.max(...overdue.map((c) => differenceInDays(now, c.dueDate)));
-    return maxDays >= 30 ? 'CRITICAL' : 'OVERDUE';
+    
+    // An item is only "Truly Late" if it's past the due date PLUS the grace period
+    const itemsTrulyLate = unpaid.filter((c) => differenceInDays(now, c.dueDate) > gracePeriodDays);
+    
+    if (itemsTrulyLate.length === 0) {
+      // Check if any item is past its due date but still within the grace period buffer
+      const pastDue = unpaid.some((c) => c.dueDate < now);
+      return pastDue ? 'DUE' : 'OK';
+    }
+
+    const maxDaysTrulyLate = Math.max(...itemsTrulyLate.map((c) => differenceInDays(now, c.dueDate) - gracePeriodDays));
+    return maxDaysTrulyLate >= 30 ? 'CRITICAL' : 'OVERDUE';
   }
 
   // ─── Customers ─────────────────────────────────────────────────────────────
@@ -152,7 +161,7 @@ export class LedgerService {
       const collectedAmount = paid.reduce((s, c) => s + c.paidAmount, 0);
       totalCollected += collectedAmount;
 
-      const health = this.calcHealth(ledger.status, unpaid);
+      const health = this.calcHealth(ledger.status, unpaid, (ledger as any).gracePeriodDays || 0);
       const overduePeriods = unpaid.filter((c) => c.dueDate < new Date()).length;
 
       detailedLedgers.push({
@@ -236,20 +245,46 @@ export class LedgerService {
           interestRateType,
           interestAmount,
           startDate: new Date(startDate),
+          // User Customizations
+          skipSundays: data.skipSundays ?? false,
+          processingFee: data.processingFee ?? 0,
+          gracePeriodDays: data.gracePeriodDays ?? 0,
+          penaltyType: data.penaltyType ?? 'NONE',
+          penaltyValue: data.penaltyValue ?? 0,
+          agentCommissionRate: data.agentCommissionRate ?? 0,
+          guarantorName: data.guarantorName,
+          guarantorPhone: data.guarantorPhone,
+          guarantorAddress: data.guarantorAddress,
+          documentUrl: data.documentUrl,
+          metadata: data.metadata ?? {},
         },
       });
 
       const collections: any[] = [];
+      let currentDueDate = new Date(startDate);
+      
       for (let i = 1; i <= totalPeriods; i++) {
-        let dueDate: Date;
-        const base = new Date(startDate);
+        // Increment date based on installment type
         switch (installmentType) {
-          case 'DAILY':   dueDate = addDays(base, i);   break;
-          case 'WEEKLY':  dueDate = addWeeks(base, i);  break;
-          case 'MONTHLY': dueDate = addMonths(base, i); break;
+          case 'DAILY':   currentDueDate = addDays(currentDueDate, 1);   break;
+          case 'WEEKLY':  currentDueDate = addWeeks(currentDueDate, 1);  break;
+          case 'MONTHLY': currentDueDate = addMonths(currentDueDate, 1); break;
           default: throw new BadRequestException('Invalid installment type');
         }
-        collections.push({ tenantId, ledgerId: ledger.id, periodNo: i, dueDate, amount: installmentAmount });
+
+        // Holiday Logic: Skip Sundays (Very common in Indian daily finance)
+        if (data.skipSundays && currentDueDate.getDay() === 0) {
+          // If it's a Sunday, push to Monday
+          currentDueDate = addDays(currentDueDate, 1);
+        }
+
+        collections.push({
+          tenantId,
+          ledgerId: ledger.id,
+          periodNo: i,
+          dueDate: new Date(currentDueDate),
+          amount: installmentAmount,
+        });
       }
 
       await tx.ledgerCollection.createMany({ data: collections });
@@ -307,6 +342,27 @@ export class LedgerService {
     const now = new Date();
     const overdue = unpaid.filter((c) => c.dueDate < now);
     const current = unpaid[0];
+
+    // Penalty Calculation Logic
+    let totalPenalty = 0;
+    const l = ledger as any;
+    if (l.penaltyType !== 'NONE' && l.penaltyValue > 0) {
+      for (const col of overdue) {
+        const daysLate = differenceInDays(now, col.dueDate);
+        if (daysLate > l.gracePeriodDays) {
+          const effectiveDaysLate = daysLate - l.gracePeriodDays;
+          
+          if (l.penaltyType === 'DAILY_RUPEES') {
+            totalPenalty += effectiveDaysLate * l.penaltyValue;
+          } else if (l.penaltyType === 'DAILY_PERCENTAGE') {
+            totalPenalty += Math.round((col.amount * (l.penaltyValue / 100)) * effectiveDaysLate);
+          } else if (l.penaltyType === 'FIXED') {
+            totalPenalty += l.penaltyValue;
+          }
+        }
+      }
+    }
+
     const pendingAmount = overdue.reduce((s, c) => s + (c.amount - c.paidAmount), 0);
 
     // Calculate per-period interest based on rate type
@@ -323,9 +379,10 @@ export class LedgerService {
 
     // Suggest amounts for each payment type
     const suggestions = {
-      FULL: pendingAmount + (current.amount - current.paidAmount),
+      FULL: pendingAmount + (current.amount - current.paidAmount) + totalPenalty,
       PARTIAL: Math.round((current.amount - current.paidAmount) / 2),
       INTEREST_ONLY: interestPerPeriod,
+      PENALTY_ONLY: totalPenalty,
     };
 
     return {
@@ -341,9 +398,10 @@ export class LedgerService {
       currentAmount: current.amount - current.paidAmount,
       overduePeriods: overdue.length,
       overdueAmount: pendingAmount,
+      penaltyAmount: totalPenalty,
       totalToCollectFull: suggestions.FULL,
       suggestions,
-      health: this.calcHealth(ledger.status, unpaid),
+      health: this.calcHealth(ledger.status, unpaid, (ledger as any).gracePeriodDays),
     };
   }
 
@@ -394,11 +452,27 @@ export class LedgerService {
       });
       if (unpaid.length === 0) throw new BadRequestException('Nothing to collect');
 
+      const now = new Date();
       let remaining = amount;
       const createdPayments: any[] = [];
 
+      // Penalty logic: If there's an outstanding penalty, the payment might want to cover that first
+      // In this V1, we track it on the payment record but the amount still reduces the installment balance
+      // Real-world: Lenders might take penalty as "extra" revenue
+      
       for (const col of unpaid) {
         if (remaining <= 0) break;
+        
+        // Calculate penalty for this specific collection to see if it should be covered
+        let colPenalty = 0;
+        const daysLate = differenceInDays(now, col.dueDate);
+        if (daysLate > ledger.gracePeriodDays) {
+          const effectiveDaysLate = daysLate - ledger.gracePeriodDays;
+          if (ledger.penaltyType === 'DAILY_RUPEES') colPenalty = effectiveDaysLate * ledger.penaltyValue;
+          else if (ledger.penaltyType === 'FIXED') colPenalty = ledger.penaltyValue;
+          // etc.
+        }
+
         const toApply = Math.min(remaining, col.amount - col.paidAmount);
         if (toApply <= 0) continue;
 
@@ -415,6 +489,12 @@ export class LedgerService {
           },
         });
 
+        // Agent Commission
+        const l = ledger as any;
+        const agentCommission = l.agentCommissionRate > 0 
+          ? Math.round(toApply * (l.agentCommissionRate / 100)) 
+          : 0;
+
         const payment = await tx.ledgerPayment.create({
           data: {
             tenantId,
@@ -425,6 +505,8 @@ export class LedgerService {
             amount: toApply,
             method,
             paymentType,
+            agentCommission,
+            penaltyPaid: Math.min(toApply, colPenalty), // Correctly track penalty portion
             note: note ?? null,
           },
         });

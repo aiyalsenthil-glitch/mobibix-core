@@ -2,6 +2,8 @@
 
 import { useTheme } from "@/context/ThemeContext";
 import { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { TrendingUp } from "lucide-react";
 
 interface MetricCardProps {
   label: string;
@@ -11,6 +13,8 @@ interface MetricCardProps {
   accentColor?: "teal" | "amber" | "emerald" | "cyan" | "yellow" | "orange" | "blue" | "purple" | "red";
   onClick?: () => void;
   isLoading?: boolean;
+  trend?: string;
+  trendLabel?: string;
 }
 
 export function MetricCard({
@@ -21,6 +25,8 @@ export function MetricCard({
   accentColor = "teal",
   onClick,
   isLoading,
+  trend,
+  trendLabel,
 }: MetricCardProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -55,31 +61,42 @@ export function MetricCard({
   }
 
   return (
-    <div
+    <motion.div
+      whileHover={{ y: -4, scale: 1.01 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-xl bg-card dark:bg-card/50 border border-border p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-        onClick ? "cursor-pointer hover:border-primary/50" : "cursor-default"
+      className={`group relative overflow-hidden human-card p-6 ${
+        onClick ? "cursor-pointer" : "cursor-default"
       }`}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
-      <div className="relative z-10 flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground tracking-wide uppercase text-[10px]">{label}</p>
-          <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+      <div className="relative z-10 flex flex-col h-full justify-between">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{label}</p>
+            <h3 className="text-3xl font-bold tracking-tighter text-zinc-900 dark:text-zinc-100">{value}</h3>
           </div>
-          {subtext && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-            <span className="w-1 h-1 rounded-full bg-primary/50 inline-block"></span>
-            {subtext}
-          </p>}
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-[18px] ${colors.bg} ${colors.text} transition-all duration-500 group-hover:rotate-3 shadow-sm border border-black/5`}
+          >
+            {icon}
+          </div>
         </div>
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-xl ${colors.bg} ${colors.text} text-xl transition-transform group-hover:scale-110 duration-300 shadow-sm`}
-        >
-          {icon}
+
+        <div className="mt-6 flex items-center justify-between border-t border-zinc-100 dark:border-white/5 pt-4">
+           {trend && (
+             <div className={`flex items-center gap-1.5 ${trend.startsWith('-') ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+               {!trend.startsWith('-') && <TrendingUp size={12} />}
+               <span className="text-[10px] font-bold">{trend}</span>
+               {trendLabel && (
+                 <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">{trendLabel}</span>
+               )}
+             </div>
+           )}
+           {subtext && (
+             <span className="text-[9px] font-bold text-zinc-300 dark:text-zinc-600 uppercase tracking-widest">{subtext}</span>
+           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

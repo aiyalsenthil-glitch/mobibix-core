@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.aiyal.mobibix.ui.components.PremiumTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,7 @@ fun JobListScreen(
     shopId: String,
     navController: NavController,
     isOwner: Boolean,
+    onOpenDrawer: () -> Unit,
     viewModel: JobViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -51,9 +53,10 @@ fun JobListScreen(
             if (isOwner) {
                 ExtendedFloatingActionButton(
                     onClick = { navController.navigate("create_job") },
-                    containerColor = TealAccent,
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.padding(bottom = 80.dp), // Avoid floating nav
                     icon = { Icon(Icons.Filled.Add, null) },
                     text = { Text("New Job", fontWeight = FontWeight.Bold) }
                 )
@@ -63,20 +66,13 @@ fun JobListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ── Header ──
-            Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Text("Job Cards", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Track and manage repair jobs",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            // Unified Premium Header
+            PremiumTopBar(
+                title = "Job Cards",
+                onNavigationClick = onOpenDrawer
+            )
 
             // ── Search ──
             OutlinedTextField(

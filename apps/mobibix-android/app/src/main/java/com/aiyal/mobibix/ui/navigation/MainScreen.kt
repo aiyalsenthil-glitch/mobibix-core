@@ -81,35 +81,8 @@ fun MainScreen(
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val subscriptionTopBar: @Composable () -> Unit = {
-        Column {
-            TopAppBar(
-                title = { Text("MobiBix", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
-                    }
-                },
-                actions = {
-                    NotificationBellIcon()
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-            val currentPlan = billingState.currentPlan
-            if (currentPlan != null) {
-                SubscriptionAlertBanner(
-                    status = currentPlan.subscriptionStatus,
-                    daysLeft = currentPlan.daysLeft,
-                    onClick = { mainNavController.navigate("billing") }
-                )
-            }
-        }
-    }
+    // We remove the global Top Bar here as each screen will now provide its own PremiumTopBar header.
+    // This allows for a more integrated, status-bar-bleeding look across the entire app.
 
     // Version check dialogs
     when (val vs = versionState) {
@@ -166,6 +139,7 @@ fun MainScreen(
                 SalesListScreen(
                     shopContextProvider = shopContextProvider,
                     shopApi = shopApi,
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
                     onNewSale = { mainNavController.navigate("new_sale") },
                     onInvoiceClick = { invoiceId ->
                         mainNavController.navigate("invoice_details/${activeShopId ?: ""}/$invoiceId")
@@ -182,12 +156,14 @@ fun MainScreen(
                 JobListScreen(
                     isOwner = isSystemOwner,
                     navController = mainNavController,
-                    shopId = activeShopId ?: ""
+                    shopId = activeShopId ?: "",
+                    onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
             }
             composable(BottomNavItem.Inventory.route) {
                 com.aiyal.mobibix.ui.features.products.ProductListScreen(
-                    navController = mainNavController
+                    navController = mainNavController,
+                    onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
             }
         }
@@ -222,13 +198,13 @@ fun MainScreen(
                     navController = nestedNavController,
                     onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
-                Scaffold(topBar = subscriptionTopBar) { padding ->
+                Scaffold { padding ->
                     navHostContent(padding)
                 }
             }
         } else {
             Scaffold(
-                topBar = subscriptionTopBar,
+                topBar = {},
                 bottomBar = { AppBottomNavigationBar(navController = nestedNavController) }
             ) { padding ->
                 navHostContent(padding)

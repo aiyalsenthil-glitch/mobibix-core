@@ -286,6 +286,85 @@ export class GymMembersController {
   }
 
   // ======================
+  // GST RECEIPT
+  // ======================
+  /**
+   * GET /gym/members/payment/:paymentId/receipt
+   * Returns all data needed to render a GST receipt PDF / printable page.
+   */
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('payment/:paymentId/receipt')
+  async getPaymentReceipt(@Req() req: any, @Param('paymentId') paymentId: string) {
+    const tenantId = req.user.tenantId;
+
+    const payment = await this.prisma.memberPayment.findFirst({
+      where: { id: paymentId, tenantId },
+      include: {
+        member: {
+          select: {
+            fullName: true,
+            phone: true,
+            membershipStartAt: true,
+            membershipEndAt: true,
+            membershipPlanId: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) throw new NotFoundException('Payment not found');
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        name: true,
+        legalName: true,
+        gstNumber: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        pincode: true,
+        contactPhone: true,
+        contactEmail: true,
+        logoUrl: true,
+      },
+    });
+
+    const baseAmount = payment.amount; // paise
+    const gstRate = payment.gstRate ?? 0;
+    const gstAmount = payment.gstAmount ?? 0;
+    const total = payment.total ?? baseAmount;
+    const cgst = gstAmount / 2;
+    const sgst = gstAmount / 2;
+
+    return {
+      receiptNo: `REC-${payment.id.slice(-8).toUpperCase()}`,
+      date: payment.createdAt,
+      gym: tenant,
+      member: {
+        name: payment.member.fullName,
+        phone: payment.member.phone,
+      },
+      payment: {
+        id: payment.id,
+        method: payment.method ?? 'CASH',
+        durationDays: payment.durationDays,
+        membershipStart: payment.member.membershipStartAt,
+        membershipEnd: payment.member.membershipEndAt,
+        baseAmountRupees: baseAmount / 100,
+        gstRate,
+        cgstRupees: cgst / 100,
+        sgstRupees: sgst / 100,
+        gstAmountRupees: gstAmount / 100,
+        totalRupees: total / 100,
+        hasGst: gstRate > 0,
+      },
+    };
+  }
+
+  // ======================
   // UPI PAYMENT LINK
   // ======================
   /**

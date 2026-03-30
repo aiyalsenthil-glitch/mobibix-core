@@ -248,5 +248,19 @@ export const PERMISSIONS = {
       RENEW: { module: ModuleType.GYM, resource: 'membership', action: 'renew' } as Permission,
       VIEW: { module: ModuleType.GYM, resource: 'membership', action: 'view' } as Permission,
     }
+  },
+  DIGITAL_LEDGER: {
+    CUSTOMER: {
+      CREATE: { module: ModuleType.DIGITAL_LEDGER, resource: 'customer', action: 'create' } as Permission,
+      VIEW: { module: ModuleType.DIGITAL_LEDGER, resource: 'customer', action: 'view' } as Permission,
+    },
+    LEDGER: {
+      VIEW: { module: ModuleType.DIGITAL_LEDGER, resource: 'ledger', action: 'view' } as Permission,
+      COLLECT: { module: ModuleType.DIGITAL_LEDGER, resource: 'ledger', action: 'collect' } as Permission,
+      MANAGE: { module: ModuleType.DIGITAL_LEDGER, resource: 'ledger', action: 'manage' } as Permission,
+    },
+    REPORT: {
+      VIEW: { module: ModuleType.DIGITAL_LEDGER, resource: 'report', action: 'view' } as Permission,
+    }
   }
 };

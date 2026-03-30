@@ -9,14 +9,17 @@ import { FitnessProfileController } from './fitness-profile.controller';
 import { FitnessGymController } from './fitness-gym.controller';
 import { FitnessMetricsController } from './fitness-metrics.controller';
 import { FitnessProController } from './fitness-pro.controller';
+import { FitnessAiController } from './fitness-ai.controller';
 import { FitnessJwtStrategy } from './strategies/fitness-jwt.strategy';
 import { FitnessJwtGuard } from './guards/fitness-jwt.guard';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { FirebaseAdminService } from '../../core/REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
+import { AiModule } from '../../core/ai/ai.module';
 
 @Module({
   imports: [
     PassportModule,
+    AiModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (cfg: ConfigService) => ({
@@ -30,6 +33,7 @@ import { FirebaseAdminService } from '../../core/REMOVED_AUTH_PROVIDER/REMOVED_A
     FitnessGymController,
     FitnessMetricsController,
     FitnessProController,
+    FitnessAiController,
   ],
   providers: [
     FitnessAuthService,

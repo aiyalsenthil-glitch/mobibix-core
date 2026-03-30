@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WhatsAppTokenService } from '../whatsapp-token.service';
 import { MetaProvider } from './meta.provider';
-import { BaileysProvider } from './baileys.provider';
 import { AuthkeyProvider } from './REMOVED_TOKEN.provider';
 import {
   MessageChannel,
@@ -14,9 +13,9 @@ import {
 /** Minimal shape we need from a WhatsAppNumber record */
 export interface PhoneNumberConfig {
   id: string;
-  provider: 'META_CLOUD' | 'WEB_SOCKET' | 'AUTHKEY';
-  phoneNumberId: string; // Meta phone number ID
-  accessToken?: string | null; // Encrypted; resolved by WhatsAppTokenService
+  provider: 'META_CLOUD' | 'AUTHKEY';
+  phoneNumberId: string;
+  accessToken?: string | null;   // Encrypted; resolved by WhatsAppTokenService (Meta)
   REMOVED_TOKENApiKey?: string | null; // Encrypted API key for Authkey
   REMOVED_TOKENSenderId?: string | null;
   isEnabled: boolean;
@@ -25,16 +24,11 @@ export interface PhoneNumberConfig {
 
 export interface SendOptions {
   channel?: MessageChannel;
-  /** If true, attempt fallback to Baileys on Authkey/Meta failure */
-  allowFallback?: boolean;
 }
 
 /**
- * ProviderManager selects the correct messaging provider based on the
- * WhatsAppNumber.provider field, injects credentials, and executes the send.
- *
- * Business logic (quotas, feature gates, logging) remains in WhatsAppSender.
- * This service is purely transport-layer routing.
+ * ProviderManager — routes messages to the correct provider (Meta or Authkey).
+ * Baileys has been removed. Transport-layer only; quotas/logging in WhatsAppSender.
  */
 @Injectable()
 export class ProviderManager {
@@ -42,7 +36,6 @@ export class ProviderManager {
 
   constructor(
     private readonly meta: MetaProvider,
-    private readonly baileys: BaileysProvider,
     private readonly REMOVED_TOKEN: AuthkeyProvider,
     private readonly tokenService: WhatsAppTokenService,
   ) {}
@@ -54,19 +47,8 @@ export class ProviderManager {
     tenantId: string,
     opts: SendOptions = {},
   ): Promise<ProviderResult> {
-    const channel: MessageChannel = opts.channel || 'WHATSAPP';
-    const payload: SendMessagePayload = { to, text, channel, tenantId };
-
-    const result = await this.dispatchMessage(phoneConfig, payload, tenantId);
-
-    if (!result.success && opts.allowFallback && phoneConfig.provider !== 'WEB_SOCKET') {
-      this.logger.warn(
-        `[ProviderManager] ${phoneConfig.provider} failed — falling back to Baileys`,
-      );
-      return this.baileys.sendMessage(payload);
-    }
-
-    return result;
+    const payload: SendMessagePayload = { to, text, channel: opts.channel || 'WHATSAPP', tenantId };
+    return this.dispatchMessage(phoneConfig, payload, tenantId);
   }
 
   async sendTemplate(
@@ -77,26 +59,15 @@ export class ProviderManager {
     tenantId: string,
     opts: SendOptions & { language?: string } = {},
   ): Promise<ProviderResult> {
-    const channel: MessageChannel = opts.channel || 'WHATSAPP';
     const payload: SendTemplatePayload = {
       to,
       templateName,
       parameters,
       language: opts.language,
-      channel,
+      channel: opts.channel || 'WHATSAPP',
       tenantId,
     };
-
-    const result = await this.dispatchTemplate(phoneConfig, payload, tenantId);
-
-    if (!result.success && opts.allowFallback && phoneConfig.provider !== 'WEB_SOCKET') {
-      this.logger.warn(
-        `[ProviderManager] ${phoneConfig.provider} template failed — falling back to Baileys`,
-      );
-      return this.baileys.sendTemplate(payload);
-    }
-
-    return result;
+    return this.dispatchTemplate(phoneConfig, payload, tenantId);
   }
 
   async sendMedia(
@@ -107,23 +78,15 @@ export class ProviderManager {
     tenantId: string,
     opts: SendOptions & { caption?: string } = {},
   ): Promise<ProviderResult> {
-    const channel: MessageChannel = opts.channel || 'WHATSAPP';
     const payload: SendMediaPayload = {
       to,
       mediaUrl,
       caption: opts.caption,
       mediaType,
-      channel,
+      channel: opts.channel || 'WHATSAPP',
       tenantId,
     };
-
-    const result = await this.dispatchMedia(phoneConfig, payload, tenantId);
-
-    if (!result.success && opts.allowFallback && phoneConfig.provider !== 'WEB_SOCKET') {
-      return this.baileys.sendMedia(payload);
-    }
-
-    return result;
+    return this.dispatchMedia(phoneConfig, payload, tenantId);
   }
 
   // ─────────────── private dispatch helpers ───────────────
@@ -136,33 +99,16 @@ export class ProviderManager {
     switch (config.provider) {
       case 'META_CLOUD': {
         const accessToken = await this.resolveMetaToken(config);
-        if (!accessToken) {
-          return this.tokenError(config.provider);
-        }
-        return this.meta.sendMessage({
-          ...payload,
-          phoneNumberId: config.phoneNumberId,
-          accessToken,
-        } as any);
+        if (!accessToken) return this.tokenError(config.provider);
+        return this.meta.sendMessage({ ...payload, phoneNumberId: config.phoneNumberId, accessToken } as any);
       }
-
-      case 'WEB_SOCKET':
-        return this.baileys.sendMessage(payload);
-
       case 'AUTHKEY': {
         const { apiKey, senderId } = this.resolveAuthkeyCredentials(config);
-        if (!apiKey) {
-          return this.tokenError(config.provider);
-        }
+        if (!apiKey) return this.tokenError(config.provider);
         return this.REMOVED_TOKEN.sendMessage({ ...payload, apiKey, senderId } as any);
       }
-
       default:
-        return {
-          success: false,
-          error: `Unknown provider: ${config.provider}`,
-          providerName: config.provider,
-        };
+        return { success: false, error: `Unsupported provider: ${config.provider}`, providerName: config.provider };
     }
   }
 
@@ -175,28 +121,15 @@ export class ProviderManager {
       case 'META_CLOUD': {
         const accessToken = await this.resolveMetaToken(config);
         if (!accessToken) return this.tokenError(config.provider);
-        return this.meta.sendTemplate({
-          ...payload,
-          phoneNumberId: config.phoneNumberId,
-          accessToken,
-        } as any);
+        return this.meta.sendTemplate({ ...payload, phoneNumberId: config.phoneNumberId, accessToken } as any);
       }
-
-      case 'WEB_SOCKET':
-        return this.baileys.sendTemplate(payload);
-
       case 'AUTHKEY': {
         const { apiKey, senderId } = this.resolveAuthkeyCredentials(config);
         if (!apiKey) return this.tokenError(config.provider);
         return this.REMOVED_TOKEN.sendTemplate({ ...payload, apiKey, senderId } as any);
       }
-
       default:
-        return {
-          success: false,
-          error: `Unknown provider: ${config.provider}`,
-          providerName: config.provider,
-        };
+        return { success: false, error: `Unsupported provider: ${config.provider}`, providerName: config.provider };
     }
   }
 
@@ -209,28 +142,15 @@ export class ProviderManager {
       case 'META_CLOUD': {
         const accessToken = await this.resolveMetaToken(config);
         if (!accessToken) return this.tokenError(config.provider);
-        return this.meta.sendMedia({
-          ...payload,
-          phoneNumberId: config.phoneNumberId,
-          accessToken,
-        } as any);
+        return this.meta.sendMedia({ ...payload, phoneNumberId: config.phoneNumberId, accessToken } as any);
       }
-
-      case 'WEB_SOCKET':
-        return this.baileys.sendMedia(payload);
-
       case 'AUTHKEY': {
         const { apiKey, senderId } = this.resolveAuthkeyCredentials(config);
         if (!apiKey) return this.tokenError(config.provider);
         return this.REMOVED_TOKEN.sendMedia({ ...payload, apiKey, senderId } as any);
       }
-
       default:
-        return {
-          success: false,
-          error: `Unknown provider: ${config.provider}`,
-          providerName: config.provider,
-        };
+        return { success: false, error: `Unsupported provider: ${config.provider}`, providerName: config.provider };
     }
   }
 

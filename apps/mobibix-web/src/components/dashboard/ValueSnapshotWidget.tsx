@@ -33,14 +33,19 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
     : 0;
 
   return (
-    <div className="col-span-full glass-card p-6 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 border-emerald-500/20">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-emerald-500" />
-          Business Performance This Month
-        </h2>
-        <div className="flex items-center gap-2">
-           <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded">ROI Tracker</span>
+    <div className="human-card p-10 relative overflow-hidden group bg-white dark:bg-zinc-900/50">
+      {/* Subtle Architectural Gradient */}
+      <div className="absolute top-0 right-0 w-1/4 h-full bg-linear-to-l from-zinc-50 dark:from-white/5 to-transparent pointer-events-none" />
+      
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 relative z-10">
+        <div className="space-y-1">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400/80 flex items-center gap-3">
+            Business Integrity Snapshot
+          </h2>
+          <p className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 italic">Real-time Performance Intelligence</p>
+        </div>
+        <div className="flex items-center gap-3">
+           <span className="text-[9px] font-bold uppercase tracking-[0.2em] px-4 py-2 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full bg-emerald-50/50 dark:bg-emerald-500/5">Active ROI Tracker</span>
         </div>
       </div>
 

@@ -39,6 +39,8 @@ export interface VariableResolutionContext {
   jobCardId?: string; // For MOBILE_REPAIR
   followUpId?: string; // For CRM/Follow-ups
   shopId?: string; // For MOBILE_SALES and MOBILE_REPAIR
+  ledgerCustomerId?: string; // For DIGITAL_LEDGER
+  collectionId?: string; // For DIGITAL_LEDGER
   manualInputs?: Record<string, any>; // User-provided values for MANUAL variables
 }
 
@@ -260,6 +262,22 @@ export class WhatsAppVariableResolver {
           );
         }
         return null;
+
+      case 'LedgerCustomer':
+        if (!context.ledgerCustomerId)
+          throw new BadRequestException('LedgerCustomer context required');
+        const ledgerCustomer = await this.prisma.ledgerCustomer.findFirst({
+          where: { id: context.ledgerCustomerId, tenantId },
+        });
+        return ledgerCustomer?.[fieldName] ?? null;
+
+      case 'LedgerCollection':
+        if (!context.collectionId)
+          throw new BadRequestException('Collection context required');
+        const collection = await this.prisma.ledgerCollection.findFirst({
+          where: { id: context.collectionId, tenantId },
+        });
+        return collection?.[fieldName] ?? null;
 
       default:
         throw new BadRequestException(`Unknown table: ${tableName}`);

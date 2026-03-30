@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.*
+import com.aiyal.mobibix.ui.components.PremiumTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,7 @@ private fun formatDate(iso: String): String = runCatching {
 fun SalesListScreen(
     shopContextProvider: ShopContextProvider,
     shopApi: ShopApi,
+    onOpenDrawer: () -> Unit,
     viewModel: SalesViewModel = hiltViewModel(),
     onNewSale: () -> Unit,
     onInvoiceClick: (String) -> Unit
@@ -92,9 +94,10 @@ fun SalesListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNewSale,
-                containerColor = TealAccent,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.padding(bottom = 80.dp) // Avoid overlap with floating bottom nav
             ) {
                 Icon(Icons.Default.Add, contentDescription = "New Sale")
             }
@@ -103,20 +106,13 @@ fun SalesListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Header
-            Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Text("Sales", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        "View and manage invoices",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            // Unified Premium Header
+            PremiumTopBar(
+                title = "Sales",
+                onNavigationClick = onOpenDrawer
+            )
 
             // Shop selector (multi-shop)
             if (hasMultipleShops) {

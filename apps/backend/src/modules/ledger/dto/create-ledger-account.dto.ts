@@ -1,6 +1,6 @@
 import {
   IsNotEmpty, IsString, IsInt, IsPositive,
-  IsDate, IsEnum, IsOptional, Min,
+  IsDate, IsEnum, IsOptional, Min, IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -49,4 +49,49 @@ export class CreateLedgerAccountDto {
   @IsDate()
   @Type(() => Date)
   startDate: Date;
+
+  // Indian Customizations
+  @IsOptional()
+  @IsBoolean()
+  skipSundays?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  processingFee?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  gracePeriodDays?: number;
+
+  @IsOptional()
+  @IsEnum(['NONE', 'FIXED', 'DAILY_RUPEES', 'DAILY_PERCENTAGE'])
+  penaltyType?: 'NONE' | 'FIXED' | 'DAILY_RUPEES' | 'DAILY_PERCENTAGE';
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  penaltyValue?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  agentCommissionRate?: number;
+
+  @IsOptional()
+  @IsString()
+  guarantorName?: string;
+
+  @IsOptional()
+  @IsString()
+  guarantorPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  guarantorAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  documentUrl?: string;
 }

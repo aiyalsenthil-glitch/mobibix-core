@@ -1,141 +1,144 @@
 package com.aiyal.mobibix.ui.features.home
 
-import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aiyal.mobibix.ui.components.GlassCard
 
 @Composable
-fun DailyRevenueChart(data: List<DashboardTrendItem>) {
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp)) {
+fun PremiumBarChart(
+    data: List<DashboardTrendItem>,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.1f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(20.dp)) {
             Text(
-                "Revenue Trend",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                "REVENUE TREND",
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.2.sp
             )
+            Spacer(Modifier.height(24.dp))
+            
+            Canvas(modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)) {
+                
+                if (data.isEmpty()) return@Canvas
+                
+                val maxValue = (data.maxOf { it.sales }.coerceAtLeast(1.0)).toFloat()
+                val barSpacing = size.width / data.size
+                val barWidth = barSpacing * 0.45f
+                val accentColor = colorScheme.primary
+                
+                data.forEachIndexed { index, item ->
+                    val barHeight = (item.sales.toFloat() / maxValue) * size.height
+                    val x = (index * barSpacing) + (barSpacing - barWidth) / 2
+                    val y = size.height - barHeight
+                    
+                    // Main Bar with Gradient
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            listOf(accentColor, accentColor.copy(alpha = 0.3f))
+                        ),
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = CornerRadius(12f, 12f)
+                    )
+                }
+            }
+            
             Spacer(Modifier.height(16.dp))
-            PremiumLineChart(
-                data = data,
-                modifier = Modifier.fillMaxWidth().height(180.dp)
-            )
+            
+            // Minimal X-Axis Labels
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val labels = listOf("JAN", "MAR", "JUN", "SEP", "DEC")
+                labels.forEach { label ->
+                    Text(label, color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }
 
-@Composable
-fun PaymentModeChart(data: List<DashboardChartItem>) {
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                "Payment Collection",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(16.dp))
-            PremiumDonutChart(
-                data = data,
-                modifier = Modifier.fillMaxWidth().height(200.dp)
-            )
-        }
-    }
-}
-
-// Re-using the premium components here for consistency across the app
 @Composable
 fun PremiumLineChart(
     data: List<DashboardTrendItem>,
     modifier: Modifier = Modifier
 ) {
-    val BrandPrimary = Color(0xFF00C896)
-    val TextSecondary = Color(0xFF64748B)
-    
-    val lineColor = BrandPrimary
-    val fillColor = BrandPrimary.copy(alpha = 0.15f)
-    val gridColor = TextSecondary.copy(alpha = 0.1f)
-    val maxValue = data.maxOfOrNull { it.sales } ?: 1.0
-    val minValue = data.minOfOrNull { it.sales } ?: 0.0
-    val range = if (maxValue == minValue) 1.0 else maxValue - minValue
-
-    Column(modifier = modifier) {
-        Canvas(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            val w = size.width
-            val h = size.height
-            val padTop = 10f
-            val chartH = h - padTop
-            val stepX = if (data.size > 1) w / (data.size - 1) else w
-
-            // Grid lines
-            for (i in 0..3) {
-                val y = padTop + chartH * (1 - i / 3f)
-                drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
+    val accentColor = MaterialTheme.colorScheme.primary
+    Canvas(modifier = modifier.fillMaxWidth()) {
+        if (data.isEmpty()) return@Canvas
+        
+        val maxValue = (data.maxOf { it.sales }.coerceAtLeast(1.0)).toFloat()
+        val stepX = size.width / (data.size - 1).coerceAtLeast(1)
+        
+        val path = Path()
+        val fillPath = Path()
+        
+        data.forEachIndexed { index, item ->
+            val x = index * stepX
+            val y = size.height - (item.sales.toFloat() / maxValue) * size.height
+            
+            if (index == 0) {
+                path.moveTo(x, y)
+                fillPath.moveTo(x, size.height)
+                fillPath.lineTo(x, y)
+            } else {
+                path.lineTo(x, y)
+                fillPath.lineTo(x, y)
             }
-
-            if (data.size < 2) return@Canvas
-
-            val points = data.mapIndexed { idx, item ->
-                val x = idx * stepX
-                val y = padTop + chartH * (1 - ((item.sales - minValue) / range).toFloat())
-                Offset(x, y)
-            }
-
-            // Fill
-            val fillPath = Path().apply {
-                moveTo(points.first().x, h)
-                points.forEach { lineTo(it.x, it.y) }
-                lineTo(points.last().x, h)
-                close()
-            }
-            drawPath(fillPath, Brush.verticalGradient(listOf(fillColor, Color.Transparent)))
-
-            // Line
-            val linePath = Path().apply {
-                moveTo(points.first().x, points.first().y)
-                for (i in 1 until points.size) {
-                    val cp1x = (points[i - 1].x + points[i].x) / 2
-                    cubicTo(cp1x, points[i - 1].y, cp1x, points[i].y, points[i].x, points[i].y)
-                }
-            }
-            drawPath(linePath, lineColor, style = Stroke(width = 3.5f, cap = StrokeCap.Round))
-
-            // Points
-            points.forEach { pt ->
-                drawCircle(Color.White, radius = 5f, center = pt)
-                drawCircle(lineColor, radius = 3f, center = pt)
+            
+            if (index == data.size - 1) {
+                fillPath.lineTo(x, size.height)
+                fillPath.close()
             }
         }
-
-        // Labels
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            data.forEach { item ->
-                Text(
-                    item.date.takeLast(5),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary,
-                    fontSize = 9.sp
-                )
-            }
-        }
+        
+        // Draw Area Fill
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                listOf(accentColor.copy(alpha = 0.2f), Color.Transparent)
+            )
+        )
+        
+        // Draw Line
+        drawPath(
+            path = path,
+            color = accentColor,
+            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+        )
     }
 }
 
@@ -144,65 +147,66 @@ fun PremiumDonutChart(
     data: List<DashboardChartItem>,
     modifier: Modifier = Modifier
 ) {
-    val TextPrimary = Color(0xFF0F172A)
-    val TextSecondary = Color(0xFF64748B)
-    val MutedText = Color(0xFF9CA3AF)
-    
+    val colorScheme = MaterialTheme.colorScheme
     val chartColors = listOf(
-        Color(0xFF00C896),
-        Color(0xFF3B82F6),
-        Color(0xFFF59E0B),
-        Color(0xFFEF4444),
-        Color(0xFF8B5CF6),
-        Color(0xFFEC4899)
+        colorScheme.primary,
+        colorScheme.secondary,
+        colorScheme.tertiary,
+        colorScheme.error,
+        colorScheme.primaryContainer
     )
     val total = data.sumOf { it.value }
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.1f)),
+        modifier = modifier.fillMaxWidth()
     ) {
-        Box(
-            modifier = Modifier.size(150.dp).weight(1.1f),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Canvas(modifier = Modifier.size(120.dp)) {
-                var startAngle = -90f
-                data.forEachIndexed { idx, item ->
-                    val sweep = if (total > 0) (item.value / total * 360).toFloat() else 0f
-                    drawArc(
-                        color = chartColors[idx % chartColors.size],
-                        startAngle = startAngle,
-                        sweepAngle = sweep,
-                        useCenter = false,
-                        style = Stroke(width = 30f, cap = StrokeCap.Butt)
+            Box(
+                modifier = Modifier.size(110.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    var startAngle = -90f
+                    data.forEachIndexed { idx, item ->
+                        val sweep = if (total > 0) (item.value.toFloat() / total.toFloat() * 360f) else 0f
+                        drawArc(
+                            color = chartColors[idx % chartColors.size],
+                            startAngle = startAngle,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        startAngle += sweep
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "${(total / 1000).toInt()}K",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = colorScheme.onSurface
                     )
-                    startAngle += sweep
+                    Text("TOTAL", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
                 }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "₹${String.format("%,.0f", total)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text("Total", style = MaterialTheme.typography.labelSmall, color = MutedText)
-            }
-        }
 
-        Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(24.dp))
 
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            data.forEachIndexed { idx, item ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(chartColors[idx % chartColors.size]))
-                    Spacer(Modifier.width(8.dp))
-                    Text(item.name, style = MaterialTheme.typography.labelSmall, color = TextSecondary, modifier = Modifier.weight(1f))
-                    Text("${(if(total>0) (item.value/total*100).toInt() else 0)}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                data.take(4).forEachIndexed { idx, item ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(chartColors[idx % chartColors.size]))
+                        Spacer(Modifier.width(8.dp))
+                        Text(item.name, style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
         }

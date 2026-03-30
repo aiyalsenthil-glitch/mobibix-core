@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import com.aiyal.mobibix.ui.components.PremiumTopBar
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ import com.aiyal.mobibix.ui.components.GlassCard
 @Composable
 fun ProductListScreen(
     navController: NavController,
+    onOpenDrawer: () -> Unit,
     viewModel: ProductViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,8 +62,9 @@ fun ProductListScreen(
             FloatingActionButton(
                 onClick = { navController.navigate("add_product") },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.padding(bottom = 80.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Product")
             }
@@ -71,26 +74,16 @@ fun ProductListScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             AuroraBackground()
             
             Column(modifier = Modifier.fillMaxSize()) {
                 // ── Premium Header ──
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                    Text(
-                        "Inventory",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Manage your products and stock",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                PremiumTopBar(
+                    title = "Inventory",
+                    onNavigationClick = onOpenDrawer
+                )
 
                 // ── Search Bar ──
                 OutlinedTextField(

@@ -68,23 +68,29 @@ export class InventoryIntelligenceService {
     });
 
     // 2. Fetch direct losses from ledger (Manual Adjustments)
-    const ledgerRows = await this.prisma.stockLedger.findMany({
-      where: {
-        tenantId,
-        shopId,
-        type: 'OUT',
-        referenceType: { in: ['LOSS', 'DAMAGE', 'THEFT', 'INTERNAL_USE'] },
-        createdAt: { gte: startDate, lte: endDate },
-      },
-      select: {
-        id: true,
-        quantity: true,
-        referenceType: true,
-        shopProductId: true,
-        createdAt: true,
-        product: { select: { name: true, category: true, avgCost: true } },
-      },
-    });
+    // Wrapped in try/catch — enum values LOSS/DAMAGE/THEFT/INTERNAL_USE require migration 20260325135235
+    let ledgerRows: any[] = [];
+    try {
+      ledgerRows = await (this.prisma.stockLedger as any).findMany({
+        where: {
+          tenantId,
+          shopId,
+          type: 'OUT',
+          referenceType: { in: ['LOSS', 'DAMAGE', 'THEFT', 'INTERNAL_USE'] },
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        select: {
+          id: true,
+          quantity: true,
+          referenceType: true,
+          shopProductId: true,
+          createdAt: true,
+          product: { select: { name: true, category: true, avgCost: true } },
+        },
+      });
+    } catch {
+      ledgerRows = [];
+    }
 
     const ledgerLosses: LossItem[] = (ledgerRows as any[]).map((r: any) => {
       const lossQty = Math.abs(r.quantity);

@@ -241,7 +241,7 @@ export class WhatsAppSender {
       templateName,
       parameters,
       tenantId,
-      { allowFallback: false },
+      {},
     );
 
     // Determine usage category
@@ -340,7 +340,7 @@ export class WhatsAppSender {
       whatsappFormattedPhone,
       text,
       tenantId,
-      { channel: 'WHATSAPP', allowFallback: false },
+      { channel: 'WHATSAPP' },
     );
 
     if (result.success) {
@@ -411,7 +411,7 @@ export class WhatsAppSender {
       normalizedPhone,
       text,
       tenantId,
-      { channel: 'SMS', allowFallback: false },
+      { channel: 'SMS' },
     );
 
     if (result.success) {

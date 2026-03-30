@@ -163,7 +163,7 @@ export class ShrinkageService {
             purchaseItems: {
               orderBy: { createdAt: 'desc' },
               take:    1,
-              include: {
+              select: {
                 purchase: {
                   select: {
                     globalSupplierId: true,

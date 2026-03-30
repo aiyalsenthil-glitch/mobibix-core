@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -145,8 +145,12 @@ fun NotificationBellIcon(
                     }
                 }
                 else -> {
-                    LazyColumn(modifier = Modifier.height(320.dp)) {
-                        items(state.notifications, key = { it.id }) { notif ->
+                    Column(
+                        modifier = Modifier
+                            .height(320.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        state.notifications.forEach { notif ->
                             NotificationItem(
                                 notification = notif,
                                 onClick = {
@@ -167,7 +171,7 @@ private fun NotificationItem(
     onClick: () -> Unit
 ) {
     val bgColor = if (!notification.isRead)
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
     else
         Color.Transparent
 
@@ -192,21 +196,24 @@ private fun NotificationItem(
         )
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            notification.title?.let {
+            notification.title?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
-                    fontSize = 13.sp,
-                    fontWeight = if (!notification.isRead) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 1,
+                    fontSize = 14.sp,
+                    fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            notification.body?.let {
+            notification.body?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.height(2.dp))
                 Text(
                     text = it,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    lineHeight = 16.sp,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
             }

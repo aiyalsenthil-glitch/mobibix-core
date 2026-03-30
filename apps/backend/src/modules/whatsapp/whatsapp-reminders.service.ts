@@ -351,13 +351,16 @@ export class WhatsAppRemindersService {
         }
 
 
-        // Robust module detection for Mobile Shop
+        // Robust module detection
         const templateModule = (template?.moduleType || '')
           .toUpperCase()
           .replace(/[\s_-]/g, '');
         const isMobileShop = rawTenantType === 'MOBILESHOP';
+        const isDigitalLedger = rawTenantType === 'DIGITALLEDGER' || rawTenantType === 'DIGITAL_LEDGER';
         const isTemplateMobileShop = templateModule === 'MOBILESHOP';
+        const isTemplateDigitalLedger = templateModule === 'DIGITAL_LEDGER' || templateModule === 'DIGITALLEDGER';
         const isTemplateGym = templateModule === 'GYM';
+
         const mobileShopVariableKeys = new Set([
           'shopName',
           'customerName',
@@ -376,19 +379,21 @@ export class WhatsAppRemindersService {
           mobileShopVariableKeys.has(key),
         );
 
+        let contextModule = WhatsAppModule.GYM;
+        if (isTemplateMobileShop || hasMobileShopVariables || isMobileShop) {
+          contextModule = WhatsAppModule.MOBILE_SHOP;
+        } else if (isTemplateDigitalLedger || isDigitalLedger) {
+          contextModule = WhatsAppModule.DIGITAL_LEDGER;
+        }
+
         const context: VariableResolutionContext = {
-          module:
-            isTemplateMobileShop || hasMobileShopVariables || isMobileShop
-              ? WhatsAppModule.MOBILE_SHOP
-              : isTemplateGym
-                ? WhatsAppModule.GYM
-                : WhatsAppModule.GYM,
+          module: contextModule,
           tenantId,
           memberId: member?.id, // May be null for Mobile Shop
-          // 🚨 CRITICAL FIX: Trigger value could be Invoice ID OR JobCard ID
-          // We pass it to both; the resolver will use the one that matches the variable source
           invoiceId: reminder.triggerValue || undefined,
-          jobCardId: reminder.triggerValue || undefined, // Support Job Cards
+          jobCardId: reminder.triggerValue || undefined,
+          collectionId: contextModule === WhatsAppModule.DIGITAL_LEDGER ? reminder.triggerValue || undefined : undefined,
+          ledgerCustomerId: contextModule === WhatsAppModule.DIGITAL_LEDGER ? customer.id : undefined,
           shopId,
         };
 
