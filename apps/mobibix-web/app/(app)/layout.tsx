@@ -154,7 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
       {subscription && (
-        <div className={`${marginLeft} pt-16 transition-all duration-300`}>
+        <div className={`${marginLeft} pt-20 transition-all duration-300 relative z-20`}>
           <SubscriptionBanner 
             daysLeft={subscription.daysLeft} 
             status={subscription.subscriptionStatus} 

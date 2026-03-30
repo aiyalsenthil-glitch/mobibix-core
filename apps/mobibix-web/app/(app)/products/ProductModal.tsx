@@ -126,7 +126,8 @@ export function ProductModal({
         category: formData.category.trim() || undefined,
         brand: formData.brand.trim() || undefined,
         hsnSac: formData.hsnSac.trim() || undefined,
-        salePrice: parseFloat(formData.salePrice),
+        salePrice: Math.round(parseFloat(formData.salePrice) * 100), // Convert to Paise
+        costPrice: formData.openingCost ? Math.round(parseFloat(formData.openingCost) * 100) : undefined, // Convert to Paise
         gstRate: parseFloat(formData.gstRate),
         isSerialized: formData.isSerialized,
         reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : undefined,
@@ -146,7 +147,7 @@ export function ProductModal({
           await stockIn(shopId, {
             shopProductId: newProduct.id,
             quantity: stockQty,
-            costPrice: parseFloat(formData.openingCost) || 0,
+            costPrice: Math.round((parseFloat(formData.openingCost) || 0) * 100), // Convert to Paise
             imeis: formData.isSerialized ? imeis : undefined,
             type: formData.type,
           });
@@ -162,7 +163,7 @@ export function ProductModal({
       const productWithStock = {
         ...newProduct,
         stockQty,
-        costPrice: parseFloat(formData.openingCost) || newProduct.costPrice,
+        costPrice: formData.openingCost ? Math.round(parseFloat(formData.openingCost) * 100) : newProduct.costPrice,
       };
 
       setCreatedProduct(productWithStock);

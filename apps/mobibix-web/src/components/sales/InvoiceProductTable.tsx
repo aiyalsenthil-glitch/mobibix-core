@@ -178,7 +178,7 @@ export function InvoiceProductTable({
               <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-12 text-center">
                 #
               </th>
-              <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase">
+              <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase min-w-[280px]">
                 Product / Description
               </th>
               <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-32">
@@ -304,30 +304,30 @@ export function InvoiceProductTable({
 
                     {/* Modern Inline Cost Fixer */}
                     {product?.id && (item.costPrice === null || item.costPrice <= 0) && (
-                      <div className="mt-3 overflow-hidden rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-white dark:bg-rose-500/5 shadow-sm animate-in fade-in slide-in-from-top-3 duration-500">
-                        <div className="bg-rose-500/5 px-3 py-2 border-b border-rose-100 dark:border-rose-500/20 flex items-center justify-between">
-                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                            </span>
-                            Missing Cost
+                      <div className="mt-4 overflow-hidden rounded-3xl border-2 border-rose-200 dark:border-rose-500/40 bg-white dark:bg-rose-500/5 shadow-xl animate-in zoom-in-95 duration-500 max-w-[340px] z-10 relative">
+                        <div className="bg-rose-500 px-4 py-2 flex items-center justify-between">
+                          <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                             <span className="flex h-2 w-2">
+                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                               <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                             </span>
+                             Missing Cost
                           </span>
-                          <span className="text-[9px] text-rose-400 font-medium">Action Required</span>
+                          <span className="text-[9px] text-rose-100 font-black uppercase">Action Link</span>
                         </div>
-                        <div className="p-3">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2.5 leading-relaxed">
+                        <div className="p-4">
+                          <p className="text-[10px] text-gray-600 dark:text-gray-300 mb-4 leading-relaxed font-medium">
                             To calculate profit accurately, please enter the purchase cost for this product.
                           </p>
                           <div className="flex gap-2">
                             <div className="relative flex-1 group">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 group-focus-within:text-rose-500 transition-colors font-bold">₹</span>
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-rose-500 transition-colors font-black">₹</span>
                               <input 
                                 type="number"
-                                placeholder="0.00"
+                                placeholder="Cost Price"
                                 value={manualCosts[item.id] || ""}
                                 onChange={(e) => setManualCosts(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                className="w-full pl-6 pr-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 focus:border-rose-500 focus:outline-none focus:ring-4 focus:ring-rose-500/5 bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white transition-all font-bold"
+                                className="w-full pl-8 pr-4 py-2.5 text-sm rounded-2xl border-2 border-rose-100 dark:border-rose-500/10 focus:border-rose-500 focus:outline-none focus:ring-8 focus:ring-rose-500/5 bg-rose-50/30 dark:bg-black/20 text-gray-900 dark:text-white transition-all font-black placeholder:text-rose-300"
                               />
                             </div>
                             <button 
@@ -339,17 +339,13 @@ export function InvoiceProductTable({
                                   try {
                                     const costInPaise = Math.round(costRaw * 100);
                                     await onUpdateProductCost(product.id, costInPaise);
-                                    // Update the item costPrice locally too (keep it in Rupees for UI state if that's what useInvoiceForm expects, but hooks usually use paise? let's check)
-                                    // UseInvoiceForm uses product.costPrice ?? null where product is ShopProduct.
-                                    // ShopProduct.costPrice is in Paise? No, usually Rupees in web and converted? 
-                                    // Let's check services/products.api.ts
                                     onUpdateItem(item.id, "costPrice", costRaw, products);
                                   } finally {
                                     setIsUpdatingCost(prev => ({ ...prev, [item.id]: false }));
                                   }
                                 }
                               }}
-                              className="px-4 py-2 bg-rose-600 text-white text-xs font-black rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-600/20 disabled:opacity-40 flex items-center justify-center min-w-[70px]"
+                              className="px-6 py-2.5 bg-rose-600 text-white text-[10px] font-black rounded-2xl hover:bg-rose-700 active:scale-95 transition-all shadow-xl shadow-rose-600/30 disabled:opacity-40 flex items-center justify-center min-w-[90px]"
                             >
                               {isUpdatingCost[item.id] ? (
                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
