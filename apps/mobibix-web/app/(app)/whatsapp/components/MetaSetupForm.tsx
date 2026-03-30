@@ -95,7 +95,11 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
     window.addEventListener("message", sessionListener);
 
     // Modern "Direct Onboarding URL" flow parameters
-    const extras = JSON.stringify({ sessionInfoVersion: "3", version: "v3" });
+    const extras = JSON.stringify({ 
+      setup: {},
+      featureType: "whatsapp_business_app_onboarding",
+      sessionInfoVersion: "3" 
+    });
     const scopes = "whatsapp_business_management,whatsapp_business_messaging";
     
     // Construct the working Direct URL that showed the correct UI
@@ -142,7 +146,11 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
         response_type: "code",
         override_default_response_type: true,
         scope: scopes,
-        extras: { sessionInfoVersion: "3", version: "v3" }
+        extras: { 
+          setup: {},
+          featureType: "whatsapp_business_app_onboarding",
+          sessionInfoVersion: "3" 
+        }
       });
     }
   }

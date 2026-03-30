@@ -66,11 +66,11 @@ export class WhatsAppOnboardingService {
     const scopes = 'whatsapp_business_management,whatsapp_business_messaging';
     const configId = this.configService.get<string>('WHATSAPP_CONFIG_ID') || '';
 
-    // 4. Embedded Signup "extras" parameter
+    // 4. Embedded Signup "extras" parameter for Coexistence
     const extras = JSON.stringify({
-      setup: {}, // Pre-fill data can go here
-      sessionInfoVersion: '3', // Must be '3'
-      version: 'v3', // Must be 'v3'
+      setup: {},
+      featureType: 'whatsapp_business_app_onboarding',
+      sessionInfoVersion: '3',
     });
 
     // Using Facebook Login for Business flow with Embedded Signup config
@@ -453,6 +453,16 @@ export class WhatsAppOnboardingService {
       this.logger.warn(`Subscribe WABA webhook failed: ${e.message}`);
     }
 
+    // 8. Coexistence Synchronization (New: mandatory for Business App history)
+    if (mode === 'coexist') {
+      try {
+        await this.initiateCoexistenceSync(phoneNumberId, accessToken);
+        this.logger.log(`[Coexistence] Initiated sync for phone ${phoneNumberId}`);
+      } catch (e) {
+        this.logger.warn(`Failed to initiate Coexistence sync: ${e.message}`);
+      }
+    }
+
     this.logger.log(`Meta embedded signup complete for tenant ${tenantId} — WABA ${wabaId} (mode: ${mode})`);
     return {
       success: true,
@@ -513,6 +523,28 @@ export class WhatsAppOnboardingService {
           Authorization: `Bearer ${token}`,
         },
       },
+    );
+  }
+
+  /**
+   * Initiates the synchronization of contacts and message history from the WhatsApp Business App.
+   * Required for Coexistence mode.
+   */
+  private async initiateCoexistenceSync(phoneId: string, token: string) {
+    const url = `https://graph.facebook.com/v22.0/${phoneId}/smb_app_data`;
+    
+    // 1. Sync Contacts (smb_app_state_sync)
+    await axios.post(
+      url,
+      { messaging_product: 'whatsapp', sync_type: 'smb_app_state_sync' },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+    );
+
+    // 2. Sync Message History (history)
+    await axios.post(
+      url,
+      { messaging_product: 'whatsapp', sync_type: 'history' },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
   }
 
