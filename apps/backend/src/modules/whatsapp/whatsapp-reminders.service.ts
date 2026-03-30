@@ -302,6 +302,7 @@ export class WhatsAppRemindersService {
 
       // 4️⃣ Build template parameters using Variable Resolver
       let parameters: string[] = [];
+      let buttonUrlSuffix: string | undefined;
 
       const rawTenantType = (reminder.tenant?.tenantType || '')
         .toUpperCase()
@@ -504,12 +505,18 @@ export class WhatsAppRemindersService {
           const res = resolvedMap.get(key);
           return res?.formatted || '';
         });
+
+        // Button URL suffix for templates with dynamic URL buttons (Meta Cloud only)
+        if (eventType === 'INVOICE_CREATED' && context.invoiceId) {
+          buttonUrlSuffix = context.invoiceId;
+        }
       } else {
         // Fallback for manually seeded templates or missing definitions
         // Use the old hardcoded logic as fail-safe
         parameters = this.buildTemplateParameters(reminder, customer);
       }
       // 5️⃣ Send message via WhatsAppSender
+
       const result = await this.whatsAppSender.sendTemplateMessage(
         tenantId,
         'REMINDER', // Core feature, always-on
@@ -519,6 +526,7 @@ export class WhatsAppRemindersService {
         {
           whatsAppNumberId:
             reminder.tenant?.whatsappReminderNumberId ?? undefined,
+          buttonUrlSuffix,
         },
       );
 

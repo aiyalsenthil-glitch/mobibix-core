@@ -54,6 +54,7 @@ export class WhatsAppSender {
       logId?: string;
       whatsAppNumberId?: string;
       metadata?: Record<string, any> | null;
+      buttonUrlSuffix?: string;
     },
   ): Promise<{
     success: boolean;
@@ -241,7 +242,7 @@ export class WhatsAppSender {
       templateName,
       parameters,
       tenantId,
-      {},
+      { buttonUrlSuffix: options?.buttonUrlSuffix },
     );
 
     // Determine usage category

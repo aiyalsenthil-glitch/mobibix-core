@@ -97,20 +97,27 @@ export class WhatsAppWebhookController {
       const changes = body?.entry?.[0]?.changes?.[0];
       if (!changes) return; // Handshake or heartbeat
 
+      const field = changes.field;
       const metadata = changes.value?.metadata;
       const messages = changes.value?.messages || [];
       const statuses = changes.value?.statuses || [];
 
+      // A. Template status update (approval/rejection from Meta)
+      if (field === 'message_template_status_update') {
+        this.handleTemplateStatusUpdate(changes.value).catch((err) =>
+          this.logger.error(`Template status update error: ${err.message}`),
+        );
+        return;
+      }
 
-      // A. Process Statuses (Async)
+      // B. Process Message Delivery Statuses
       for (const status of statuses) {
-        // Void promise to avoid unhandled rejection crash at top level
         this.handleStatusUpdate(status, metadata).catch((err) =>
           this.logger.error(`Status update error: ${err.message}`),
         );
       }
 
-      // B. Process Messages (Async)
+      // C. Process Incoming Messages
       if (messages.length > 0) {
         this.handleIncomingMessages(messages, metadata).catch((err) =>
           this.logger.error(`Message processing error: ${err.message}`),
@@ -277,6 +284,43 @@ export class WhatsAppWebhookController {
         `Error handling incoming messages: ${err.message}`,
         err.stack,
       );
+    }
+  }
+
+  /**
+   * Handle Meta template approval/rejection webhooks.
+   * field: message_template_status_update
+   * Automatically updates WhatsAppTemplate.status in DB.
+   */
+  private async handleTemplateStatusUpdate(value: any) {
+    const metaTemplateName: string = value?.message_template_name;
+    const event: string = value?.event; // APPROVED | REJECTED | FLAGGED | PAUSED | DISABLED | REINSTATED
+    const reason: string | undefined = value?.reason;
+
+    if (!metaTemplateName || !event) return;
+
+    // Map Meta event → our status
+    const statusMap: Record<string, string> = {
+      APPROVED: 'ACTIVE',
+      REINSTATED: 'ACTIVE',
+      REJECTED: 'REJECTED',
+      FLAGGED: 'PAUSED',
+      PAUSED: 'PAUSED',
+      DISABLED: 'INACTIVE',
+    };
+    const newStatus = statusMap[event];
+    if (!newStatus) return;
+
+    try {
+      const result = await this.prisma.whatsAppTemplate.updateMany({
+        where: { metaTemplateName },
+        data: { status: newStatus as any },
+      });
+      this.logger.log(
+        `[TemplateWebhook] ${metaTemplateName} → ${event} (${newStatus}). Updated ${result.count} record(s). Reason: ${reason ?? 'none'}`,
+      );
+    } catch (err) {
+      this.logger.error(`Failed to update template status for ${metaTemplateName}: ${err.message}`);
     }
   }
 

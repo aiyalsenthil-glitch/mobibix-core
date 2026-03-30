@@ -62,6 +62,21 @@ export class MetaProvider implements MessagingProvider {
     const url = `https://graph.facebook.com/${this.apiVersion}/${payload.phoneNumberId}/messages`;
 
     try {
+      const components: any[] = [
+        {
+          type: 'body',
+          parameters: payload.parameters.map((text) => ({ type: 'text', text })),
+        },
+      ];
+      if (payload.buttonUrlSuffix) {
+        components.push({
+          type: 'button',
+          sub_type: 'url',
+          index: '0',
+          parameters: [{ type: 'text', text: payload.buttonUrlSuffix }],
+        });
+      }
+
       const response = await axios.post(
         url,
         {
@@ -71,15 +86,7 @@ export class MetaProvider implements MessagingProvider {
           template: {
             name: payload.templateName,
             language: { code: payload.language || 'en' },
-            components: [
-              {
-                type: 'body',
-                parameters: payload.parameters.map((text) => ({
-                  type: 'text',
-                  text,
-                })),
-              },
-            ],
+            components,
           },
         },
         {

@@ -39,23 +39,21 @@ const prisma = new PrismaClient({ adapter });
 const MOBIBIX_TEMPLATES = [
   {
     templateKey: 'invoice_created_confirmation_v1',
-    metaTemplateName: 'invoice_created_confirmation_v1',
+    metaTemplateName: 'mobibix_invoice_created',
     category: 'UTILITY',
     feature: 'INVOICE_CREATED',
     language: 'en',
     status: 'ACTIVE',
     isDefault: true,
-    description: 'Sent when a new sales invoice is generated',
-    // Variables map to placeholders: {{1}} = customer_name, {{2}} = invoice_number, {{3}} = total_amount
-    variables: ['customer_name', 'invoice_number', 'total_amount'],
-    bodyExample: `Hello {{customer_name}},
+    description: 'Sent when a new sales invoice is generated (Meta purchase_receipt_3 template)',
+    // Body: {{1}} = customerName, {{2}} = invoiceNumber
+    // Button URL suffix {{1}} = invoice UUID → appended to https://www.REMOVED_DOMAIN/print/invoice/
+    variables: ['customerName', 'invoiceNumber'],
+    bodyExample: `Hello {{customerName}},
 
-Your invoice has been generated.
+Your invoice for order {{invoiceNumber}} is attached.
 
-Invoice Number: {{invoice_number}}
-Total Amount: ₹{{total_amount}}
-
-Thank you.`,
+Thank you for shopping with us!`,
   },
   {
     templateKey: 'payment_pending_reminder_v1',

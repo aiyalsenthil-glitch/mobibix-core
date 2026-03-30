@@ -3,10 +3,10 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, ShieldCheck, Star, MessageSquare } from 'lucide-react';
+import { ShieldCheck, Star, MessageSquare } from 'lucide-react';
 
 interface ServiceSelectorProps {
-  onSelect: (provider: 'WEB_SOCKET' | 'AUTHKEY' | 'META_CLOUD') => void;
+  onSelect: (provider: 'AUTHKEY' | 'META_CLOUD') => void;
   loading?: boolean;
 }
 
@@ -20,53 +20,8 @@ export function ServiceSelector({ onSelect, loading }: ServiceSelectorProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Web Mode — Free */}
-        <Card
-          className="rounded-[2.5rem] border-2 border-transparent hover:border-teal-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl bg-white dark:bg-slate-900 dark:border-slate-800 overflow-hidden"
-          onClick={() => !loading && onSelect('WEB_SOCKET')}
-        >
-          <CardHeader className="p-8 pb-4">
-            <div className="flex items-start justify-between mb-4">
-              <div className="h-14 w-14 rounded-2xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Zap className="h-7 w-7 text-teal-600 dark:text-teal-400" />
-              </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                FREE with Pro
-              </span>
-            </div>
-            <CardTitle className="text-2xl font-black dark:text-white">Web Mode</CardTitle>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Use your existing WhatsApp number. Scan QR to connect.</p>
-          </CardHeader>
-          <CardContent className="p-8 pt-0 space-y-4">
-            <ul className="space-y-3">
-              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
-                <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
-                500 utility messages / month included
-              </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
-                <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
-                100 marketing conversations / month
-              </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
-                <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
-                Full inbox, CRM & automations
-              </li>
-              <li className="flex items-center text-sm font-semibold text-gray-400 gap-2">
-                <span className="h-4 w-4 flex-shrink-0 text-center text-xs">✕</span>
-                No official API guarantee
-              </li>
-            </ul>
-            <Button
-              className="w-full rounded-2xl h-12 bg-teal-600 hover:bg-teal-700 font-bold"
-              disabled={loading}
-            >
-              Connect via QR Scan
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Official Mode — Paid Addon */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Official Mode — Primary */}
         <Card
           className="rounded-[2.5rem] border-2 border-transparent hover:border-violet-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl bg-white dark:bg-slate-900 dark:border-slate-800 overflow-hidden relative"
           onClick={() => !loading && onSelect('AUTHKEY')}
@@ -115,17 +70,23 @@ export function ServiceSelector({ onSelect, loading }: ServiceSelectorProps) {
         </Card>
       </div>
 
-      {/* Meta Cloud API option */}
-      <p className="text-center text-xs text-gray-400 font-medium">
-        Have a Meta Business Account?{' '}
-        <button
-          className="underline hover:text-gray-600 transition-colors"
+      {/* Meta Cloud API — secondary option for businesses with own WABA */}
+      <div className="rounded-2xl border border-dashed border-gray-200 dark:border-slate-700 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Have your own Meta Business Account + WABA?</p>
+          <p className="text-xs text-gray-400 mt-0.5">Connect directly via Facebook login. You pay Meta directly for messages — no Authkey needed.</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 rounded-xl font-semibold"
           onClick={() => onSelect('META_CLOUD')}
           disabled={loading}
         >
-          Connect via Meta (Official API)
-        </button>
-      </p>
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Connect via Meta
+        </Button>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,8 @@ export interface SendTemplatePayload {
   language?: string;
   channel: MessageChannel;
   tenantId: string;
+  /** Dynamic suffix appended to the template's static button URL (Meta Cloud only) */
+  buttonUrlSuffix?: string;
 }
 
 export interface SendMediaPayload {

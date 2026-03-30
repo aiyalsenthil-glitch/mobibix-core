@@ -57,7 +57,7 @@ export class ProviderManager {
     templateName: string,
     parameters: string[],
     tenantId: string,
-    opts: SendOptions & { language?: string } = {},
+    opts: SendOptions & { language?: string; buttonUrlSuffix?: string } = {},
   ): Promise<ProviderResult> {
     const payload: SendTemplatePayload = {
       to,
@@ -66,6 +66,7 @@ export class ProviderManager {
       language: opts.language,
       channel: opts.channel || 'WHATSAPP',
       tenantId,
+      buttonUrlSuffix: opts.buttonUrlSuffix,
     };
     return this.dispatchTemplate(phoneConfig, payload, tenantId);
   }

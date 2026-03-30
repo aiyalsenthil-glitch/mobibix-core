@@ -111,38 +111,25 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     fetchStatus();
   }, [tenantId]);
 
-  const handleModeSelect = async (provider: "WEB_SOCKET" | "AUTHKEY" | "META_CLOUD") => {
+  const handleModeSelect = async (provider: "AUTHKEY" | "META_CLOUD") => {
     if (provider === "META_CLOUD") {
       setPageState("meta_setup");
       return;
     }
-    if (provider === "AUTHKEY") {
-      // Check if tenant has an active WA Official plan before proceeding
-      setSwitching(true);
-      try {
-        const plans = await getWaOfficialPlans();
-        setSwitching(false);
-        if (!plans || plans.length === 0) {
-          setPageState("plan_required");
-          return;
-        }
-        // Plans exist — proceed to switch + configure
-        await switchWhatsAppProvider("AUTHKEY");
-        setPageState("REMOVED_TOKEN_setup");
-      } catch {
-        setSwitching(false);
-        setPageState("plan_required");
-      }
-      return;
-    }
+    // AUTHKEY — check for active WA Official plan
     setSwitching(true);
     try {
-      await switchWhatsAppProvider("WEB_SOCKET");
-      window.location.reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to switch provider");
-    } finally {
+      const plans = await getWaOfficialPlans();
       setSwitching(false);
+      if (!plans || plans.length === 0) {
+        setPageState("plan_required");
+        return;
+      }
+      await switchWhatsAppProvider("AUTHKEY");
+      setPageState("REMOVED_TOKEN_setup");
+    } catch {
+      setSwitching(false);
+      setPageState("plan_required");
     }
   };
 
@@ -184,7 +171,6 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     setSwitching(true);
     try {
       // Reset to mode selection
-      await switchWhatsAppProvider("WEB_SOCKET"); // just to reset, user will re-pick
       setPageState("select_mode");
     } catch (err: any) {
       alert(err.message || "Failed to switch mode");

@@ -356,6 +356,16 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         dataType: VariableDataType.CURRENCY,
         required: true,
       },
+      invoiceId: {
+        key: 'invoiceId',
+        label: 'Invoice ID',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.id',
+        dataType: VariableDataType.STRING,
+        required: false,
+        description: 'Used as button URL suffix for mobibix_invoice_created Meta template',
+      },
       invoiceLink: {
         key: 'invoiceLink',
         label: 'Invoice Link',
