@@ -297,6 +297,7 @@ export class WhatsAppOnboardingService {
     code: string,
     selectedWabaId?: string,
     selectedPhoneNumberId?: string,
+    mode: 'coexist' | 'new_number' = 'coexist',
   ): Promise<{ success: boolean; phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' }> {
     // 1. Exchange code for short-lived user token (no redirect_uri for embedded signup)
     let shortLivedToken: string;
@@ -440,15 +441,18 @@ export class WhatsAppOnboardingService {
       this.prisma.whatsAppSetting.upsert({ where: { tenantId }, update: { enabled: true }, create: { tenantId, enabled: true } }),
     ]);
 
-    // 7. Register phone + subscribe webhooks (best-effort)
-    try { await this.registerPhoneNumber(phoneNumberId, accessToken); } catch (e) {
-      this.logger.warn(`Auto-register phone failed: ${e.message}`);
+    // 7. Register phone (new_number mode only) + subscribe webhooks
+    if (mode === 'new_number') {
+      // Full Cloud API migration — tenant will lose WhatsApp Business App access
+      try { await this.doRegisterPhoneNumber(phoneNumberId, accessToken); } catch (e) {
+        this.logger.warn(`Phone registration failed: ${e.message}`);
+      }
     }
     try { await this.subscribeApp(wabaId, accessToken); } catch (e) {
       this.logger.warn(`Subscribe WABA webhook failed: ${e.message}`);
     }
 
-    this.logger.log(`Meta embedded signup complete for tenant ${tenantId} — WABA ${wabaId}`);
+    this.logger.log(`Meta embedded signup complete for tenant ${tenantId} — WABA ${wabaId} (mode: ${mode})`);
     return {
       success: true,
       phoneNumber,
@@ -458,23 +462,26 @@ export class WhatsAppOnboardingService {
   }
 
   /**
-   * Registers the phone number with a PIN to enable messaging.
+   * COEXISTENCE MODE stub — /register skipped so tenant keeps WhatsApp Business App.
+   * Called from handleCallback/manualSync which don't have mode context.
+   * New flows use doRegisterPhoneNumber() directly when mode === 'new_number'.
    */
-  private async registerPhoneNumber(phoneId: string, token: string) {
+  private async registerPhoneNumber(_phoneId: string, _token: string) {
+    this.logger.log(`[Coexistence] Skipping /register — phone retains WhatsApp Business App access`);
+  }
+
+  /**
+   * Full Cloud API migration — called only when mode === 'new_number'.
+   * Tenant loses WhatsApp Business App access after this call.
+   */
+  private async doRegisterPhoneNumber(phoneId: string, token: string) {
     const url = `https://graph.facebook.com/v22.0/${phoneId}/register`;
     await axios.post(
       url,
-      {
-        messaging_product: 'whatsapp',
-        pin: '123456', // Default PIN for auto-registration
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      },
+      { messaging_product: 'whatsapp', pin: '123456' },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
     );
+    this.logger.log(`[New Number] Phone ${phoneId} registered for full Cloud API migration`);
   }
 
   /**

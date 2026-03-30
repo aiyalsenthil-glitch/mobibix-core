@@ -194,9 +194,10 @@ export class WhatsAppOnboardingController {
 
   /**
    * Meta Embedded Signup — called from frontend after FB.login() succeeds.
-   * Accepts the authorization code returned by the FB SDK popup.
    * POST /integrations/whatsapp/meta-exchange
-   * Body: { code, wabaId?, phoneNumberId? }
+   * Body: { code, wabaId?, phoneNumberId?, mode? }
+   *   mode: 'coexist'    — keep WhatsApp Business App access (default)
+   *   mode: 'new_number' — full Cloud API migration, loses app access
    */
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
   @Post('meta-exchange')
@@ -204,7 +205,7 @@ export class WhatsAppOnboardingController {
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async metaExchange(
     @Req() req,
-    @Body() body: { code: string; wabaId?: string; phoneNumberId?: string },
+    @Body() body: { code: string; wabaId?: string; phoneNumberId?: string; mode?: 'coexist' | 'new_number' },
   ) {
     const tenantId = req.user.tenantId;
     return this.onboardingService.metaExchange(
@@ -212,6 +213,7 @@ export class WhatsAppOnboardingController {
       body.code,
       body.wabaId,
       body.phoneNumberId,
+      body.mode ?? 'coexist',
     );
   }
 }
