@@ -515,13 +515,24 @@ export class WhatsAppRemindersService {
         // Use the old hardcoded logic as fail-safe
         parameters = this.buildTemplateParameters(reminder, customer);
       }
-      // 5️⃣ Send message via WhatsAppSender
+      // 5️⃣ Resolve template identifier: use REMOVED_TOKENWid for AUTHKEY provider, metaTemplateName for META_CLOUD
+      let templateIdentifier = template?.metaTemplateName || templateKey;
+      if (template?.REMOVED_TOKENWid) {
+        // Check active provider for this tenant
+        const activeNumber = await this.prisma.whatsAppNumber.findFirst({
+          where: { tenantId, isEnabled: true },
+          select: { provider: true },
+        });
+        if (activeNumber?.provider === 'AUTHKEY') {
+          templateIdentifier = (template as any).REMOVED_TOKENWid;
+        }
+      }
 
       const result = await this.whatsAppSender.sendTemplateMessage(
         tenantId,
         'REMINDER', // Core feature, always-on
         whatsAppPhone,
-        template?.metaTemplateName || templateKey,
+        templateIdentifier,
         parameters,
         {
           whatsAppNumberId:

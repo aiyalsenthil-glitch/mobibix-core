@@ -40,82 +40,93 @@ const MOBIBIX_TEMPLATES = [
   {
     templateKey: 'invoice_created_confirmation_v1',
     metaTemplateName: 'mobibix_invoice_created',
+    REMOVED_TOKENWid: '30381',  // Approved in Authkey portal
     category: 'UTILITY',
     feature: 'INVOICE_CREATED',
     language: 'en',
     status: 'ACTIVE',
     isDefault: true,
-    description: 'Sent when a new sales invoice is generated (Meta purchase_receipt_3 template)',
-    // Body: {{1}} = customerName, {{2}} = invoiceNumber
-    // Button URL suffix {{1}} = invoice UUID → appended to https://www.REMOVED_DOMAIN/print/invoice/
+    description: 'Sent when a new sales invoice is generated. Media template with dynamic URL button.',
     variables: ['customerName', 'invoiceNumber'],
-    bodyExample: `Hello {{customerName}},
-
-Your invoice for order {{invoiceNumber}} is attached.
-
-Thank you for shopping with us!`,
+    bodyExample: `Hello {{customerName}},\n\nYour invoice for order {{invoiceNumber}} is attached.\n\nThank you for shopping with us!`,
   },
   {
     templateKey: 'payment_pending_reminder_v1',
-    metaTemplateName: 'payment_pending_reminder_v1',
+    metaTemplateName: 'mobibix_payment_reminder',
+    REMOVED_TOKENWid: '30380',  // Approved in Authkey portal
     category: 'UTILITY',
     feature: 'PAYMENT_PENDING',
     language: 'en',
     status: 'ACTIVE',
     isDefault: true,
     description: 'Reminder for pending invoice payment',
-    // Variables map to placeholders: {{1}} = customer_name, {{2}} = invoice_number, {{3}} = pending_amount
     variables: ['customer_name', 'invoice_number', 'pending_amount'],
-    bodyExample: `Hello {{customer_name}},
-
-This is a reminder regarding a pending payment.
-
-Invoice Number: {{invoice_number}}
-Pending Amount: ₹{{pending_amount}}
-
-Please contact us if you need any clarification.`,
+    bodyExample: `Hello {{customer_name}},\n\nThis is a reminder regarding a pending payment.\n\nInvoice Number: {{invoice_number}}\nPending Amount: ₹{{pending_amount}}\n\nPlease contact us if you need any clarification.`,
+  },
+  {
+    templateKey: 'job_created_v1',
+    metaTemplateName: 'mobibix_job_created',
+    REMOVED_TOKENWid: '30382',  // Approved in Authkey portal
+    category: 'UTILITY',
+    feature: 'JOB_CREATED',
+    language: 'en',
+    status: 'ACTIVE',
+    isDefault: true,
+    description: 'Sent when a new repair job card is created',
+    variables: ['customer_name', 'device_model', 'job_number'],
+    bodyExample: `Hi {{customer_name}}, we have received your {{device_model}} for repair.\n\nJob ID: #{{job_number}}\n\nWe will keep you updated on the repair progress.`,
   },
   {
     templateKey: 'job_status_ready_v1',
-    metaTemplateName: 'job_status_ready_v1',
+    metaTemplateName: 'mobibix_job_ready',
+    REMOVED_TOKENWid: '30383',  // Pending in Authkey portal
     category: 'UTILITY',
     feature: 'JOB_READY',
     language: 'en',
     status: 'ACTIVE',
     isDefault: true,
     description: 'Notification when repair job is ready for pickup',
-    // Variables map to placeholders: {{1}} = customer_name, {{2}} = job_number, {{3}} = device_name
-    variables: ['customer_name', 'job_number', 'device_name'],
-    bodyExample: `Hello {{customer_name}},
-
-Your service request is now ready.
-
-Job Number: {{job_number}}
-Device: {{device_name}}
-
-Please visit us at your convenience.
-Thank you.`,
+    variables: ['customer_name', 'shop_name', 'job_number', 'device_model'],
+    bodyExample: `Great news, {{customer_name}}! Your {{device_model}} is repaired and ready for pickup at {{shop_name}}.\n\nJob ID: #{{job_number}}\n\nPlease visit us during business hours to collect your device.`,
+  },
+  {
+    templateKey: 'job_completed_v1',
+    metaTemplateName: 'mobibix_job_completed',
+    REMOVED_TOKENWid: '30384',  // Pending in Authkey portal
+    category: 'UTILITY',
+    feature: 'JOB_COMPLETED',
+    language: 'en',
+    status: 'ACTIVE',
+    isDefault: true,
+    description: 'Notification when repair job is marked completed and collected',
+    variables: ['shop_name', 'customer_name', 'job_number', 'device_model', 'final_cost'],
+    bodyExample: `Hi {{customer_name}}, your repair at {{shop_name}} is now complete.\n\nDevice: {{device_model}}\nJob ID: #{{job_number}}\nFinal amount: ₹{{final_cost}}\n\nThank you for choosing us!`,
   },
   {
     templateKey: 'crm_followup_reminder_v1',
-    metaTemplateName: 'crm_followup_reminder_v1',
+    metaTemplateName: 'mobibix_followup_reminder',
+    REMOVED_TOKENWid: '30385',  // Pending in Authkey portal
     category: 'UTILITY',
     feature: 'FOLLOW_UP_SCHEDULED',
     language: 'en',
     status: 'ACTIVE',
     isDefault: true,
     description: 'Reminder for scheduled customer follow-up',
-    // Variables map to placeholders: {{1}} = customer_name, {{2}} = purpose, {{3}} = scheduled_at
     variables: ['customer_name', 'purpose', 'scheduled_at'],
-    bodyExample: `Hello {{customer_name}},
-
-This is a reminder regarding your pending follow-up.
-
-Purpose: {{purpose}}
-Scheduled On: {{scheduled_at}}
-
-If you have any questions, please reply to this message.
-Thank you.`,
+    bodyExample: `Hello {{customer_name}},\n\nThis is a reminder regarding your pending follow-up.\n\nPurpose: {{purpose}}\nScheduled On: {{scheduled_at}}\n\nIf you have any questions, please reply to this message.`,
+  },
+  {
+    templateKey: 'followup_overdue_v1',
+    metaTemplateName: 'mobibix_followup_overdue',
+    REMOVED_TOKENWid: '30386',  // Approved in Authkey portal — NOTE: Authkey categorized as Marketing
+    category: 'MARKETING', // Marketing category — requires WA Pro/Business plan
+    feature: 'FOLLOW_UP_OVERDUE',
+    language: 'en',
+    status: 'ACTIVE',
+    isDefault: true,
+    description: 'Sent when a follow-up is overdue. Marketing category — plan-gated.',
+    variables: ['customer_name', 'days_overdue'],
+    bodyExample: `Hi {{customer_name}}, we noticed we haven't connected in a while.\n\nYour follow-up is overdue by {{days_overdue}} day(s). We'd love to catch up.\n\nPlease reply to this message whenever you're ready.`,
   },
 ];
 
@@ -176,6 +187,7 @@ async function seedMobiBixTemplates() {
           moduleType: MODULE,
           templateKey: template.templateKey,
           metaTemplateName: template.metaTemplateName,
+          REMOVED_TOKENWid: template.REMOVED_TOKENWid,
           category: template.category,
           feature: template.feature,
           language: template.language,

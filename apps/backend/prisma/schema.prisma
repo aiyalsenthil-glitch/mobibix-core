@@ -1181,6 +1181,7 @@ model WhatsAppTemplate {
   moduleType       String
   templateKey      String
   metaTemplateName String
+  REMOVED_TOKENWid       String?            // Authkey numeric template ID (wid). Used when provider = AUTHKEY.
   category         String
   feature          String
   language         String             @default("en")
