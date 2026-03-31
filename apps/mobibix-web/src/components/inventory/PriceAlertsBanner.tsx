@@ -20,7 +20,7 @@ export function PriceAlertsBanner({ shopId }: Props) {
   useEffect(() => {
     if (!shopId) return;
     listPriceAlerts(shopId, "PENDING")
-      .then(setAlerts)
+      .then((data) => setAlerts(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [shopId]);
