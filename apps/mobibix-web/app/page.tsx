@@ -2,9 +2,6 @@ import { HeroSlidesWrapper } from "../components/landing/HeroSlidesWrapper";
 import { WhatsAppWidget } from "../components/landing/WhatsAppWidget";
 import type { Metadata } from "next";
 import { getAllPosts } from "../lib/blog";
-import { BlogSection } from "../components/landing/BlogSection";
-import { Header } from "../components/layout/Header";
-import { Footer } from "../components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "Mobibix — The Retail OS for Mobile Shops",
@@ -132,7 +129,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-background transition-colors duration-500 overflow-hidden">
+    <main className="bg-background transition-colors duration-500">
       {/* 
         ⚠️ SEO FIX: Visually hidden H1 for crawlers.
         The Hero component is dynamic/client-side and returns null during initial SSR.
