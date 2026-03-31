@@ -87,7 +87,9 @@ export class GymExpensesService {
     const totalExpenses = byCategory.reduce(
       (sum, c) => sum + (c._sum.amount ?? 0), 0,
     );
-    const totalRevenue = revenue._sum.amount ?? 0;
+    // MemberPayment.amount is in rupees; GymExpense.amount is in paise.
+    // Multiply revenue * 100 to normalise both to paise for consistent P&L.
+    const totalRevenue = (revenue._sum.amount ?? 0) * 100;
 
     return {
       month,

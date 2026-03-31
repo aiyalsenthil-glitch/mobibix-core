@@ -332,7 +332,7 @@ export class GymMembersController {
       },
     });
 
-    const baseAmount = payment.amount; // paise
+    const baseAmount = payment.amount; // stored in rupees
     const gstRate = payment.gstRate ?? 0;
     const gstAmount = payment.gstAmount ?? 0;
     const total = payment.total ?? baseAmount;
@@ -353,12 +353,12 @@ export class GymMembersController {
         durationDays: payment.durationDays,
         membershipStart: payment.member.membershipStartAt,
         membershipEnd: payment.member.membershipEndAt,
-        baseAmountRupees: baseAmount / 100,
+        baseAmountRupees: baseAmount,
         gstRate,
-        cgstRupees: cgst / 100,
-        sgstRupees: sgst / 100,
-        gstAmountRupees: gstAmount / 100,
-        totalRupees: total / 100,
+        cgstRupees: cgst,
+        sgstRupees: sgst,
+        gstAmountRupees: gstAmount,
+        totalRupees: total,
         hasGst: gstRate > 0,
       },
     };
@@ -393,7 +393,7 @@ export class GymMembersController {
     if (!member) throw new NotFoundException('Member not found');
     if (!tenant?.gymUpiId) throw new BadRequestException('UPI ID not configured. Go to Settings → Gym Profile to add your UPI ID.');
 
-    const dueAmount = Math.max(0, (member.feeAmount - member.paidAmount) / 100); // paise → rupees
+    const dueAmount = Math.max(0, member.feeAmount - member.paidAmount); // rupees
     const note = `Membership-${member.fullName.replace(/\s+/g, '-')}`;
 
     // UPI deep-link URI (works with all UPI apps)

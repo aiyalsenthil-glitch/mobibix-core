@@ -4,16 +4,12 @@ import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { WhatsAppCrmService } from './whatsapp-crm.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
-import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
-import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
-import { PERMISSIONS } from '../../security/permission-registry';
-import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
-import { ModuleType, UserRole } from '@prisma/client';
+import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscription-check.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('user/whatsapp-crm')
-@ModuleScope(ModuleType.MOBILE_SHOP)
-@ModulePermission('whatsapp')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard)
+@SkipSubscriptionCheck()
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppCrmController {
   private readonly logger = new Logger(WhatsAppCrmController.name);
@@ -22,9 +18,9 @@ export class WhatsAppCrmController {
 
   /**
    * GET /user/whatsapp-crm/check-status
-   * Check WhatsApp CRM subscription and setup status (primary endpoint for frontend)
+   * Check WhatsApp CRM subscription and setup status for any module (GYM or MOBILE_SHOP).
+   * @SkipSubscriptionCheck — this endpoint checks whether you HAVE a subscription, so no module gate needed.
    */
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
   @Get('check-status')
   async getStatus(@Req() req: any) {
     try {
@@ -33,12 +29,11 @@ export class WhatsAppCrmController {
       return await this.whatsappCrmService.getStatus(tenantId);
     } catch (error) {
       this.logger.error('Error fetching WhatsApp CRM status', error instanceof Error ? error.stack : error);
-      // Fallback for demo/error cases to avoid UI crash
       return {
         hasSubscription: false,
         isEnabled: false,
         hasPhoneNumber: false,
-        moduleType: 'MOBILE_SHOP',
+        moduleType: 'GYM',
       };
     }
   }
