@@ -6,9 +6,19 @@ import FacebookSDK from "@/components/FacebookSDK";
 import ReferralTracker from "@/components/ReferralTracker";
 import { Suspense } from "react";
 import Script from "next/script";
-import { Metadata } from 'next';
+import { Metadata, Viewport } from 'next';
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+    { media: "(prefers-color-scheme: light)", color: "#f9fafb" },
+  ],
+};
 
 
 export const metadata: Metadata = {

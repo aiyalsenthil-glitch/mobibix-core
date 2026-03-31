@@ -3,10 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
-import { useTheme } from "@/context/ThemeContext";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { BlogSection } from "./BlogSection";
 import { TestimonialsSection } from "./TestimonialsSection";
 
@@ -22,17 +21,10 @@ function StatItem({ value, unit, label }: { value: string; unit: string; label: 
 }
 
 export function HeroSlidesClient({ posts }: { posts: any[] }) {
-  const { theme: _theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false);
   const scrollCooldown = useRef(0);
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const sections = [
     { id: "hero", label: "Hero" },
@@ -98,8 +90,6 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
     };
   }, [activeSection, sections.length]);
 
-  if (!mounted) return null;
-
   return (
     <div className="bg-background text-foreground selection:bg-primary/30 h-[100svh] w-screen overflow-hidden transition-colors duration-500">
       <Header />
@@ -108,8 +98,6 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         className="h-full w-full flex flex-col"
         animate={{ y: `-${activeSection * 100}svh` }}
         transition={{ type: "spring", stiffness: 70, damping: 20, mass: 1 }}
-        onAnimationStart={() => setIsScrolling(true)}
-        onAnimationComplete={() => setIsScrolling(false)}
       >
         {/* ── Section 1: Hero ── */}
         <div className="h-[100svh] w-screen flex flex-col items-center justify-center relative pt-20 px-5 shrink-0 overflow-hidden">

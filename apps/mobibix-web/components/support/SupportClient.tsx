@@ -1,19 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
 import { motion } from "framer-motion";
 
 export function SupportClient() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500 selection:bg-primary/30 px-6">

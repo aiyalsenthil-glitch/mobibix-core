@@ -20,7 +20,7 @@ export default function FacebookSDK() {
     <>
       <Script
         id="facebook-jssdk-init"
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       >
         {`
           window.fbAsyncInit = function() {
@@ -35,7 +35,7 @@ export default function FacebookSDK() {
       </Script>
       <Script
         id="facebook-jssdk"
-        strategy="afterInteractive"
+        strategy="lazyOnload"
         src="https://connect.facebook.net/en_US/sdk.js"
       />
     </>

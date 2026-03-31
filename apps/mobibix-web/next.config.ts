@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  compress: true,
+
+  images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
+    deviceSizes: [390, 640, 750, 828, 1080, 1200, 1920],
+  },
 
   turbopack: {
     root: __dirname,
@@ -10,6 +17,21 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      // Long-lived cache for static assets (Next.js fingerprints these)
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      // Cache public images/fonts for 7 days
+      {
+        source: "/assets/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
+      },
+      // Cache public marketing pages at CDN edge for 60s, stale-while-revalidate 10min
+      {
+        source: "/(|features|pricing|partner|blog|regions/:path*|compare|support)",
+        headers: [{ key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=600" }],
+      },
       {
         source: "/:path*",
         headers: [

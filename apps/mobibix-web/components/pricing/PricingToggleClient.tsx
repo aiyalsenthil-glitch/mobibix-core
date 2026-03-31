@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
@@ -12,14 +12,6 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
     "YEARLY"
   );
   const [_openFaq, _setOpenFaq] = useState<number | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 transition-colors duration-500 px-6 overflow-x-hidden">
