@@ -9,11 +9,9 @@ import {
   scheduleWhatsAppCampaign,
   sendWhatsAppMessage,
   switchWhatsAppProvider,
-  disconnectWhatsApp,
   clearWhatsAppInbox,
   getWhatsAppStatus,
-  getWhatsAppWebStatus,
-  disconnectWhatsAppWeb,
+  disconnectWhatsApp,
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
@@ -62,7 +60,6 @@ type PageState =
   | "plan_required"
   | "REMOVED_TOKEN_setup"
   | "meta_setup"
-  | "web_active"
   | "REMOVED_TOKEN_active"
   | "meta_active";
 
@@ -87,11 +84,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
       setWaStatus(backendStatus);
 
-      if (backendStatus.provider === "WEB_SOCKET") {
-        const webStatus = await getWhatsAppWebStatus(tenantId);
-        setWaStatus({ ...webStatus, provider: "WEB_SOCKET" });
-        setPageState("web_active");
-      } else if (backendStatus.provider === "AUTHKEY") {
+      if (backendStatus.provider === "AUTHKEY") {
         if (backendStatus.status === "PENDING" || backendStatus.status === "DISCONNECTED") {
           setPageState("REMOVED_TOKEN_setup");
         } else {
@@ -251,7 +244,6 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
   // ── Active dashboard ─────────────────────────────────────────────────────────
   const isAuthkey = pageState === "REMOVED_TOKEN_active";
   const isMeta = pageState === "meta_active";
-  const isWeb = pageState === "web_active";
 
   const providerLabel = isAuthkey
     ? "Official (Authkey)"
@@ -261,9 +253,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
   const providerBadgeClass = isAuthkey
     ? "bg-violet-500/10 text-violet-600 dark:text-violet-400"
-    : isMeta
-    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+    : "bg-blue-500/10 text-blue-600 dark:text-blue-400";
 
   return (
     <div className="p-4 lg:p-8 space-y-6">
@@ -282,19 +272,6 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {isWeb && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl h-9 font-bold text-teal-600 border-teal-500/20 hover:bg-teal-500/10"
-              onClick={handleClearInbox}
-              disabled={clearing || switching}
-            >
-              {clearing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Clear Sync
-            </Button>
-          )}
-
           <Button
             variant="outline"
             size="sm"
@@ -305,25 +282,6 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
             {switching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Settings2 className="w-4 h-4 mr-2" />}
             Switch Mode
           </Button>
-
-          {isWeb && waStatus?.status === "CONNECTED" && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl h-9 font-bold text-red-600 border-red-500/20 hover:bg-red-500/10"
-              onClick={async () => {
-                if (!confirm("Logout from WhatsApp Web?")) return;
-                try {
-                  await disconnectWhatsAppWeb(tenantId);
-                  await disconnectWhatsApp();
-                } finally {
-                  window.location.reload();
-                }
-              }}
-            >
-              Logout
-            </Button>
-          )}
         </div>
       </div>
 
@@ -346,11 +304,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="focus-visible:ring-0">
-          {isWeb && waStatus?.status !== "CONNECTED" ? (
-            <QRScanner tenantId={tenantId} onConnected={fetchStatus} />
-          ) : isWeb ? (
-            <WebModeConnectedCard waStatus={waStatus} />
-          ) : isAuthkey ? (
+          {isAuthkey ? (
             <AuthkeyConnectedCard waStatus={waStatus} />
           ) : (
             <MetaDashboardContent tenantId={tenantId} />
@@ -401,30 +355,6 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
   );
 }
 
-function WebModeConnectedCard({ waStatus }: { waStatus: any }) {
-  return (
-    <div className="grid gap-6">
-      <Card className="rounded-4xl border-none shadow-sm bg-linear-to-br from-emerald-500 to-teal-600 p-8 text-white">
-        <h3 className="text-2xl font-black mb-2">Web Mode Active</h3>
-        <p className="opacity-80 font-medium">Real-time automation is active via your linked WhatsApp session.</p>
-      </Card>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Status</p>
-          <p className="text-xl font-black text-emerald-600">{waStatus?.status || "CONNECTED"}</p>
-        </Card>
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Phone Number</p>
-          <p className="text-xl font-black text-foreground">{waStatus?.phoneNumber || "—"}</p>
-        </Card>
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mode</p>
-          <p className="text-xl font-black text-teal-600">WhatsApp Web</p>
-        </Card>
-      </div>
-    </div>
-  );
-}
 
 function AuthkeyConnectedCard({ waStatus }: { waStatus: any }) {
   return (

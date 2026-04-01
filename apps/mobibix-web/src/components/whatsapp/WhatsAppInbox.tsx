@@ -37,46 +37,12 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost_REPLACED:3000';
-
   useEffect(() => {
-    // WebSocket connects to the root, not the /api prefix
-    const socketBase = API_URL.replace('/api', '');
-    const s = io(`${socketBase}/inbox`, { 
-      query: { tenantId },
-      transports: ['websocket', 'polling'],
-      withCredentials: true
-    });
-
-    s.on('connect', () => {
-
-    });
-
-    s.on('connect_error', (error) => {
-      console.error('Inbox WebSocket connection error:', error);
-    });
-
-    s.on('inbox:new-message', (data: any) => {
-      if (data.senderPhone === activeChat) {
-        setMessages(prev => [...prev, {
-          id: data.messageId,
-          body: data.body,
-          senderPhone: data.senderPhone,
-          direction: 'INCOMING',
-          timestamp: data.timestamp,
-          status: 'READ'
-        }]);
-      }
-      updateConversationList(data);
-    });
-
-    setSocket(s);
-    return () => { s.disconnect(); };
-  }, [tenantId, activeChat]);
+    fetchConversations();
+    // Poll every 15 seconds for new messages from Meta Webhooks
+    const interval = setInterval(fetchConversations, 15000);
+    return () => clearInterval(interval);
+  }, [tenantId]);
 
   const updateConversationList = (msg: any) => {
     setConversations(prev => {

@@ -290,31 +290,6 @@ export async function connectWhatsApp(): Promise<{ url: string }> {
   }
   return extractData(response);
 }
-const WA_WEB_URL = process.env.NEXT_PUBLIC_WA_WEB_URL || '';
-
-export async function connectWhatsAppWeb(tenantId: string): Promise<{ qr: string }> {
-  const response = await fetch(`${WA_WEB_URL}/whatsapp/connect`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tenantId }),
-  });
-  if (!response.ok) throw new Error("Failed to initialize WA Web");
-  return response.json();
-}
-
-export async function getWhatsAppWebStatus(tenantId: string): Promise<{ status: string; qr?: string; phoneNumber?: string; provider?: string }> {
-  const response = await fetch(`${WA_WEB_URL}/whatsapp/status/${tenantId}`);
-  if (!response.ok) throw new Error("Failed to fetch WA Web status");
-  return response.json();
-}
-
-export async function disconnectWhatsAppWeb(tenantId: string): Promise<void> {
-  await fetch(`${WA_WEB_URL}/whatsapp/disconnect`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tenantId }),
-  });
-}
 
 export async function clearWhatsAppInbox(tenantId: string): Promise<void> {
   const response = await authenticatedFetch(`/whatsapp/logs/${tenantId}`, {
