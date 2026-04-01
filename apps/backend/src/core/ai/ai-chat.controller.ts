@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Req, UseGuards, Headers, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import { AiCoreClient, AiTaskRequest } from './ai-core.client';
 import { AiQuotaService } from './ai-quota.service';
@@ -14,9 +15,18 @@ import { GranularPermissionGuard } from '../permissions/guards/granular-permissi
 import { PERMISSIONS } from '../../security/permission-registry';
 
 export class AiChatDto {
+  @IsString()
   message: string;
+
+  @IsOptional()
+  @IsString()
   sessionId?: string;
+
+  @IsEnum(ModuleType)
   module: ModuleType;
+
+  @IsOptional()
+  @IsString()
   language?: string;
 }
 
