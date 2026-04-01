@@ -67,15 +67,12 @@ export class AiChatController {
     // 1. Quota Pre-check (throws if limits exceeded or no AI plan)
     await this.quotaService.assertQuota(tenantId, dto.module);
     
-    // 2. Fetch active language preference if none sent
-    let language = dto.language;
-    if (!language) {
-      const dbSettings = await this.prisma.user.findUnique({
-        where: { id: req.user.sub },
-        select: { tenantId: true }, // Add user preference if implemented, proxy uses AI core defaults
-      });
-      language = 'ENGLISH'; // Fallback
-    }
+    // 2. Normalise language to ai-core expected values (English | Hindi | Tamil)
+    const langMap: Record<string, string> = {
+      ENGLISH: 'English', HINDI: 'Hindi', TAMIL: 'Tamil',
+      english: 'English', hindi: 'Hindi', tamil: 'Tamil',
+    };
+    const language = langMap[dto.language ?? ''] ?? 'English';
 
     // 3. Delegate to AI Core Agent Loop
     const payload: AiTaskRequest = {
