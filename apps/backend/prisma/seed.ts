@@ -104,11 +104,11 @@ const ADDON_PACKS = [
 ];
 
 const V1_PLANS = [
+  // ── GymPilot (GYM) ──────────────────────────────────────────────────────
   {
-    code: 'TRIAL',
-    name: 'TRIAL',
+    code: 'GYM_TRIAL',
+    name: 'GYM Trial',
     level: 0,
-    memberLimit: 50,
     features: FEATURES_GYM_PRO,
     isPublic: false,
     module: 'GYM',
@@ -127,10 +127,9 @@ const V1_PLANS = [
     ],
   },
   {
-    code: 'STANDARD',
-    name: 'STANDARD',
+    code: 'GYM_STANDARD',
+    name: 'GYM Standard',
     level: 1,
-    memberLimit: 200,
     features: FEATURES_GYM_STANDARD,
     isPublic: true,
     module: 'GYM',
@@ -140,8 +139,7 @@ const V1_PLANS = [
     whatsappMarketingQuota: 0,
     analyticsHistoryDays: 90,
     tagline: 'Essential management for single-location gyms.',
-    description:
-      'Manage your gym efficiently with attendance and basic staff roles.',
+    description: 'Manage your gym efficiently with attendance and basic staff roles.',
     featuresJson: [
       'Up to 200 Members',
       '3 Staff Accounts',
@@ -150,10 +148,9 @@ const V1_PLANS = [
     ],
   },
   {
-    code: 'PRO',
-    name: 'PRO',
+    code: 'GYM_PRO',
+    name: 'GYM Pro',
     level: 2,
-    memberLimit: null,
     features: FEATURES_GYM_PRO,
     isPublic: true,
     module: 'GYM',
@@ -163,8 +160,7 @@ const V1_PLANS = [
     whatsappMarketingQuota: 100,
     analyticsHistoryDays: 365,
     tagline: 'Advanced growth tools for high-performance gyms.',
-    description:
-      'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
+    description: 'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
     featuresJson: [
       'Unlimited Members',
       'Unlimited Staff',
@@ -172,11 +168,11 @@ const V1_PLANS = [
       'Advanced Analytics',
     ],
   },
+  // ── MobiBix (MOBILE_SHOP) ────────────────────────────────────────────────
   {
     code: 'MOBIBIX_TRIAL',
     name: 'Mobibix Trial',
     level: 0,
-    memberLimit: null,
     features: FEATURES_MOBIBIX_PRO,
     isPublic: false,
     module: 'MOBILE_SHOP',
@@ -186,8 +182,7 @@ const V1_PLANS = [
     whatsappMarketingQuota: 0,
     analyticsHistoryDays: 30,
     tagline: 'Experience the full power of Mobibix.',
-    description:
-      '14-day free trial with access to all premium retail features.',
+    description: '14-day free trial with access to all premium retail features.',
     featuresJson: [
       'Inventory Management',
       'Sales & Billing',
@@ -196,10 +191,32 @@ const V1_PLANS = [
     ],
   },
   {
+    code: 'MOBIBIX_STANDARD',
+    name: 'MobiBix Standard',
+    level: 1,
+    features: ['STAFF', 'REPORTS'],
+    isPublic: true,
+    module: 'MOBILE_SHOP',
+    maxStaff: 3,
+    maxMembers: null,
+    maxShops: 1,
+    whatsappUtilityQuota: 0,
+    whatsappMarketingQuota: 0,
+    analyticsHistoryDays: 90,
+    tagline: 'Professional inventory & sales management.',
+    description: 'Everything you need to run a single mobile repair shop efficiently.',
+    featuresJson: [
+      'Single Shop',
+      'Unlimited Products',
+      'Sales Invoicing',
+      'Basic Inventory Tracking',
+      '3 Staff Accounts',
+    ],
+  },
+  {
     code: 'MOBIBIX_PRO',
     name: 'Mobibix Pro',
     level: 2,
-    memberLimit: null,
     features: FEATURES_MOBIBIX_PRO,
     isPublic: true,
     module: 'MOBILE_SHOP',
@@ -210,8 +227,7 @@ const V1_PLANS = [
     whatsappMarketingQuota: 100,
     analyticsHistoryDays: 365,
     tagline: 'Scale your retail empire with multi-store power.',
-    description:
-      'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
+    description: 'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
     featuresJson: [
       'Multi-Store Support',
       'Unlimited Staff',
@@ -358,29 +374,42 @@ const V1_PLANS = [
   // WA_ADDON_500 and WA_ADDON_200 are seeded by seedAddonPacks() via ADDON_PACKS — not duplicated here.
 ];
 
-const V1_PRICING = {
-  TRIAL: { MONTHLY: 0 },
-  STANDARD: {
+const V1_PRICING: Record<string, any> = {
+  // ── GymPilot ──────────────────────────────────
+  GYM_TRIAL: { MONTHLY: 0 },
+  GYM_STANDARD: {
     MONTHLY: 19900,
     QUARTERLY: 49900,
     YEARLY: 179900,
+    RAZORPAY_MONTHLY:    'plan_SHBOsZJTYHebiW',
+    RAZORPAY_QUARTERLY:  'plan_SHBPLvynxI8DHm',
+    RAZORPAY_YEARLY:     'plan_SHBPmj5c3CvVIf',
   },
-  PRO: {
+  GYM_PRO: {
     MONTHLY: 39900,
     QUARTERLY: 99900,
     YEARLY: 359900,
-    // Razorpay IDs for testing
-    RAZORPAY_MONTHLY: 'plan_SNs7ARvIv5n60i',
-    RAZORPAY_YEARLY: 'plan_SNs5RkkKAzLBez',
+    RAZORPAY_MONTHLY:    'plan_SHBQ79swgdys0w',
+    RAZORPAY_QUARTERLY:  'plan_SHBQRsgv145eT3',
+    RAZORPAY_YEARLY:     'plan_SHBQkjqOEiBFMV',
   },
+  // ── MobiBix ──────────────────────────────────
   MOBIBIX_TRIAL: { MONTHLY: 0 },
+  MOBIBIX_STANDARD: {
+    MONTHLY: 29900,
+    QUARTERLY: 79900,
+    YEARLY: 299900,
+    RAZORPAY_MONTHLY:    'plan_SHBR5Wloh9IpvS',
+    RAZORPAY_QUARTERLY:  'plan_SHBR0tMAfnvz1P',
+    RAZORPAY_YEARLY:     'plan_SHBRhzJtBLtjnK',
+  },
   MOBIBIX_PRO: {
     MONTHLY: 49900,
     QUARTERLY: 139900,
     YEARLY: 499900,
-    // Razorpay IDs for testing
-    RAZORPAY_MONTHLY: 'plan_SNs6EYiLAATMCh',
-    RAZORPAY_YEARLY: 'plan_SNs6lPPrdFkp44',
+    RAZORPAY_MONTHLY:    'plan_SHBS7oI1veoGlY',
+    RAZORPAY_QUARTERLY:  'plan_SHBUe12IEyECwq',
+    RAZORPAY_YEARLY:     'plan_SHBU6VWrCKq5m4',
   },
   WHATSAPP_GROWTH: {
     MONTHLY: 149900,
@@ -879,6 +908,8 @@ async function main() {
           let rzpId = null;
           if (cycle === 'MONTHLY' && pricing.RAZORPAY_MONTHLY)
             rzpId = pricing.RAZORPAY_MONTHLY;
+          if (cycle === 'QUARTERLY' && pricing.RAZORPAY_QUARTERLY)
+            rzpId = pricing.RAZORPAY_QUARTERLY;
           if (cycle === 'YEARLY' && pricing.RAZORPAY_YEARLY)
             rzpId = pricing.RAZORPAY_YEARLY;
 

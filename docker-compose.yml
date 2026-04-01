@@ -76,6 +76,7 @@ services:
       AI_CLOUD_FALLBACK_ENABLED: ${AI_CLOUD_FALLBACK_ENABLED:-false}
       AI_CLOUD_PROVIDER: ${AI_CLOUD_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-your-development-jwt-secret-change-me}
     networks:
