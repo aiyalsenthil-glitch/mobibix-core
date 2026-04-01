@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { 
   Search, 
   Send, 
@@ -37,6 +36,10 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost_REPLACED:3000';
+
   useEffect(() => {
     fetchConversations();
     // Poll every 15 seconds for new messages from Meta Webhooks
