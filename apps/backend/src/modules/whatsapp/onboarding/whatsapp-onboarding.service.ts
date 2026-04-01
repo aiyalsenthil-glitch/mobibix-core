@@ -379,7 +379,7 @@ export class WhatsAppOnboardingService {
     try {
       const { data: wabaData } = await axios.get(
         `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts`,
-        { params: { access_token: accessToken, fields: 'id,name,currency,timezone' } },
+        { params: { access_token: accessToken, fields: 'id,name' } },
       );
       if (!wabaData.data?.length) throw new NotFoundException('No WhatsApp Business Account found.');
       let selectedWaba = wabaData.data[0];
@@ -403,8 +403,10 @@ export class WhatsAppOnboardingService {
       phoneNumber = phone.display_phone_number.replace(/\D/g, '');
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
-      this.logger.error(`Failed to fetch Meta assets: ${error.message}`);
-      throw new BadRequestException('Failed to retrieve WhatsApp Business Account details.');
+      
+      const metaError = error.response?.data?.error?.message || error.message;
+      this.logger.error(`Failed to fetch Meta assets: ${metaError}`, error.response?.data);
+      throw new BadRequestException(`Failed to retrieve WhatsApp Business Account details: ${metaError}`);
     }
 
     // 6. Persist + enable (disable any other active provider first)
