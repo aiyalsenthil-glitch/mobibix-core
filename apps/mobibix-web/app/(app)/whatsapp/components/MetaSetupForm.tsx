@@ -251,10 +251,12 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
         <Button
           className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white"
           onClick={handleConnect}
-          disabled={state === "loading_sdk" || state === "connecting" || state === "mode_select"}
+          disabled={state === "loading_sdk" || state === "connecting" || (state === "mode_select" && !mode)}
         >
-          {state === "loading_sdk" || state === "mode_select" ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading...</>
+          {state === "loading_sdk" ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading SDK...</>
+          ) : (state === "mode_select" || state === "ready") ? (
+            <><Facebook className="h-4 w-4 mr-2" /> Continue with Facebook</>
           ) : state === "connecting" ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Waiting for Meta...</>
           ) : (
@@ -266,10 +268,10 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
           <div className="space-y-3 pt-2">
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white dark:bg-slate-950 px-2 text-muted-foreground">Stuck?</span></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white dark:bg-slate-950 px-2 text-muted-foreground font-bold text-blue-500">Already Finished in Meta?</span></div>
             </div>
-            <p className="text-[10px] text-center text-muted-foreground">If Meta said "Success" but this screen hasn't changed, click below:</p>
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={checkManualStatus}>
+            <p className="text-[10px] text-center text-muted-foreground">If the Facebook window closed but this screen hasn't changed:</p>
+            <Button variant="outline" size="sm" className="w-full text-xs border-blue-200 dark:border-blue-900" onClick={checkManualStatus}>
               <RefreshCw className="h-3 w-3 mr-2" /> Check Connection Status
             </Button>
           </div>
