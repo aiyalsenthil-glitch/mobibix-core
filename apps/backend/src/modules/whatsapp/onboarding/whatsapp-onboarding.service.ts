@@ -373,34 +373,39 @@ export class WhatsAppOnboardingService {
     }
 
     // 5. Fetch WABA + phone
-    let wabaId: string;
-    let phoneNumberId: string;
+    let wabaId: string | undefined = selectedWabaId;
+    let phoneNumberId: string | undefined = selectedPhoneNumberId;
     let phoneNumber: string;
-    try {
-      const { data: wabaData } = await axios.get(
-        `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts`,
-        { params: { access_token: accessToken, fields: 'id,name' } },
-      );
-      if (!wabaData.data?.length) throw new NotFoundException('No WhatsApp Business Account found.');
-      let selectedWaba = wabaData.data[0];
-      if (selectedWabaId) {
-        const found = wabaData.data.find((w: any) => w.id === selectedWabaId);
-        if (found) selectedWaba = found;
-      }
-      wabaId = selectedWaba.id;
 
-      const { data: phoneData } = await axios.get(
-        `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers`,
-        { params: { access_token: accessToken, fields: 'id,display_phone_number,name_status,quality_rating' } },
-      );
-      if (!phoneData.data?.length) throw new NotFoundException('No phone numbers found in WABA.');
-      let phone = phoneData.data[0];
-      if (selectedPhoneNumberId) {
-        const found = phoneData.data.find((p: any) => p.id === selectedPhoneNumberId);
-        if (found) phone = found;
+    try {
+      // If we don't have IDs from the frontend, we must list them
+      if (!wabaId) {
+        const { data: wabaData } = await axios.get(
+          `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts`,
+          { params: { access_token: accessToken, fields: 'id,name' } },
+        );
+        if (!wabaData.data?.length) throw new NotFoundException('No WhatsApp Business Account found.');
+        wabaId = wabaData.data[0].id;
       }
-      phoneNumberId = phone.id;
-      phoneNumber = phone.display_phone_number.replace(/\D/g, '');
+
+      // Always fetch the phone number details to get the display_phone_number
+      // We can fetch it directly if we have the phone ID, or list them if we only have WABA ID
+      if (phoneNumberId) {
+        const { data: phone } = await axios.get(
+          `https://graph.facebook.com/v22.0/${phoneNumberId}`,
+          { params: { access_token: accessToken, fields: 'id,display_phone_number,name_status,quality_rating' } },
+        );
+        phoneNumber = phone.display_phone_number.replace(/\D/g, '');
+      } else {
+        const { data: phoneData } = await axios.get(
+          `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers`,
+          { params: { access_token: accessToken, fields: 'id,display_phone_number,name_status,quality_rating' } },
+        );
+        if (!phoneData.data?.length) throw new NotFoundException('No phone numbers found in WABA.');
+        const phone = phoneData.data[0];
+        phoneNumberId = phone.id;
+        phoneNumber = phone.display_phone_number.replace(/\D/g, '');
+      }
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       
@@ -410,17 +415,17 @@ export class WhatsAppOnboardingService {
     }
 
     // 6. Persist + enable (disable any other active provider first)
-    await this.disableOtherProviders(tenantId, phoneNumberId);
+    await this.disableOtherProviders(tenantId, phoneNumberId!);
     const encryptedToken = encrypt(accessToken);
     const isSystemToken = tokenExpiresAt === null;
     await this.prisma.$transaction([
       this.prisma.whatsAppNumber.upsert({
-        where: { phoneNumberId },
+        where: { phoneNumberId: phoneNumberId! },
         update: {
           accessToken: encryptedToken,
           setupStatus: 'ACTIVE' as any,
           isEnabled: true,
-          wabaId,
+          wabaId: wabaId!,
           phoneNumber,
           metaUserId: fbUserId,
           tokenExpiresAt,
@@ -428,8 +433,8 @@ export class WhatsAppOnboardingService {
         } as any,
         create: {
           tenantId,
-          phoneNumberId,
-          wabaId,
+          phoneNumberId: phoneNumberId!,
+          wabaId: wabaId!,
           phoneNumber,
           accessToken: encryptedToken,
           setupStatus: 'ACTIVE' as any,
@@ -447,18 +452,18 @@ export class WhatsAppOnboardingService {
     // 7. Register phone (new_number mode only) + subscribe webhooks
     if (mode === 'new_number') {
       // Full Cloud API migration — tenant will lose WhatsApp Business App access
-      try { await this.doRegisterPhoneNumber(phoneNumberId, accessToken); } catch (e) {
+      try { await this.doRegisterPhoneNumber(phoneNumberId!, accessToken); } catch (e) {
         this.logger.warn(`Phone registration failed: ${e.message}`);
       }
     }
-    try { await this.subscribeApp(wabaId, accessToken); } catch (e) {
+    try { await this.subscribeApp(wabaId!, accessToken); } catch (e) {
       this.logger.warn(`Subscribe WABA webhook failed: ${e.message}`);
     }
 
     // 8. Coexistence Synchronization (New: mandatory for Business App history)
     if (mode === 'coexist') {
       try {
-        await this.initiateCoexistenceSync(phoneNumberId, accessToken);
+        await this.initiateCoexistenceSync(phoneNumberId!, accessToken);
         this.logger.log(`[Coexistence] Initiated sync for phone ${phoneNumberId}`);
       } catch (e) {
         this.logger.warn(`Failed to initiate Coexistence sync: ${e.message}`);
@@ -469,7 +474,7 @@ export class WhatsAppOnboardingService {
     return {
       success: true,
       phoneNumber,
-      wabaId,
+      wabaId: wabaId!,
       tokenType: (tokenExpiresAt === null ? 'system' : 'user') as 'user' | 'system',
     };
   }

@@ -290,7 +290,7 @@ export async function connectWhatsApp(): Promise<{ url: string }> {
   }
   return extractData(response);
 }
-const WA_WEB_URL = process.env.NEXT_PUBLIC_WA_WEB_URL || 'http://localhost_REPLACED:3001';
+const WA_WEB_URL = process.env.NEXT_PUBLIC_WA_WEB_URL || '';
 
 export async function connectWhatsAppWeb(tenantId: string): Promise<{ qr: string }> {
   const response = await fetch(`${WA_WEB_URL}/whatsapp/connect`, {
