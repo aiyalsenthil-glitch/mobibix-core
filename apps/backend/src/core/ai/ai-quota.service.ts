@@ -83,7 +83,7 @@ export class AiQuotaService {
           tenantId,
           module,
           feature: operationType,
-          model: 'llama3:8b', // Default for phase 1
+          model: 'gemini-2.0-flash', // Default for beta (Gemini/Groq)
           promptTokens: tokenUsage.input,
           completionTokens: tokenUsage.output,
           totalTokens: tokenUsage.total,
