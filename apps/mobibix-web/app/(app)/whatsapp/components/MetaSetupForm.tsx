@@ -179,7 +179,7 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
           override_default_response_type: true,
           extras: JSON.stringify({
             setup: {},
-            featureType: mode === "coexist" ? "coexistence" : "new_number",
+            featureType: mode === "coexist" ? "whatsapp_business_app_onboarding" : "new_number",
             sessionInfoVersion: "3",
           }),
         },
@@ -190,7 +190,7 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
       // ── Fallback: direct URL popup ────────────────────────────────────────
       const extras = JSON.stringify({
         setup: {},
-        featureType: mode === "coexist" ? "coexistence" : "new_number",
+        featureType: mode === "coexist" ? "whatsapp_business_app_onboarding" : "new_number",
         sessionInfoVersion: "3",
       });
       const directUrl = new URL("https://business.facebook.com/messaging/whatsapp/onboard/");
