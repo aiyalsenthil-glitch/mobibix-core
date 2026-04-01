@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.aiyal.mobibix.ui.navigation.AppNavGraph
 import com.aiyal.mobibix.ui.theme.MobiBixTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
     lateinit var printContainer: FrameLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         printContainer = FrameLayout(this).apply {

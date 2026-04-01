@@ -51,6 +51,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Test key — safe for development; no real charges
+            buildConfigField("String", "RAZORPAY_KEY_ID", "\"rzp_test_SNqtvsjJcexKNP\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -59,6 +63,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Live key — used in production; backend also returns this key
+            buildConfigField("String", "RAZORPAY_KEY_ID", "\"rzp_live_RxqXZcZmLfgGqB\"")
         }
     }
     compileOptions {
@@ -79,6 +85,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.compose)
     implementation(libs.androidx.activity.compose)

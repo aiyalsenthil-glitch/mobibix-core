@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Release signing — NEVER commit keystores to version control
+app/mobibix-release.keystore
+*.keystore
+*.jks

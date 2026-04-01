@@ -13,15 +13,15 @@ const mapping = [
   { code: 'MOBIBIX_STANDARD', cycle: 'QUARTERLY', rzpId: 'plan_SHBR0tMAfnvz1P' },
   { code: 'MOBIBIX_STANDARD', cycle: 'YEARLY', rzpId: 'plan_SHBRhzJtBLtjnK' },
 
-  // Gym Pro
-  { code: 'PRO', cycle: 'MONTHLY', rzpId: 'plan_SHBQ79swgdys0w' },
-  { code: 'PRO', cycle: 'QUARTERLY', rzpId: 'plan_SHBQRsgv145eT3' },
-  { code: 'PRO', cycle: 'YEARLY', rzpId: 'plan_SHBQkjqOEiBFMV' },
+  // GymPilot Pro
+  { code: 'GYM_PRO', cycle: 'MONTHLY', rzpId: 'plan_SHBQ79swgdys0w' },
+  { code: 'GYM_PRO', cycle: 'QUARTERLY', rzpId: 'plan_SHBQRsgv145eT3' },
+  { code: 'GYM_PRO', cycle: 'YEARLY', rzpId: 'plan_SHBQkjqOEiBFMV' },
 
-  // Gym Standard
-  { code: 'STANDARD', cycle: 'MONTHLY', rzpId: 'plan_SHBOsZJTYHebiW' },
-  { code: 'STANDARD', cycle: 'QUARTERLY', rzpId: 'plan_SHBPLvynxI8DHm' },
-  { code: 'STANDARD', cycle: 'YEARLY', rzpId: 'plan_SHBPmj5c3CvVIf' },
+  // GymPilot Standard
+  { code: 'GYM_STANDARD', cycle: 'MONTHLY', rzpId: 'plan_SHBOsZJTYHebiW' },
+  { code: 'GYM_STANDARD', cycle: 'QUARTERLY', rzpId: 'plan_SHBPLvynxI8DHm' },
+  { code: 'GYM_STANDARD', cycle: 'YEARLY', rzpId: 'plan_SHBPmj5c3CvVIf' },
 ];
 
 async function main() {

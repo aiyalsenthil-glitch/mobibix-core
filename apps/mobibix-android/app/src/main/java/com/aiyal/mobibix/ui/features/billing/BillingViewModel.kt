@@ -2,6 +2,7 @@ package com.aiyal.mobibix.ui.features.billing
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.BuildConfig
 import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.core.ui.UiMessageBus
 import com.aiyal.mobibix.core.util.MobiError
@@ -87,7 +88,7 @@ class BillingViewModel @Inject constructor(
                 val response = repository.upgradeSubscription(planId, cycle, billingType)
                 _uiState.value = _uiState.value.copy(isLoading = false, createOrderResponse = response)
                 _events.emit(BillingEvent.StartPayment(
-                    key = response.key,
+                    key = BuildConfig.RAZORPAY_KEY_ID, // debug=test key, release=live key
                     orderId = response.orderId,
                     amount = response.amount,
                     planId = planId,

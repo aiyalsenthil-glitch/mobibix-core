@@ -49,6 +49,7 @@ import { ConversationEngineService } from './automation/conversation-engine.serv
 import { CampaignController } from './campaigns/campaign.controller';
 import { CampaignService } from './campaigns/campaign.service';
 import { CampaignProcessor } from './campaigns/campaign.processor';
+import { AdminWhatsAppController } from './admin-whatsapp.controller';
 
 @Module({
   controllers: [
@@ -63,6 +64,7 @@ import { CampaignProcessor } from './campaigns/campaign.processor';
     WhatsAppOnboardingController,
     FacebookDeletionController,
     CampaignController,
+    AdminWhatsAppController,
   ],
   imports: [
     ScheduleModule.forRoot(),

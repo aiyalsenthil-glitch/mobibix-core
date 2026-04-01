@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Base app theme (used after splash) -->
     <style name="Theme.MobiBix" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash screen theme — shown during app cold start on Android 12+ -->
+    <style name="Theme.MobiBix.Splash" parent="Theme.SplashScreen">
+        <!-- Dark background matching the app's dark theme -->
+        <item name="windowSplashScreenBackground">#0D1117</item>
+        <!-- Centred app icon on the splash screen -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <!-- Transition to real app theme once content is ready -->
+        <item name="postSplashScreenTheme">@style/Theme.MobiBix</item>
+    </style>
+
 </resources>

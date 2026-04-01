@@ -266,7 +266,7 @@ export class PaymentsController {
   // 🔒 CREATE AUTOPAY SUBSCRIPTION (RAZORPAY)
   // Returns Razorpay subscriptionId so the frontend can open the checkout.
   // Webhook subscription.activated → activates the TenantSubscription.
-  // Only MONTHLY and YEARLY are supported (QUARTERLY has no Razorpay plan).
+  // MONTHLY, QUARTERLY, and YEARLY all have Razorpay plan IDs mapped.
   // ─────────────────────────────────────────────
   @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
@@ -274,7 +274,7 @@ export class PaymentsController {
   @Post('create-subscription')
   async createAutoPaySubscription(
     @Req() req: any,
-    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY' },
+    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' },
   ) {
     const tenantId = req.user?.tenantId;
     if (!tenantId) throw new BadRequestException('Tenant not found');
