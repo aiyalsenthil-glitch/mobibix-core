@@ -238,6 +238,11 @@ export class WhatsAppWebhookController {
 
         this.logger.log(`📨 Received ${message.type} from ${senderPhone} (Tenant: ${tenantId})`);
 
+        // Extract Meta timestamp if available (seconds to Date)
+        const metaTimestamp = message.timestamp 
+          ? new Date(parseInt(message.timestamp) * 1000) 
+          : new Date();
+
         // 4. Log to WhatsAppLog (idempotency / status tracking)
         await this.prisma.whatsAppLog.create({
           data: {
@@ -248,6 +253,8 @@ export class WhatsAppWebhookController {
             status: 'RECEIVED',
             messageId,
             metadata: message,
+            sentAt: metaTimestamp, // Store original time
+            createdAt: metaTimestamp,
           },
         });
 
@@ -262,6 +269,7 @@ export class WhatsAppWebhookController {
             provider: 'META_CLOUD',
             whatsAppNumberId: waNumber.id,
             metadata: message,
+            createdAt: metaTimestamp, // Important for History Sync order
           },
         });
 
