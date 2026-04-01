@@ -1,4 +1,5 @@
 import { Controller, Post, Body, Req, UseGuards, Headers, HttpException, HttpStatus } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { AiCoreClient, AiTaskRequest } from './ai-core.client';
 import { AiQuotaService } from './ai-quota.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,6 +32,7 @@ export class AiChatController {
     private readonly aiClient: AiCoreClient,
     private readonly quotaService: AiQuotaService,
     private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
   @RequirePermission(PERMISSIONS.CORE.AI.USE)
@@ -38,15 +40,11 @@ export class AiChatController {
   async handleChat(
     @Req() req: any,
     @Body() dto: AiChatDto,
-    @Headers('authorization') authHeader: string,
   ) {
-    const { tenantId } = req.user;
-    
-    // We enforce tenant logic securely via the token, but need the raw JWT for ai-core API
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new HttpException('Missing authorization token', HttpStatus.UNAUTHORIZED);
-    }
-    const tenantJwt = authHeader.split(' ')[1];
+    const { tenantId, sub: userId } = req.user;
+
+    // Generate a short-lived internal JWT for ai-core tenant context
+    const tenantJwt = this.jwtService.sign({ tenantId, userId }, { expiresIn: '2m' });
 
     if (!dto.message?.trim()) {
       throw new HttpException('Message cannot be empty', HttpStatus.BAD_REQUEST);
