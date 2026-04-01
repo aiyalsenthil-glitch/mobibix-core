@@ -253,8 +253,7 @@ export class WhatsAppWebhookController {
             status: 'RECEIVED',
             messageId,
             metadata: message,
-            sentAt: metaTimestamp, // Store original time
-            createdAt: metaTimestamp,
+            sentAt: metaTimestamp, // Use sentAt for WhatsAppLog
           },
         });
 
@@ -269,7 +268,7 @@ export class WhatsAppWebhookController {
             provider: 'META_CLOUD',
             whatsAppNumberId: waNumber.id,
             metadata: message,
-            createdAt: metaTimestamp, // Important for History Sync order
+            createdAt: metaTimestamp, // Correct for WhatsAppMessageLog
           },
         });
 
