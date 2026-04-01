@@ -31,7 +31,6 @@ const WhatsAppDashboardView = dynamic(() => import("./components/WhatsAppDashboa
 });
 const AuthkeySetupForm = dynamic(() => import("./components/AuthkeySetupForm"));
 const MetaSetupForm = dynamic(() => import("./components/MetaSetupForm"));
-const QRScanner = dynamic(() => import("@/components/whatsapp/QRScanner"));
 const WhatsAppInbox = dynamic(() => import("@/components/whatsapp/WhatsAppInbox"));
 const WhatsAppPlanPicker = dynamic(() => import("@/components/whatsapp/WhatsAppPlanPicker"));
 const MetaTemplateManager = dynamic(() => import("@/components/whatsapp/MetaTemplateManager"));

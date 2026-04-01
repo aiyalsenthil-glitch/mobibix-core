@@ -255,20 +255,13 @@ export class WhatsAppController {
     this.validateAccess(req, tenantId);
 
     const logs = await (this.prisma as any).whatsAppMessageLog.findMany({
-      where: { 
+      where: {
         tenantId,
-        NOT: [
-          { phoneNumber: { contains: 'status' } },
-          { phoneNumber: { contains: 'broadcast' } },
-          { phoneNumber: { contains: '@g.us' } },
-          { phoneNumber: { contains: '@newsletter' } }
-        ]
+        provider: 'META_CLOUD',
+        phoneNumber: { not: null },
       },
       distinct: ['phoneNumber'],
-      orderBy: [
-        { phoneNumber: 'asc' },
-        { createdAt: 'desc' }
-      ],
+      orderBy: { phoneNumber: 'asc' },
       take: 100,
     });
 
@@ -317,7 +310,7 @@ export class WhatsAppController {
     this.validateAccess(req, tenantId);
 
     return (this.prisma as any).whatsAppMessageLog.findMany({
-      where: { tenantId, phoneNumber },
+      where: { tenantId, phoneNumber, provider: 'META_CLOUD' },
       orderBy: { createdAt: 'asc' },
       take: 100
     });
@@ -736,6 +729,19 @@ export class WhatsAppController {
         await this.prisma.whatsAppLog.update({
           where: { id: log.id },
           data: { messageId: result.messageId, status: 'SENT' },
+        });
+        // Write to WhatsAppMessageLog so the inbox conversation thread shows sent messages
+        await (this.prisma as any).whatsAppMessageLog.create({
+          data: {
+            tenantId,
+            phoneNumber: phone,
+            direction: 'OUTGOING',
+            body: textBody,
+            status: 'SENT',
+            provider: 'META_CLOUD',
+            whatsAppNumberId: defaultNumber.id,
+            metadata: { messageId: result.messageId },
+          },
         });
       } else {
         await this.prisma.whatsAppLog.update({

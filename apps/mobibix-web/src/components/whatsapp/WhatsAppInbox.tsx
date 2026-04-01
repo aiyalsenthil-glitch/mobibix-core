@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  Send, 
-  MoreVertical, 
+import { useState, useEffect, useRef } from 'react';
+import {
+  Search,
+  Send,
   ShieldCheck,
   MessageSquare,
   Check,
@@ -38,27 +37,6 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost_REPLACED:3000';
-
-  useEffect(() => {
-    fetchConversations();
-    // Poll every 15 seconds for new messages from Meta Webhooks
-    const interval = setInterval(fetchConversations, 15000);
-    return () => clearInterval(interval);
-  }, [tenantId]);
-
-  const updateConversationList = (msg: any) => {
-    setConversations(prev => {
-      const existing = prev.find(c => c.phoneNumber === msg.senderPhone);
-      if (existing) {
-        return [
-          { ...existing, lastMessage: msg.body, lastTimestamp: msg.timestamp, unreadCount: activeChat === msg.senderPhone ? 0 : existing.unreadCount + 1 },
-          ...prev.filter(c => c.phoneNumber !== msg.senderPhone)
-        ];
-      }
-      return [{ phoneNumber: msg.senderPhone, lastMessage: msg.body, lastTimestamp: msg.timestamp, unreadCount: 1 }, ...prev];
-    });
-  };
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
