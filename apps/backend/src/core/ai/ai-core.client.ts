@@ -47,8 +47,8 @@ export class AiCoreClient {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.aiCoreUrl = this.configService.get<string>('AI_CORE_URL') || 'http://localhost_REPLACED:3002';
-    const token = this.configService.get<string>('INTERNAL_API_KEY');
+    this.aiCoreUrl = this.configService.get<string>('AI_CORE_INTERNAL_URL') || this.configService.get<string>('AI_CORE_URL') || 'http://localhost_REPLACED:3002';
+    const token = this.configService.get<string>('INTERNAL_SERVICE_TOKEN') || this.configService.get<string>('INTERNAL_API_KEY');
     if (!token && process.env.NODE_ENV === 'production') {
       this.logger.warn('INTERNAL_API_KEY is not set — AI Core requests will fail in production');
     }

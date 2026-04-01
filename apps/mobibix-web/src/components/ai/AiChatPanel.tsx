@@ -77,6 +77,11 @@ export function AiChatPanel({
         </div>
       </div>
 
+      {/* Beta Banner */}
+      <div className="bg-amber-50 border-b border-amber-100 px-4 py-1.5 text-center text-[11px] text-amber-700">
+        ✨ <strong>Free Beta</strong> — AI features are free now. Upgrading to paid plans will unlock higher limits soon.
+      </div>
+
       {/* Token Tracker Belt */}
       <div className="bg-white border-b border-gray-100 px-4 py-1 flex justify-between items-center text-xs">
          <span className="text-gray-500 font-medium">Session Active</span>
