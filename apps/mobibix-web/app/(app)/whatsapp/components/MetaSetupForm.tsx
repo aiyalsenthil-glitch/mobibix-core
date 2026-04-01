@@ -73,18 +73,20 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
   async function checkManualStatus() {
     try {
       const status = await getWhatsAppStatus();
-      if (status.status === "ACTIVE" && status.phoneNumber) {
+      if (status?.status === "ACTIVE" && status.phoneNumber) {
         setResult({ 
           phoneNumber: status.phoneNumber, 
           wabaId: status.wabaId || "Linked", 
-          tokenType: 'system' // Status API doesn't specify but ACTIVE means it's ready
+          tokenType: 'system'
         });
         setState("success");
         if (pollInterval.current) clearInterval(pollInterval.current);
         return true;
       }
-    } catch (err) {
-      console.error("Status check failed", err);
+      // Not yet active — tell the user
+      setError("Connection not confirmed yet. Please finish the steps in the Meta popup first, then try again.");
+    } catch (err: any) {
+      setError(err?.message || "Could not reach the server. Check your internet connection.");
     }
     return false;
   }
@@ -104,63 +106,106 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
 
   function handleConnect() {
     if (!window.FB) { setError("Facebook SDK not loaded. Please refresh."); return; }
-    if (window.location.protocol !== "https:") {
-      setError("Facebook login requires HTTPS."); return;
-    }
 
     setState("connecting");
     setError(null);
 
     let embeddedData: { waba_id?: string; phone_number_id?: string } = {};
 
+    // ── Universal message listener — catches ALL formats Meta may send ────────
     const sessionListener = (event: MessageEvent) => {
-      if (!ALLOWED_ORIGINS.includes(event.origin)) return;
+      // Only process messages from Facebook domains
+      if (!event.origin.includes("facebook.com")) return;
+
+      console.log("[Meta Signup] postMessage received:", event.origin, event.data);
 
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        
+        // Format 1: Standard WA_EMBEDDED_SIGNUP (v2 + v3)
         if (data?.type === "WA_EMBEDDED_SIGNUP") {
-          const { waba_id, phone_number_id, code } = data.data || {};
+          const payload = data.data || data;
+          const { waba_id, phone_number_id, code } = payload;
           
           if (code) {
             window.removeEventListener("message", sessionListener);
-            void handleMetaExchange(code, waba_id, phone_number_id);
-          } else {
+            void handleMetaExchange(code, waba_id || embeddedData.waba_id, phone_number_id || embeddedData.phone_number_id);
+          } else if (waba_id || phone_number_id) {
+            // Intermediate event with WABA info but no code yet — store it
             embeddedData = { waba_id, phone_number_id };
           }
         }
-      } catch (err) {
-        // Silent catch for foreign messages
+        
+        // Format 2: Business Login callback (some Meta flows use this)
+        if (data?.type === "FB_LOGIN" || data?.event === "FINISH") {
+          const code = data?.data?.code || data?.code;
+          const waba_id = data?.data?.waba_id || data?.waba_id || embeddedData.waba_id;
+          const phone_number_id = data?.data?.phone_number_id || data?.phone_number_id || embeddedData.phone_number_id;
+          if (code) {
+            window.removeEventListener("message", sessionListener);
+            void handleMetaExchange(code, waba_id, phone_number_id);
+          }
+        }
+      } catch {
+        // Non-JSON or irrelevant message — ignore
       }
     };
 
     window.addEventListener("message", sessionListener);
 
-    const extras = JSON.stringify({ 
-      setup: {},
-      featureType: "whatsapp_business_app_onboarding",
-      sessionInfoVersion: "3" 
-    });
-    const scopes = "whatsapp_business_management,whatsapp_business_messaging";
-    
-    const directUrl = new URL("https://business.facebook.com/messaging/whatsapp/onboard/");
-    directUrl.searchParams.set("app_id", FB_APP_ID);
-    directUrl.searchParams.set("config_id", FB_CONFIG_ID);
-    directUrl.searchParams.set("extras", extras);
-    directUrl.searchParams.set("scope", scopes);
-    directUrl.searchParams.set("response_type", "code");
-    directUrl.searchParams.set("override_default_response_type", "true");
-
-    const popup = window.open(directUrl.toString(), "fb_login", "width=600,height=700");
+    // ── Primary path: Use FB SDK login with code response type ────────────────
+    // This is more reliable than popup+postMessage for getting the auth code
+    try {
+      window.FB.login(
+        (response: any) => {
+          console.log("[Meta Signup] FB.login response:", response);
+          if (response?.authResponse?.code) {
+            window.removeEventListener("message", sessionListener);
+            void handleMetaExchange(
+              response.authResponse.code,
+              embeddedData.waba_id,
+              embeddedData.phone_number_id,
+            );
+          } else if (response?.status === "not_authorized" || response?.status === "unknown") {
+            window.removeEventListener("message", sessionListener);
+            setState("ready");
+            setError("Meta login was cancelled or not authorized. Please try again.");
+          }
+          // If no code, postMessage listener above will handle it
+        },
+        {
+          config_id: FB_CONFIG_ID,
+          response_type: "code",
+          override_default_response_type: true,
+          extras: JSON.stringify({
+            setup: {},
+            featureType: mode === "coexist" ? "coexistence" : "new_number",
+            sessionInfoVersion: "3",
+          }),
+        },
+      );
+    } catch (sdkErr) {
+      console.warn("[Meta Signup] FB.login failed, falling back to popup:", sdkErr);
+      
+      // ── Fallback: direct URL popup ────────────────────────────────────────
+      const extras = JSON.stringify({
+        setup: {},
+        featureType: mode === "coexist" ? "coexistence" : "new_number",
+        sessionInfoVersion: "3",
+      });
+      const directUrl = new URL("https://business.facebook.com/messaging/whatsapp/onboard/");
+      directUrl.searchParams.set("app_id", FB_APP_ID);
+      directUrl.searchParams.set("config_id", FB_CONFIG_ID);
+      directUrl.searchParams.set("extras", extras);
+      directUrl.searchParams.set("scope", "whatsapp_business_management,whatsapp_business_messaging");
+      directUrl.searchParams.set("response_type", "code");
+      directUrl.searchParams.set("override_default_response_type", "true");
+      window.open(directUrl.toString(), "fb_login", "width=600,height=700");
+    }
 
     async function handleMetaExchange(authCode: string, wabaId?: string, phoneId?: string) {
-      if (popup) popup.close();
       try {
-        const res = await metaExchange({
-          code: authCode,
-          wabaId: wabaId || embeddedData.waba_id,
-          phoneNumberId: phoneId || embeddedData.phone_number_id,
-          mode,
-        });
+        const res = await metaExchange({ code: authCode, wabaId, phoneNumberId: phoneId, mode });
         setResult({ phoneNumber: res.phoneNumber, wabaId: res.wabaId, tokenType: res.tokenType });
         setState("success");
       } catch (err: any) {

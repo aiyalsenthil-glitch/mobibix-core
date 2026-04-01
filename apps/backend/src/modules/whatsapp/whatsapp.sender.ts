@@ -362,6 +362,24 @@ export class WhatsAppSender {
         },
       });
       await this.incrementUsage(tenantId, 'service', result.cost);
+
+      // ── HUMAN HANDOVER: Pause bot when agent sends a message ──────────────
+      // Bot auto-resumes after 30 minutes of agent inactivity (enforced in
+      // ConversationEngineService.processMessage)
+      await this.prisma.whatsAppConversationState.upsert({
+        where: { tenantId_phoneNumber: { tenantId, phoneNumber: normalizedPhone } },
+        update: { botPaused: true, agentActiveAt: new Date() },
+        create: {
+          tenantId,
+          phoneNumber: normalizedPhone,
+          step: 'AGENT_HANDOVER',
+          botPaused: true,
+          agentActiveAt: new Date(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h TTL
+        },
+      });
+      // ─────────────────────────────────────────────────────────────────────
+
       return { success: true, messageId: result.messageId };
     } else {
       const errMsg = result.error || 'Unknown provider error';

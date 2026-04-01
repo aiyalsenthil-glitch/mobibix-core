@@ -1111,17 +1111,22 @@ model WhatsAppNumber {
 }
 
 model WhatsAppConversationState {
-  id          String   @id @default(uuid())
-  tenantId    String
-  phoneNumber String
-  step        String
-  metadata    Json?
-  expiresAt   DateTime
-  updatedAt   DateTime @updatedAt
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  id            String    @id @default(uuid())
+  tenantId      String
+  phoneNumber   String
+  step          String
+  metadata      Json?
+  expiresAt     DateTime
+  updatedAt     DateTime  @updatedAt
+  /// Set when a human agent sends a message — bot will pause automatically
+  botPaused     Boolean   @default(false)
+  /// Timestamp of last agent outbound message — used to auto-resume bot after inactivity
+  agentActiveAt DateTime?
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, phoneNumber])
   @@index([tenantId])
+  @@index([botPaused, agentActiveAt]) // for auto-resume cron scan
 }
 
 model WhatsAppMessageLog {

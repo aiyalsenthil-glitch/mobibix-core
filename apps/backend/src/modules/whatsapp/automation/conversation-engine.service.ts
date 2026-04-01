@@ -32,6 +32,38 @@ export class ConversationEngineService {
       return;
     }
 
+    // ── HUMAN HANDOVER GATE ────────────────────────────────────────────────────
+    // If an agent has recently sent a message on this conversation, skip bot.
+    // Auto-resume after AGENT_INACTIVITY_MINUTES of agent silence.
+    const AGENT_INACTIVITY_MINUTES = 30;
+    const existingState = await (this.prisma.whatsAppConversationState as any).findUnique({
+      where: { tenantId_phoneNumber: { tenantId, phoneNumber: senderPhone } },
+      select: { botPaused: true, agentActiveAt: true },
+    }) as { botPaused: boolean; agentActiveAt: Date | null } | null;
+
+    if (existingState?.botPaused) {
+      const agentLastActive = existingState.agentActiveAt;
+      const inactivityMs = AGENT_INACTIVITY_MINUTES * 60 * 1000;
+      const agentIsStillActive = agentLastActive && (Date.now() - agentLastActive.getTime()) < inactivityMs;
+
+      if (agentIsStillActive) {
+        this.logger.debug(
+          `[Handover] Bot paused for ${senderPhone} — agent active ${Math.round((Date.now() - agentLastActive!.getTime()) / 60000)}min ago`,
+        );
+        return; // 🛑 Bot stays silent while human agent is active
+      }
+
+      // Agent has been inactive for 30+ min — auto-resume bot
+      await (this.prisma.whatsAppConversationState as any).updateMany({
+        where: { tenantId, phoneNumber: senderPhone },
+        data: { botPaused: false, agentActiveAt: null },
+      });
+      this.logger.log(
+        `[Handover] Bot auto-resumed for ${senderPhone} after ${AGENT_INACTIVITY_MINUTES}min agent inactivity`,
+      );
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // 1. Manage State (Load or Init)
     const state = await this.getOrInitState(tenantId, senderPhone);
 
