@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { WhatsAppMenuService, MenuNodeDto } from './whatsapp-menu.service';
+import { WhatsAppMenuService } from './whatsapp-menu.service';
 
 @Controller('whatsapp/menu')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,17 +29,17 @@ export class WhatsAppMenuController {
   }
 
   @Post('nodes')
-  createNode(@Req() req: any, @Body() body: MenuNodeDto) {
+  createNode(@Req() req: any, @Body() body: any) {
     return this.menuService.createNode(req.user.tenantId, body);
   }
 
   @Patch('nodes/reorder')
-  reorderNodes(@Req() req: any, @Body() body: { orderedIds: string[] }) {
+  reorderNodes(@Req() req: any, @Body() body: any) {
     return this.menuService.reorderNodes(req.user.tenantId, body.orderedIds);
   }
 
   @Patch('nodes/:id')
-  updateNode(@Req() req: any, @Param('id') id: string, @Body() body: Partial<MenuNodeDto>) {
+  updateNode(@Req() req: any, @Param('id') id: string, @Body() body: any) {
     return this.menuService.updateNode(req.user.tenantId, id, body);
   }
 

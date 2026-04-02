@@ -1,6 +1,7 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import axios from 'axios';
+import { AiCoreClient } from '../../core/ai/ai-core.client';
 
 const MENU_SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const ROOT_SENTINEL = 'ROOT';
@@ -22,7 +23,11 @@ export interface MenuNodeDto {
 export class WhatsAppMenuService {
   private readonly logger = new Logger(WhatsAppMenuService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiClient: AiCoreClient,
+    private readonly jwtService: JwtService,
+  ) {}
 
   // ── Tree CRUD ──────────────────────────────────────────────────────────────
 
@@ -266,27 +271,23 @@ export class WhatsAppMenuService {
   // ── AI Core Call ───────────────────────────────────────────────────────────
 
   private async callAiCore(tenantId: string, systemPrompt: string, userText: string): Promise<string | null> {
-    const aiCoreUrl = process.env.AI_CORE_INTERNAL_URL;
-    const token = process.env.INTERNAL_SERVICE_TOKEN;
-    if (!aiCoreUrl || !token) return null;
-
     try {
-      const res = await axios.post(
-        `${aiCoreUrl}/chat`,
-        {
-          tenantId,
-          message: userText,
-          systemPrompt,
-          mode: 'whatsapp_menu',
+      // Short-lived internal JWT — no real user in this context, use tenantId as sub
+      const tenantJwt = this.jwtService.sign({ tenantId, userId: tenantId }, { expiresIn: '2m' });
+
+      const result = await this.aiClient.sendTask({
+        tenantJwt,
+        agentRole: 'UTILITY',
+        message: userText,
+        context: {
+          systemPromptOverride: systemPrompt || undefined,
         },
-        {
-          headers: { 'x-internal-token': token },
-          timeout: 8000,
-        },
-      );
-      return res.data?.reply ?? null;
+      });
+
+      // AiTaskResult.response is the final text reply
+      return result.response ?? null;
     } catch (err) {
-      this.logger.warn(`ai-core call failed for tenant ${tenantId}: ${err?.message}`);
+      this.logger.warn(`ai-core call failed for tenant ${tenantId}: ${(err as any)?.message}`);
       return null;
     }
   }

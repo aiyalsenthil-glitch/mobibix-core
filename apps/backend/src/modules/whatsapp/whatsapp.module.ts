@@ -17,6 +17,7 @@ import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numb
 import { WhatsAppVariableResolver } from './variable-resolver.service';
 import { BillingModule } from '../../core/billing/billing.module';
 import { EmailModule } from '../../common/email/email.module';
+import { AiModule } from '../../core/ai/ai.module';
 import { MetaTokenExpiryCron } from './meta-token-expiry.cron';
 import { AutomationController } from './automation.controller';
 import { AutomationService } from './automation.service';
@@ -76,6 +77,7 @@ import { WhatsAppMenuController } from './whatsapp-menu.controller';
     ScheduleModule.forRoot(),
     BillingModule,
     EmailModule,
+    AiModule,
     ShopProductsModule,
     BullModule.registerQueue({ name: 'whatsapp-send' }),
     BullModule.registerQueue({ name: 'whatsapp-campaigns' }),

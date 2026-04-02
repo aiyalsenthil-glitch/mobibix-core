@@ -22,6 +22,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   ],
   controllers: [AiChatController],
   providers: [AiQuotaService, AiCoreClient, BusinessContextService],
-  exports: [AiQuotaService, AiCoreClient, BusinessContextService],
+  exports: [AiQuotaService, AiCoreClient, BusinessContextService, JwtModule],
 })
 export class AiModule {}
