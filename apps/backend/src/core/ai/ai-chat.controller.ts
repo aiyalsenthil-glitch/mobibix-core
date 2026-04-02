@@ -3,6 +3,7 @@ import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import { AiCoreClient, AiTaskRequest } from './ai-core.client';
 import { AiQuotaService } from './ai-quota.service';
+import { BusinessContextService } from './business-context.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -43,6 +44,7 @@ export class AiChatController {
     private readonly quotaService: AiQuotaService,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly bizContext: BusinessContextService,
   ) {}
 
   @RequirePermission(PERMISSIONS.CORE.AI.USE)
@@ -74,13 +76,17 @@ export class AiChatController {
     };
     const language = langMap[dto.language ?? ''] ?? 'English';
 
-    // 3. Delegate to AI Core Agent Loop
+    // 3. Fetch business snapshot (non-blocking — failures return empty snapshot)
+    const snapshot = await this.bizContext.getSnapshot(tenantId);
+
+    // 4. Delegate to AI Core Agent Loop
     const payload: AiTaskRequest = {
       tenantJwt,
-      agentRole: 'UTILITY', // Phase 1 uses general agent
+      agentRole: 'UTILITY',
       message: dto.message,
       sessionId: dto.sessionId,
       language,
+      context: { businessSnapshot: snapshot },
     };
 
     const aiResponse = await this.aiClient.sendTask(payload);

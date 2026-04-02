@@ -81,6 +81,7 @@ export async function metaExchange(data: {
   wabaId?: string;
   phoneNumberId?: string;
   mode?: 'coexist' | 'new_number';
+  pin?: string;
 }): Promise<{ success: boolean; phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' }> {
   const response = await authenticatedFetch("/integrations/whatsapp/meta-exchange", {
     method: "POST",

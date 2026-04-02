@@ -7,7 +7,8 @@ import {
   ShieldCheck,
   MessageSquare,
   Check,
-  CheckCheck
+  CheckCheck,
+  Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -91,44 +93,42 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeChat) return;
+    if (!newMessage.trim() || !activeChat || sending) return;
+    const text = newMessage.trim();
+    setSending(true);
+    setNewMessage('');
     try {
-      const resp = await authenticatedFetch(`/whatsapp/send`, { 
+      const resp = await authenticatedFetch(`/whatsapp/send`, {
         method: 'POST',
-        body: JSON.stringify({ 
-          tenantId, 
-          phone: activeChat, 
-          text: newMessage 
-        })
+        body: JSON.stringify({ tenantId, phone: activeChat, text })
       });
-      
-      if (!resp.ok) throw new Error('Send failed');
+
+      if (!resp.ok) {
+        setNewMessage(text); // Restore on failure so user doesn't lose the message
+        throw new Error('Send failed');
+      }
 
       const outgoingMsg: Message = {
         id: Date.now().toString(),
-        body: newMessage,
+        body: text,
         senderPhone: 'me',
         direction: 'OUTGOING',
         timestamp: new Date().toISOString(),
         status: 'SENT'
       };
-      
       setMessages(prev => [...prev, outgoingMsg]);
-      setNewMessage('');
-      
-      // Update local conversation list snippet
       setConversations(prev => {
         const existing = prev.find(c => c.phoneNumber === activeChat);
-        if (existing) {
-          return [
-            { ...existing, lastMessage: newMessage, lastTimestamp: new Date().toISOString() },
-            ...prev.filter(c => c.phoneNumber !== activeChat)
-          ];
-        }
-        return prev;
+        if (!existing) return prev;
+        return [
+          { ...existing, lastMessage: text, lastTimestamp: new Date().toISOString() },
+          ...prev.filter(c => c.phoneNumber !== activeChat)
+        ];
       });
     } catch (err) {
-      alert('Failed to send');
+      alert('Failed to send. Please try again.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -199,9 +199,20 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
             </div>
             <div className="p-5 bg-card/50 backdrop-blur-md border-t border-border">
               <div className="flex gap-2 items-center bg-muted/50 p-1.5 px-3 rounded-2xl border border-border transition-all focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500/50">
-                <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type a message..." className="border-none focus-visible:ring-0 bg-transparent text-sm" />
-                <Button onClick={sendMessage} className="rounded-xl h-10 w-10 p-0 bg-teal-600 hover:bg-teal-500 shadow-xl shadow-teal-500/20 active:scale-95 transition-all">
-                  <Send className="w-4 h-4" />
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                  placeholder="Type a message..."
+                  disabled={sending}
+                  className="border-none focus-visible:ring-0 bg-transparent text-sm disabled:opacity-60"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={sending || !newMessage.trim()}
+                  className="rounded-xl h-10 w-10 p-0 bg-teal-600 hover:bg-teal-500 shadow-xl shadow-teal-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                >
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </div>
             </div>

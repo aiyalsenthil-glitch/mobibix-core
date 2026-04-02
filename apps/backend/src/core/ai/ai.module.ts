@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AiChatController } from './ai-chat.controller';
 import { AiQuotaService } from './ai-quota.service';
 import { AiCoreClient } from './ai-core.client';
+import { BusinessContextService } from './business-context.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -20,7 +21,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     }),
   ],
   controllers: [AiChatController],
-  providers: [AiQuotaService, AiCoreClient],
-  exports: [AiQuotaService, AiCoreClient],
+  providers: [AiQuotaService, AiCoreClient, BusinessContextService],
+  exports: [AiQuotaService, AiCoreClient, BusinessContextService],
 })
 export class AiModule {}

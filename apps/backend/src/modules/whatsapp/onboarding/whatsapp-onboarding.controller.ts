@@ -205,7 +205,7 @@ export class WhatsAppOnboardingController {
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async metaExchange(
     @Req() req,
-    @Body() body: { code: string; wabaId?: string; phoneNumberId?: string; mode?: 'coexist' | 'new_number' },
+    @Body() body: { code: string; wabaId?: string; phoneNumberId?: string; mode?: 'coexist' | 'new_number'; pin?: string },
   ) {
     const tenantId = req.user.tenantId;
     return this.onboardingService.metaExchange(
@@ -214,6 +214,7 @@ export class WhatsAppOnboardingController {
       body.wabaId,
       body.phoneNumberId,
       body.mode ?? 'coexist',
+      body.pin,
     );
   }
 }

@@ -298,6 +298,7 @@ export class WhatsAppOnboardingService {
     selectedWabaId?: string,
     selectedPhoneNumberId?: string,
     mode: 'coexist' | 'new_number' = 'coexist',
+    pin?: string,
   ): Promise<{ success: boolean; phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' }> {
     // 1. Exchange code for short-lived user token (no redirect_uri for embedded signup)
     let shortLivedToken: string;
@@ -452,7 +453,7 @@ export class WhatsAppOnboardingService {
     // 7. Register phone (new_number mode only) + subscribe webhooks
     if (mode === 'new_number') {
       // Full Cloud API migration — tenant will lose WhatsApp Business App access
-      try { await this.doRegisterPhoneNumber(phoneNumberId!, accessToken); } catch (e) {
+      try { await this.doRegisterPhoneNumber(phoneNumberId!, accessToken, pin); } catch (e) {
         this.logger.warn(`Phone registration failed: ${e.message}`);
       }
     }
@@ -507,11 +508,11 @@ export class WhatsAppOnboardingService {
    * Full Cloud API migration — called only when mode === 'new_number'.
    * Tenant loses WhatsApp Business App access after this call.
    */
-  private async doRegisterPhoneNumber(phoneId: string, token: string) {
+  private async doRegisterPhoneNumber(phoneId: string, token: string, pin?: string) {
     const url = `https://graph.facebook.com/v22.0/${phoneId}/register`;
     await axios.post(
       url,
-      { messaging_product: 'whatsapp', pin: '123456' },
+      { messaging_product: 'whatsapp', pin: pin || '000000' },
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
     );
     this.logger.log(`[New Number] Phone ${phoneId} registered for full Cloud API migration`);

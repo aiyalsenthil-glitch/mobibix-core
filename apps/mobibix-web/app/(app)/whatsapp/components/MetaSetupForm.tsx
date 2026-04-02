@@ -34,6 +34,7 @@ interface Props {
 export default function MetaSetupForm({ onSuccess, onBack }: Props) {
   const [state, setState] = useState<State>("loading_sdk");
   const [mode, setMode] = useState<Mode>("coexist");
+  const [pin, setPin] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' } | null>(null);
   const pollInterval = useRef<NodeJS.Timeout | null>(null);
@@ -205,7 +206,7 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
 
     async function handleMetaExchange(authCode: string, wabaId?: string, phoneId?: string) {
       try {
-        const res = await metaExchange({ code: authCode, wabaId, phoneNumberId: phoneId, mode });
+        const res = await metaExchange({ code: authCode, wabaId, phoneNumberId: phoneId, mode, pin: pin || undefined });
         setResult({ phoneNumber: res.phoneNumber, wabaId: res.wabaId, tokenType: res.tokenType });
         setState("success");
       } catch (err: any) {
@@ -290,6 +291,23 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
                 <p className="text-xs text-gray-500 mt-0.5">Full migration</p>
               </button>
             </div>
+
+            {mode === "new_number" && (
+              <div className="mt-3">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  2-Step Verification PIN (optional)
+                </label>
+                <input
+                  type="password"
+                  maxLength={6}
+                  placeholder="6-digit PIN (leave blank if not set)"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-background px-3 py-2 text-sm font-mono tracking-widest"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Required if your number has 2FA enabled in WhatsApp Business App.</p>
+              </div>
+            )}
           </div>
         )}
 

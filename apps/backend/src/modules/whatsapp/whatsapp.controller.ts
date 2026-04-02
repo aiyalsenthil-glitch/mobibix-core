@@ -705,32 +705,15 @@ export class WhatsAppController {
         );
       }
 
-      // Create log entry
-      const log = await this.prisma.whatsAppLog.create({
-        data: {
-          tenantId,
-          whatsAppNumberId: defaultNumber.id,
-          phone: phone,
-          type: 'MANUAL',
-          status: 'PENDING',
-          metadata: { text_snippet: textBody.substring(0, 50) },
-        },
-      });
-
-      // Send Text
+      // sendTextMessage owns WhatsAppLog creation internally — no duplicate here
       const result = await this.sender.sendTextMessage(
         tenantId,
         phone,
         textBody,
       );
 
-      // Update Log
       if (result.success && result.messageId) {
-        await this.prisma.whatsAppLog.update({
-          where: { id: log.id },
-          data: { messageId: result.messageId, status: 'SENT' },
-        });
-        // Write to WhatsAppMessageLog so the inbox conversation thread shows sent messages
+        // Write to WhatsAppMessageLog for inbox conversation thread
         await (this.prisma as any).whatsAppMessageLog.create({
           data: {
             tenantId,
@@ -743,21 +726,9 @@ export class WhatsAppController {
             metadata: { messageId: result.messageId },
           },
         });
-      } else {
-        await this.prisma.whatsAppLog.update({
-          where: { id: log.id },
-          data: {
-            status: 'FAILED',
-            error:
-              typeof result.error === 'string'
-                ? result.error
-                : JSON.stringify(result.error),
-          },
-        });
       }
-      return this.prisma.whatsAppLog.findFirst({
-        where: { id: log.id, tenantId },
-      });
+
+      return { success: result.success, error: result.error ?? undefined };
     }
 
     // ---------------------------------------------------------
