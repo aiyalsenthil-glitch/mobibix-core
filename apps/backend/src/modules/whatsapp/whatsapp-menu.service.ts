@@ -116,10 +116,15 @@ export class WhatsAppMenuService {
   }
 
   async updateConfig(tenantId: string, dto: { menuBotEnabled?: boolean; aiReplyEnabled?: boolean }) {
+    const updateData: any = { ...dto };
+    if (dto.menuBotEnabled === true) {
+      // Mutual Exclusivity: Turn off keyword bot if menu bot is active
+      updateData.botEnabled = false;
+    }
     return this.prisma.whatsAppBotConfig.upsert({
       where: { tenantId },
-      create: { tenantId, ...dto },
-      update: dto,
+      create: { tenantId, ...updateData },
+      update: updateData,
     });
   }
 

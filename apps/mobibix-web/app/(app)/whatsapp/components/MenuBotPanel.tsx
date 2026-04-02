@@ -210,9 +210,34 @@ export default function MenuBotPanel() {
           <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider text-purple-400 border-purple-400/30">
             Beta
           </Badge>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground mr-auto">
             Leaf nodes can use AI to generate contextual replies.
           </span>
+
+          <div className="flex items-center gap-2">
+            <Input
+              value={config?.welcomeMessage || ''}
+              onChange={(e) => setConfig(prev => prev ? { ...prev, welcomeMessage: e.target.value } : null)}
+              placeholder="Home Menu Header..."
+              className="h-8 text-[10px] w-48 rounded-xl font-bold"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                setSaving(true);
+                await authenticatedFetch('/whatsapp/menu/config', {
+                  method: 'PATCH',
+                  body: JSON.stringify({ welcomeMessage: config?.welcomeMessage }),
+                });
+                setSaving(false);
+              }}
+              disabled={saving}
+              className="h-8 rounded-xl text-[10px] font-bold"
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+            </Button>
+          </div>
         </div>
       </Card>
 

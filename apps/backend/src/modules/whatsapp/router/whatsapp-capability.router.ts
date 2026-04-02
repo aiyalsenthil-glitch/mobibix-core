@@ -60,6 +60,16 @@ export class WhatsAppCapabilityRouter {
       `Routing message from ${phone} [Tenant: ${tenantId}, Number: ${waNumber.displayNumber}] -> ${capability}`,
     );
 
+    // ── HUMAN HANDOVER CHECK ──
+    const state = await this.prisma.whatsAppConversationState.findUnique({
+      where: { tenantId_phoneNumber: { tenantId, phoneNumber: phone } },
+      select: { botPaused: true },
+    });
+    if (state?.botPaused) {
+      this.logger.debug(`[Router] Bot is PAUSED for ${phone} due to human handover.`);
+      return;
+    }
+
     switch (capability) {
       case WhatsAppCapability.RETAIL_DEMO:
         await this.retailDemoHandler.handleMessage(tenantId, phone, text);

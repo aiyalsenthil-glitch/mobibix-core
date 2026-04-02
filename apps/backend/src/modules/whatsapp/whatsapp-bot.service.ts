@@ -52,10 +52,15 @@ export class WhatsAppBotService {
     businessHoursStart?: string;
     businessHoursEnd?: string;
   }) {
+    const updateData: any = { ...dto };
+    if (dto.botEnabled === true) {
+      // Mutual Exclusivity: Turn off menu bot if keyword bot is active
+      updateData.menuBotEnabled = false;
+    }
     return (this.prisma as any).whatsAppBotConfig.upsert({
       where: { tenantId },
-      update: dto,
-      create: { tenantId, ...dto },
+      update: updateData,
+      create: { tenantId, ...updateData },
     });
   }
 
@@ -144,6 +149,6 @@ export class WhatsAppBotService {
       if (matched) return rule.replyText;
     }
 
-    return config.welcomeMessage || null;
+    return null; // Don't spam welcome message on every miss
   }
 }
