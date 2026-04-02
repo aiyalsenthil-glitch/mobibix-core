@@ -275,7 +275,7 @@ export class RetailDemoHandler {
    */
   private async sendFreeText(tenantId: string, phone: string, text: string) {
     try {
-      const result = await this.sender.sendTextMessage(tenantId, phone, text);
+      const result = await this.sender.sendTextMessage(tenantId, phone, text, undefined, true);
       if (!result.success) {
         this.logger.error(`[RETAIL] Failed to send text: ${result.error}`);
       }

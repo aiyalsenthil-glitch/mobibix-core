@@ -757,21 +757,7 @@ export class WhatsAppController {
         textBody,
       );
 
-      if (result.success && result.messageId) {
-        // Write to WhatsAppMessageLog for inbox conversation thread
-        await (this.prisma as any).whatsAppMessageLog.create({
-          data: {
-            tenantId,
-            phoneNumber: phone,
-            direction: 'OUTGOING',
-            body: textBody,
-            status: 'SENT',
-            provider: 'META_CLOUD',
-            whatsAppNumberId: defaultNumber.id,
-            metadata: { messageId: result.messageId },
-          },
-        });
-      }
+
 
       return { success: result.success, error: result.error ?? undefined };
     }

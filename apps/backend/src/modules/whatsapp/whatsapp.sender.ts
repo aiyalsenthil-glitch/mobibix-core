@@ -296,6 +296,7 @@ export class WhatsAppSender {
     phone: string,
     text: string,
     whatsAppNumberId?: string,
+    isBot = false,
   ): Promise<{ success: boolean; messageId?: string; error?: any }> {
     const module = await this.resolveTenantModule(tenantId);
     const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
@@ -344,44 +345,62 @@ export class WhatsAppSender {
       { channel: 'WHATSAPP' },
     );
 
-    if (result.success) {
-      await this.prisma.whatsAppLog.create({
-        data: {
-          tenantId,
-          whatsAppNumberId: phoneNumberConfig.id,
-          phone: whatsappFormattedPhone,
-          type: 'MANUAL',
-          status: 'SENT',
-          messageId: result.messageId,
-          providerUsed: result.providerName,
-          messageCost: result.cost,
-          metadata: {
-            text_snippet: text.substring(0, 50),
-            provider: result.providerName,
+      if (result.success) {
+        // Technical log
+        await this.prisma.whatsAppLog.create({
+          data: {
+            tenantId,
+            whatsAppNumberId: phoneNumberConfig.id,
+            phone: whatsappFormattedPhone,
+            type: 'MANUAL',
+            status: 'SENT',
+            messageId: result.messageId,
+            providerUsed: result.providerName,
+            messageCost: result.cost,
+            metadata: {
+              text_snippet: text.substring(0, 50),
+              provider: result.providerName,
+            },
           },
-        },
-      });
-      await this.incrementUsage(tenantId, 'service', result.cost);
+        });
+        await this.incrementUsage(tenantId, 'service', result.cost);
 
-      // ── HUMAN HANDOVER: Pause bot when agent sends a message ──────────────
-      // Bot auto-resumes after 30 minutes of agent inactivity (enforced in
-      // ConversationEngineService.processMessage)
-      await this.prisma.whatsAppConversationState.upsert({
-        where: { tenantId_phoneNumber: { tenantId, phoneNumber: normalizedPhone } },
-        update: { botPaused: true, agentActiveAt: new Date() },
-        create: {
-          tenantId,
-          phoneNumber: normalizedPhone,
-          step: 'AGENT_HANDOVER',
-          botPaused: true,
-          agentActiveAt: new Date(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h TTL
-        },
-      });
-      // ─────────────────────────────────────────────────────────────────────
+        // Inbox log (for chat history)
+        await (this.prisma as any).whatsAppMessageLog.create({
+          data: {
+            tenantId,
+            phoneNumber: whatsappFormattedPhone,
+            direction: 'OUTGOING',
+            body: text,
+            status: 'SENT',
+            provider: phoneNumberConfig.provider === 'AUTHKEY' ? 'AUTHKEY' : 'META_CLOUD',
+            whatsAppNumberId: phoneNumberConfig.id,
+            metadata: { 
+              source: isBot ? 'bot' : 'agent', 
+              messageId: result.messageId 
+            },
+          },
+        });
 
-      return { success: true, messageId: result.messageId };
-    } else {
+        // ── HUMAN HANDOVER: only pause bot when a real agent sends, not the bot itself ──
+        if (!isBot) {
+          await this.prisma.whatsAppConversationState.upsert({
+            where: { tenantId_phoneNumber: { tenantId, phoneNumber: normalizedPhone } },
+            update: { botPaused: true, agentActiveAt: new Date() },
+            create: {
+              tenantId,
+              phoneNumber: normalizedPhone,
+              step: 'AGENT_HANDOVER',
+              botPaused: true,
+              agentActiveAt: new Date(),
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            },
+          });
+        }
+        // ────────────────────────────────────────────────────────────────────
+
+        return { success: true, messageId: result.messageId };
+      } else {
       const errMsg = result.error || 'Unknown provider error';
       await this.prisma.whatsAppLog.create({
         data: {
