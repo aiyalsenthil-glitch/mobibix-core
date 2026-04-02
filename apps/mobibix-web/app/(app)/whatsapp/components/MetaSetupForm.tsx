@@ -253,6 +253,28 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* ── COEXISTENCE & BILLING BANNER ── */}
+        <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-4 dark:border-teal-900/30 dark:bg-teal-900/10">
+          <div className="flex gap-3">
+            <Smartphone className="h-5 w-5 text-teal-600 mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-teal-900 dark:text-teal-100">
+                Coexistence Support Enabled
+              </p>
+              <p className="text-xs leading-relaxed text-teal-800/80 dark:text-teal-200/60">
+                You can now connect the API while keeping your <strong>WhatsApp Business App</strong> active on your phone.
+              </p>
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-teal-100/50 p-2 dark:bg-teal-800/30">
+                <AlertCircle className="h-3.5 w-3.5 text-teal-700 mt-0.5 shrink-0" />
+                <p className="text-[10px] leading-snug text-teal-800 dark:text-teal-200">
+                  <strong>Billing Notice:</strong> We support coexistence for free! However, for new numbers, provisioning is 
+                  handled via Meta/Authkey. You are directly responsible for Meta API usage fees; we do not manage or charge for Meta billing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />

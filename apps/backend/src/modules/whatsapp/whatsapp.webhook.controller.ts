@@ -17,6 +17,7 @@ import { WhatsAppTokenService } from './whatsapp-token.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
+import * as crypto from 'crypto';
 
 const MEDIA_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'whatsapp-media');
 
@@ -91,7 +92,6 @@ export class WhatsAppWebhookController {
     }
 
     // HMAC signature verification
-    const crypto = require('crypto');
     const hmac = crypto.createHmac('sha256', appSecret);
 
     // 🚨 SECURITY FIX: Prefer req.rawBody if available (requires configuration in main.ts)
@@ -158,7 +158,6 @@ export class WhatsAppWebhookController {
    * Handle incoming messages (Text, Quick Reply, etc.)
    */
   private async handleIncomingMessages(messages: any[], metadata: any) {
-
     if (!messages || messages.length === 0) return;
 
     const phoneNumberId = metadata?.phone_number_id;
@@ -170,7 +169,7 @@ export class WhatsAppWebhookController {
 
     try {
       // 1. Resolve Number from unified WhatsAppNumber table
-      const waNumber = await this.prisma.whatsAppNumber.findUnique({
+      const waNumber = (await this.prisma.whatsAppNumber.findUnique({
         where: { phoneNumberId },
         select: {
           id: true,
@@ -179,9 +178,9 @@ export class WhatsAppWebhookController {
           isSystem: true,
           accessToken: true,
           phoneNumberId: true,
+          phoneNumber: true, // Required for self-sync detection
         },
-      }) as any;
-
+      })) as any;
 
       if (!waNumber) {
         this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
@@ -242,8 +241,15 @@ export class WhatsAppWebhookController {
 
         // 3. Process Content
         const senderPhone = message.from;
+
+        // ── SELF-SYNC CHECK: Is this message sent by the Business on another device? ──
+        const isFromBusiness =
+          senderPhone === waNumber.phoneNumber ||
+          senderPhone === waNumber.phoneNumberId;
+        const direction = isFromBusiness ? 'OUTGOING' : 'INCOMING';
+
         let text = '';
-        let localFile: string | null = null;
+        const localFile: string | null = null;
 
         if (message.type === 'text') {
           text = message.text?.body;
@@ -254,26 +260,47 @@ export class WhatsAppWebhookController {
           } else if (interactive.type === 'list_reply') {
             text = interactive.list_reply.id;
           }
-        } else if (['image', 'video', 'audio', 'document', 'sticker'].includes(message.type)) {
+        } else if (
+          ['image', 'video', 'audio', 'document', 'sticker'].includes(
+            message.type,
+          )
+        ) {
           const mediaObj = message[message.type];
           text = mediaObj?.caption || '';
           // Download media asynchronously — don't block ACK
           if (mediaObj?.id) {
-            this.downloadMedia(mediaObj.id, waNumber, tenantId, messageId, message.type)
+            this.downloadMedia(
+              mediaObj.id,
+              waNumber,
+              tenantId,
+              messageId,
+              message.type,
+            )
               .then((file) => {
                 if (file) {
                   // Update the stored metadata with localFile once download completes
-                  (this.prisma as any).whatsAppMessageLog.updateMany({
-                    where: { tenantId, metadata: { path: ['id'], equals: messageId } },
-                    data: { metadata: { ...message, localFile: file } },
-                  }).catch(() => {/* best-effort */});
+                  (this.prisma as any).whatsAppMessageLog
+                    .updateMany({
+                      where: {
+                        tenantId,
+                        metadata: { path: ['id'], equals: messageId },
+                      },
+                      data: { metadata: { ...message, localFile: file } },
+                    })
+                    .catch(() => {
+                      /* best-effort */
+                    });
                 }
               })
-              .catch(() => {/* best-effort */});
+              .catch(() => {
+                /* best-effort */
+              });
           }
         }
 
-        this.logger.log(`📨 Received ${message.type} from ${senderPhone} (Tenant: ${tenantId})`);
+        this.logger.log(
+          `📨 Received ${message.type} from ${senderPhone} (Tenant: ${tenantId})`,
+        );
 
         const bodyText = text || `[${message.type}]`;
 
@@ -288,7 +315,7 @@ export class WhatsAppWebhookController {
             tenantId,
             whatsAppNumberId: waNumber.id,
             phone: senderPhone,
-            type: 'INCOMING',
+            type: isFromBusiness ? 'MANUAL' : 'INCOMING',
             status: 'RECEIVED',
             messageId,
             metadata: message,
@@ -300,8 +327,8 @@ export class WhatsAppWebhookController {
         await (this.prisma as any).whatsAppMessageLog.create({
           data: {
             tenantId,
-            phoneNumber: senderPhone,
-            direction: 'INCOMING',
+            phoneNumber: isFromBusiness ? message.to : senderPhone,
+            direction,
             body: bodyText,
             status: 'RECEIVED',
             provider: 'META_CLOUD',
@@ -311,18 +338,45 @@ export class WhatsAppWebhookController {
           },
         });
 
+        // ── HUMAN HANDOVER: Automatically pause bot if Business sent a message manually ──
+        if (isFromBusiness) {
+          await this.prisma.whatsAppConversationState
+            .upsert({
+              where: {
+                tenantId_phoneNumber: { tenantId, phoneNumber: message.to },
+              }, // Customer phone
+              update: { botPaused: true, agentActiveAt: new Date() },
+              create: {
+                tenantId,
+                phoneNumber: message.to,
+                botPaused: true,
+                agentActiveAt: new Date(),
+                step: 'AGENT_HANDOVER',
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h window
+              },
+            })
+            .catch((err) =>
+              this.logger.error(`Failed to pause bot: ${err.message}`),
+            );
+        }
+
         // 6. Broadcast to WebSocket (real-time inbox update)
         this.inboxGateway.broadcastNewMessage(tenantId, {
           messageId,
-          senderPhone,
+          senderPhone: isFromBusiness ? message.to : senderPhone,
           body: bodyText,
-          direction: 'INCOMING',
-          timestamp: new Date().toISOString(),
+          direction,
+          timestamp: metaTimestamp.toISOString(),
         });
 
         // 7. Route to Automation (text only)
-        if (text) {
-          await this.router.routeMessage(tenantId, waNumber.id, senderPhone, text);
+        if (text && !isFromBusiness) {
+          await this.router.routeMessage(
+            tenantId,
+            waNumber.id,
+            senderPhone,
+            text,
+          );
         }
       }
     } catch (err) {
@@ -355,7 +409,8 @@ export class WhatsAppWebhookController {
       );
 
       const mediaUrl: string = mediaInfo.url;
-      const mimeType: string = mediaInfo.mime_type || 'application/octet-stream';
+      const mimeType: string =
+        mediaInfo.mime_type || 'application/octet-stream';
       const ext = MIME_EXT[mimeType] || mediaType;
 
       // 2. Download binary content
@@ -371,7 +426,10 @@ export class WhatsAppWebhookController {
 
       const safeId = messageId.replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `${safeId}.${ext}`;
-      fs.writeFileSync(path.join(tenantDir, filename), Buffer.from(response.data));
+      fs.writeFileSync(
+        path.join(tenantDir, filename),
+        Buffer.from(response.data),
+      );
 
       this.logger.log(`[Media] Saved ${mediaType} → ${tenantId}/${filename}`);
       return `${tenantId}/${filename}`;
@@ -414,14 +472,16 @@ export class WhatsAppWebhookController {
         `[TemplateWebhook] ${metaTemplateName} → ${event} (${newStatus}). Updated ${result.count} record(s). Reason: ${reason ?? 'none'}`,
       );
     } catch (err) {
-      this.logger.error(`Failed to update template status for ${metaTemplateName}: ${err.message}`);
+      this.logger.error(
+        `Failed to update template status for ${metaTemplateName}: ${err.message}`,
+      );
     }
   }
 
   /**
    * Handle message status updates from Meta
    */
-  private async handleStatusUpdate(status: any, metadata: any) {
+  private async handleStatusUpdate(status: any, _metadata: any) {
     const messageId = status.id;
     const statusValue = status.status;
     const timestamp = status.timestamp
