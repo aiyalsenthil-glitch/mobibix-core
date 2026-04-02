@@ -6,6 +6,10 @@ import { AiCoreClient } from '../../core/ai/ai-core.client';
 const MENU_SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const ROOT_SENTINEL = 'ROOT';
 
+import { WhatsAppSender } from './whatsapp.sender';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { CustomerLifecycle, PartyType } from '@prisma/client';
+
 export interface MenuNodeDto {
   parentId?: string | null;
   triggerKey: string;
@@ -17,6 +21,7 @@ export interface MenuNodeDto {
   isLeaf?: boolean;
   sortOrder?: number;
   enabled?: boolean;
+  actionType?: string | null;
 }
 
 @Injectable()
@@ -27,6 +32,7 @@ export class WhatsAppMenuService {
     private readonly prisma: PrismaService,
     private readonly aiClient: AiCoreClient,
     private readonly jwtService: JwtService,
+    private readonly sender: WhatsAppSender,
   ) {}
 
   // ── Tree CRUD ──────────────────────────────────────────────────────────────
@@ -41,8 +47,8 @@ export class WhatsAppMenuService {
 
   private buildTree(nodes: any[], parentId: string | null = null): any[] {
     return nodes
-      .filter(n => n.parentId === parentId)
-      .map(n => ({ ...n, children: this.buildTree(nodes, n.id) }));
+      .filter((n) => n.parentId === parentId)
+      .map((n) => ({ ...n, children: this.buildTree(nodes, n.id) }));
   }
 
   async createNode(tenantId: string, dto: MenuNodeDto) {
@@ -65,6 +71,7 @@ export class WhatsAppMenuService {
         isLeaf: dto.isLeaf ?? false,
         sortOrder: dto.sortOrder ?? 0,
         enabled: dto.enabled ?? true,
+        actionType: dto.actionType ?? null,
       },
     });
   }
@@ -83,6 +90,7 @@ export class WhatsAppMenuService {
     if (dto.isLeaf !== undefined) data.isLeaf = dto.isLeaf;
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
     if (dto.enabled !== undefined) data.enabled = dto.enabled;
+    if (dto.actionType !== undefined) data.actionType = dto.actionType;
 
     return this.prisma.whatsAppMenuItem.update({ where: { id: nodeId }, data });
   }
@@ -223,8 +231,22 @@ export class WhatsAppMenuService {
     // Leaf node — generate reply
     await this.resetMenuSession(tenantId, phoneKey);
 
+    // Handle System Actions (e.g. Lead Generation)
+    if (matched.actionType) {
+      await this.handleMenuAction(
+        tenantId,
+        phoneKey,
+        matched.actionType,
+        matched.menuLabel,
+      );
+    }
+
     if (matched.replyMode === 'AI' && config.aiReplyEnabled) {
-      const aiReply = await this.callAiCore(tenantId, matched.aiSystemPrompt ?? '', userText);
+      const aiReply = await this.callAiCore(
+        tenantId,
+        matched.aiSystemPrompt ?? '',
+        userText,
+      );
       if (aiReply) return aiReply;
       // Fall through to fallback
       if (matched.fallbackReply) return matched.fallbackReply;
@@ -305,6 +327,59 @@ export class WhatsAppMenuService {
     } catch (err) {
       this.logger.warn(`ai-core call failed for tenant ${tenantId}: ${(err as any)?.message}`);
       return null;
+    }
+  }
+
+  // ── Actions Processor ──────────────────────────────────────────────────────
+
+  private async handleMenuAction(
+    tenantId: string,
+    phone: string,
+    actionType: string,
+    label: string,
+  ) {
+    this.logger.log(
+      `Processing action ${actionType} for ${phone} (Tenant: ${tenantId})`,
+    );
+
+    if (actionType === 'CREATE_LEAD') {
+      try {
+        // 1. Store in mb_party as a PROSPECT
+        const party = await this.prisma.party.upsert({
+          where: { tenantId_phone: { tenantId, phone } },
+          create: {
+            tenantId,
+            phone,
+            name: 'WhatsApp Prospect',
+            normalizedPhone: phone,
+            partyType: 'CUSTOMER',
+            customerLifecycle: 'PROSPECT',
+          },
+          update: {
+            customerLifecycle: 'PROSPECT', // Ensure they are marked as prospect if already existing
+          },
+        });
+
+        // 2. Alert the owner
+        const tenant = await this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { contactPhone: true, name: true },
+        });
+
+        if (tenant?.contactPhone) {
+          const alertMsg = `🚀 *New Lead Alert!*\n\nCustomer *${phone}* just expressed interest in *${label}* via WhatsApp Menu.\n\nCRM: https://app.mobibix.io/customers/${party.id}`;
+
+          await this.sender.sendTextMessage(
+            tenantId,
+            tenant.contactPhone,
+            alertMsg,
+            undefined,
+            true,
+          );
+        }
+      } catch (err) {
+        this.logger.error(`Failed to create lead for ${phone}: ${(err as any)?.message}`);
+      }
     }
   }
 }

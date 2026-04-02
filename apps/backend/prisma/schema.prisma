@@ -1206,6 +1206,7 @@ model WhatsAppMenuItem {
   isLeaf         Boolean  @default(false)  // true = final reply, false = has children
   sortOrder      Int      @default(0)
   enabled        Boolean  @default(true)
+  actionType     String?                   // null | CREATE_LEAD | NOTIFY_OWNER | etc.
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
