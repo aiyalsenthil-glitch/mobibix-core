@@ -211,8 +211,42 @@ export default function MenuBotPanel() {
             Beta
           </Badge>
           <span className="text-[10px] text-muted-foreground">
-            Leaf nodes can use AI to generate contextual replies instead of static text.
+            Leaf nodes can use AI to generate contextual replies.
           </span>
+        </div>
+      </Card>
+
+      {/* ── Guide & Layout ────────────────────────────────────────────── */}
+      <Card className="rounded-3xl border-none shadow-sm bg-card p-6 border-l-4 border-l-teal-500">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-teal-500/10">
+            <Sparkles className="w-5 h-5 text-teal-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-foreground uppercase tracking-wider">Premium Experience</h3>
+            <p className="text-[10px] text-muted-foreground">Modern features enabled for your WhatsApp Bot</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px]">1️⃣</span>
+              Boxed Quick-Select
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Your menu now uses **Boxed Style (1️⃣, 2️⃣)** markers by default. This makes it easier for customers to identify selectable options at a glance.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-mono">*</span>
+              Smart Navigation
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Customers can type <code className="bg-muted px-1 rounded text-teal-500">*</code> or <code className="bg-muted px-1 rounded text-teal-500">home</code> to jump back to root from any level deep. Use <code className="bg-muted px-1 rounded text-teal-500">0</code> for back.
+            </p>
+          </div>
         </div>
       </Card>
 

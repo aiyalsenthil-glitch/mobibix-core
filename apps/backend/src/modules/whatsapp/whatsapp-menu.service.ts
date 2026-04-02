@@ -153,7 +153,6 @@ export class WhatsAppMenuService {
         where: { id: state.currentMenuNodeId },
       });
       if (currentNode?.parentId) {
-        // Go to parent level
         const parentNode = await this.prisma.whatsAppMenuItem.findUnique({
           where: { id: currentNode.parentId },
         });
@@ -161,10 +160,20 @@ export class WhatsAppMenuService {
         await this.setMenuSession(tenantId, phoneKey, parentNode?.parentId ?? ROOT_SENTINEL, now);
         return siblingMenu;
       } else {
-        // Already at root — reset
         await this.resetMenuSession(tenantId, phoneKey);
         return null;
       }
+    }
+
+    // Handle "Back to Root" jump (Home Style)
+    if (['home', 'main', 'menu', 'root', '*', '#'].includes(trimmed)) {
+      await this.resetMenuSession(tenantId, phoneKey);
+      const rootItems = await this.prisma.whatsAppMenuItem.findMany({
+        where: { tenantId, parentId: null, enabled: true },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (rootItems.length === 0) return null;
+      return this.formatMenuText(config.welcomeMessage ?? 'Home Menu', rootItems);
     }
 
     // Not in a session — start if root items exist
@@ -227,8 +236,15 @@ export class WhatsAppMenuService {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   private formatMenuText(header: string, items: any[]): string {
-    const lines = items.map(i => i.menuLabel);
-    return `${header}\n\n${lines.join('\n')}\n\nReply with a number. Type 0 to go back.`;
+    // Premium "Boxed Style" for better readability on WhatsApp
+    const BOXED_NUMS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+    
+    const lines = items.map((i, idx) => {
+      const prefix = idx < 10 ? BOXED_NUMS[idx] : `${idx + 1}.`;
+      return `${prefix} *${i.menuLabel}*`;
+    });
+    
+    return `*${header}*\n\n${lines.join('\n')}\n\n_Reply with a number._\n_Type 0 to go back._\n_Type * for Home._`;
   }
 
   private async getChildMenuText(tenantId: string, parentId: string | null): Promise<string> {
