@@ -37,12 +37,13 @@ export function AiQuotaBadge({ className = "" }: { className?: string }) {
 
   if (!mounted || !quota || quota.aiTokensLimit === 0) return null;
 
-  const pct = Math.min(
-    100,
-    Math.round((quota.aiTokensUsed / quota.aiTokensLimit) * 100)
-  );
-  const isNearLimit = pct >= 80;
-  const isExhausted = pct >= 100;
+  const isUnlimited = quota.aiTokensLimit === -1;
+  const pct = isUnlimited
+    ? 0
+    : Math.min(100, Math.round((quota.aiTokensUsed / quota.aiTokensLimit) * 100));
+
+  const isNearLimit = !isUnlimited && pct >= 80;
+  const isExhausted = !isUnlimited && pct >= 100;
   const isDark = theme === "dark";
 
   const barColor = isExhausted
@@ -65,7 +66,7 @@ export function AiQuotaBadge({ className = "" }: { className?: string }) {
           <span className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}>AI Tokens</span>
         </div>
         <span className={`text-[11px] font-bold ${textColor}`}>
-          {quota.aiTokensUsed.toLocaleString()} / {quota.aiTokensLimit.toLocaleString()}
+          {quota.aiTokensUsed.toLocaleString()} / {isUnlimited ? "Unlimited" : quota.aiTokensLimit.toLocaleString()}
         </span>
       </div>
       
@@ -84,7 +85,7 @@ export function AiQuotaBadge({ className = "" }: { className?: string }) {
           </span>
         ) : (
           <div className="flex justify-between items-center">
-            <span>{pct}% used</span>
+            <span>{isUnlimited ? "Pro Plan: Unlimited" : `${pct}% used`}</span>
             {quota.resetAt && <span>Renews {new Date(quota.resetAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
           </div>
         )}

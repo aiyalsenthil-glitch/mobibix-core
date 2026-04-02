@@ -41,8 +41,10 @@ export function AiChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`relative rounded-2xl border transition-colors bg-white ${
-        disabled ? "border-gray-200 opacity-70" : "border-teal-200 focus-within:border-teal-400 focus-within:ring-2 focus-within:ring-teal-100"
+      className={`relative rounded-2xl border transition-all bg-white dark:bg-slate-950/40 ${
+        disabled 
+          ? "border-gray-200 dark:border-slate-800 opacity-70" 
+          : "border-teal-200 dark:border-slate-700 focus-within:border-teal-400 dark:focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-100 dark:focus-within:ring-teal-900/30"
       }`}
     >
       <textarea
@@ -52,7 +54,7 @@ export function AiChatInput({
         onKeyDown={handleKeyDown}
         placeholder={disabled ? "AI features locked..." : "Ask your AI assistant..."}
         disabled={disabled || isLoading}
-        className="block w-full resize-none max-h-[120px] bg-transparent border-0 py-3.5 pl-4 pr-14 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
+        className="block w-full resize-none max-h-[120px] bg-transparent border-0 py-3.5 pl-4 pr-14 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-600 focus:ring-0 sm:text-sm"
         rows={1}
       />
       <div className="absolute right-2 bottom-2">
@@ -62,7 +64,7 @@ export function AiChatInput({
           className={`p-2 rounded-xl flex items-center justify-center transition-colors ${
             text.trim() && !isLoading && !disabled
               ? "bg-teal-600 text-white hover:bg-teal-700 shadow-sm"
-              : "bg-gray-100 text-gray-400"
+              : "bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-600"
           }`}
         >
           {isLoading ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <SendIcon className="w-4 h-4" />}

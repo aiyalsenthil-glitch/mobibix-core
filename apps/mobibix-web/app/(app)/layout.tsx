@@ -11,7 +11,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { GlobalApprovalInterceptor } from "@/components/auth/GlobalApprovalInterceptor";
 import { AiChatPanel } from "@/components/ai/AiChatPanel";
-import { SparklesIcon } from "lucide-react";
+import { DraggableAiFab } from "@/components/ai/DraggableAiFab";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -168,15 +168,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Floating AI FAB */}
+      {/* Floating AI FAB (Now Draggable!) */}
       {!aiOpen && (
-        <button
-          onClick={() => setAiOpen(true)}
-          className="fixed bottom-6 right-6 z-40 bg-teal-600 hover:bg-teal-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-          title="MobiBix AI"
-        >
-          <SparklesIcon className="w-6 h-6" />
-        </button>
+        <DraggableAiFab onClick={() => setAiOpen(true)} />
       )}
 
       {/* Global AI Chat Panel */}

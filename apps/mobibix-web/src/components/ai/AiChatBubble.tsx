@@ -11,8 +11,8 @@ export function AiChatBubble({ role, content }: { role: "user" | "assistant"; co
       <div
         className={`max-w-[85%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed relative ${
           isAssistant
-            ? "bg-white text-gray-800 border border-gray-200 shadow-sm rounded-tl-sm"
-            : "bg-teal-600 text-white rounded-tr-sm shadow-md"
+            ? "bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-sm rounded-tl-none"
+            : "bg-teal-600 text-white rounded-tr-none shadow-md"
         }`}
       >
         {isAssistant ? (
