@@ -61,13 +61,21 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (
-      !tokenRecord ||
-      tokenRecord.revokedAt ||
-      tokenRecord.expiresAt.getTime() <= Date.now()
-    ) {
+    if (!tokenRecord || tokenRecord.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Modern "Grace Period" Solution:
+    // If the token was revoked in the last 30 seconds, it's likely a race condition 
+    // from parallel requests (tabs/multiple components). We allow it to succeed.
+    const GRACE_PERIOD_MS = 30000;
+    const isRevokedAndOutsideGrace = 
+      tokenRecord.revokedAt && 
+      (Date.now() - tokenRecord.revokedAt.getTime() > GRACE_PERIOD_MS);
+
+    if (isRevokedAndOutsideGrace) {
       throw new UnauthorizedException(
-        'Invalid, revoked, or expired refresh token',
+        'Refresh token has been revoked and is outside the grace period',
       );
     }
 
