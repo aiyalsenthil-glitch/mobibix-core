@@ -23,5 +23,5 @@
     "noFallthroughCasesInSwitch": false,
     "jsx": "react-jsx"
   },
-  "exclude": ["node_modules", "dist", "dist/**", "prisma/generated", "scripts/**"]
+  "exclude": ["node_modules", "dist", "dist/**", "prisma/generated"]
 }
