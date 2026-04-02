@@ -7,6 +7,7 @@ import {
   SendMessagePayload,
   SendTemplatePayload,
 } from './messaging-provider.interface';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 
 /**
  * MetaProvider — sends via Meta WhatsApp Cloud API (graph.facebook.com).
@@ -17,6 +18,8 @@ export class MetaProvider implements MessagingProvider {
   readonly providerName = 'META_CLOUD';
   private readonly logger = new Logger(MetaProvider.name);
   private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
+
+  constructor(private readonly prisma: PrismaService) {}
 
   /** Called by ProviderManager with resolved credentials */
   async sendMessage(
@@ -152,6 +155,81 @@ export class MetaProvider implements MessagingProvider {
         ? JSON.stringify(err.response.data)
         : err.message;
       this.logger.error(`[META media] ${error}`);
+    }
+  }
+
+  /**
+   * Send a Conversions API event (CAPI) to Meta
+   * Requires: wabaId, accessToken, tenantId
+   */
+  async sendEvent(params: {
+    tenantId: string;
+    wabaId: string;
+    accessToken: string;
+    eventType: 'PURCHASE' | 'LEAD' | 'ADD_TO_CART';
+    phone: string;
+    whatsappNumberId?: string;
+    value?: number;
+    currency?: string;
+  }): Promise<ProviderResult> {
+    const url = `https://graph.facebook.com/${this.apiVersion}/${params.wabaId}/events`;
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      event_type: params.eventType,
+      event_data: {
+        phone: params.phone,
+        value: params.value ?? 0,
+        currency: params.currency ?? 'INR',
+        event_time: Math.floor(Date.now() / 1000),
+      },
+    };
+
+    try {
+      const response = await axios.post(url, payload, {
+        headers: {
+          Authorization: `Bearer ${params.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Log success to DB
+      await this.prisma.metaEventLog.create({
+        data: {
+          tenantId: params.tenantId,
+          whatsAppNumberId: params.whatsappNumberId,
+          eventType: params.eventType,
+          phone: params.phone,
+          status: 'SUCCESS',
+          payload: payload as any,
+          response: response.data as any,
+        },
+      });
+
+      return {
+        success: true,
+        messageId: response.data?.id,
+        providerName: this.providerName,
+      };
+    } catch (err: any) {
+      const error = err.response?.data
+        ? JSON.stringify(err.response.data)
+        : err.message;
+      this.logger.error(`[META CAPI] ${error}`);
+
+      // Log failure to DB
+      await this.prisma.metaEventLog.create({
+        data: {
+          tenantId: params.tenantId,
+          whatsAppNumberId: params.whatsappNumberId,
+          eventType: params.eventType,
+          phone: params.phone,
+          status: 'FAILED',
+          payload: payload as any,
+          error,
+        },
+      });
+
       return { success: false, error, providerName: this.providerName };
     }
   }

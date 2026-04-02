@@ -20,6 +20,7 @@ export interface PhoneNumberConfig {
   REMOVED_TOKENSenderId?: string | null;
   isEnabled: boolean;
   setupStatus: string;
+  wabaId?: string | null;
 }
 
 export interface SendOptions {
@@ -88,6 +89,35 @@ export class ProviderManager {
       tenantId,
     };
     return this.dispatchMedia(phoneConfig, payload, tenantId);
+  }
+
+  async sendEvent(
+    phoneConfig: PhoneNumberConfig,
+    eventType: 'PURCHASE' | 'LEAD' | 'ADD_TO_CART',
+    phone: string,
+    tenantId: string,
+    opts: { value?: number; currency?: string } = {},
+  ): Promise<ProviderResult> {
+    if (phoneConfig.provider !== 'META_CLOUD') {
+      return {
+        success: false,
+        error: 'Events only supported for META_CLOUD provider',
+        providerName: phoneConfig.provider,
+      };
+    }
+
+    const accessToken = await this.resolveMetaToken(phoneConfig);
+    if (!accessToken) return this.tokenError(phoneConfig.provider);
+
+    return this.meta.sendEvent({
+      tenantId,
+      wabaId: phoneConfig.wabaId || '',
+      accessToken,
+      eventType,
+      phone,
+      whatsappNumberId: phoneConfig.id,
+      ...opts,
+    });
   }
 
   // ─────────────── private dispatch helpers ───────────────

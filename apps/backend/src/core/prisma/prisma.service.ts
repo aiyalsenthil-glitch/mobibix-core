@@ -87,6 +87,7 @@ export class PrismaService
       'AuditLog', // FIXED: Was missing!
       'DailyClosing',
       'ShiftClosing',
+      'MetaEventLog',
     ]);
 
     const rootClient = this as any;
@@ -191,9 +192,7 @@ export class PrismaService
 
               return await query(args);
             } finally {
-              const duration = Date.now() - start;
-              if (duration > 500) {
-              }
+              // const duration = Date.now() - start;
             }
           },
         },

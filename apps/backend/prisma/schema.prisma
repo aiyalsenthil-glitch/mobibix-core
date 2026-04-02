@@ -144,6 +144,7 @@ model Tenant {
   automationRules          AutomationRule[]
   automationLogs           AutomationLog[]
   inboundEmails            InboundEmail[]
+  metaEventLogs            MetaEventLog[]
 }
 
 model DeletionRequest {
@@ -1374,6 +1375,25 @@ model WhatsAppCampaignLog {
 
   @@index([campaignId])
   @@index([tenantId, status])
+}
+
+model MetaEventLog {
+  id               String   @id @default(uuid())
+  tenantId         String
+  whatsAppNumberId String?
+  eventType        String   // PURCHASE | LEAD | ADD_TO_CART
+  phone            String   // customer phone
+  status           String   // SUCCESS | FAILED
+  payload          Json
+  response         Json?
+  error            String?
+  createdAt        DateTime @default(now())
+
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([createdAt])
 }
 
 model WebhookLog {

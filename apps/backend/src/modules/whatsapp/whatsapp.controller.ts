@@ -226,7 +226,7 @@ export class WhatsAppController {
         const timeB = new Date(b.sentAt || 0).getTime();
         return timeB - timeA;
       })
-      .slice(0, 200); // Return top 200 combined
+      .slice(0, 100); // Return top 100 combined
   }
 
   /**

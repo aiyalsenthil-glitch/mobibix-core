@@ -7,6 +7,7 @@ const MENU_SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const ROOT_SENTINEL = 'ROOT';
 
 import { WhatsAppSender } from './whatsapp.sender';
+import { ProviderManager } from './providers/provider-manager.service';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { CustomerLifecycle, PartyType } from '@prisma/client';
 
@@ -33,6 +34,7 @@ export class WhatsAppMenuService {
     private readonly aiClient: AiCoreClient,
     private readonly jwtService: JwtService,
     private readonly sender: WhatsAppSender,
+    private readonly providerManager: ProviderManager,
   ) {}
 
   // ── Tree CRUD ──────────────────────────────────────────────────────────────
@@ -344,14 +346,17 @@ export class WhatsAppMenuService {
 
     if (actionType === 'CREATE_LEAD') {
       try {
-        // 1. Store in mb_party as a PROSPECT
+        // 1. Normalize phone (strip country code for consistency as requested)
+        const localPhone = this.normalizePhoneToLocal(phone);
+
+        // 2. Store in mb_party as a PROSPECT
         const party = await this.prisma.party.upsert({
-          where: { tenantId_phone: { tenantId, phone } },
+          where: { tenantId_phone: { tenantId, phone: localPhone } },
           create: {
             tenantId,
-            phone,
+            phone: localPhone,
             name: 'WhatsApp Prospect',
-            normalizedPhone: phone,
+            normalizedPhone: localPhone,
             partyType: 'CUSTOMER',
             customerLifecycle: 'PROSPECT',
           },
@@ -377,9 +382,43 @@ export class WhatsAppMenuService {
             true,
           );
         }
-      } catch (err) {
-        this.logger.error(`Failed to create lead for ${phone}: ${(err as any)?.message}`);
+
+        // ── 🎯 META CONVERSIONS API (CAPI) ──
+        try {
+          const config = await this.prisma.whatsAppNumber.findFirst({
+            where: { tenantId, isEnabled: true, provider: 'META_CLOUD' },
+          });
+
+          if (config && config.wabaId) {
+            await this.providerManager.sendEvent(
+              config as any,
+              'LEAD',
+              phone,
+              tenantId,
+            );
+          }
+        } catch (capiErr) {
+          this.logger.error(
+            `Meta CAPI failed: ${(capiErr as any)?.message}`,
+          );
+        }
       }
     }
+  }
+
+  /**
+   * Normalizes a WhatsApp JID/Phone to a local 10-digit format (strips country code).
+   * Specifically handles '91' prefix for India by default.
+   */
+  private normalizePhoneToLocal(phone: string): string {
+    // Remove any non-numeric characters
+    let clean = phone.replace(/\D/g, '');
+
+    // Strip '91' if it's 12 digits (Indian international format)
+    if (clean.length === 12 && clean.startsWith('91')) {
+      clean = clean.slice(2);
+    }
+
+    return clean;
   }
 }
