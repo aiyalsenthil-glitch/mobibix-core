@@ -36,29 +36,33 @@ export class BusinessContextService {
 
           // Pending/in-progress job cards
           this.prisma.jobCard.count({
-            where: { tenantId, status: { in: ['PENDING', 'IN_PROGRESS', 'DIAGNOSED'] } },
+            where: {
+              tenantId,
+              status: { in: ['RECEIVED', 'ASSIGNED', 'DIAGNOSING', 'WAITING_APPROVAL', 'APPROVED', 'WAITING_FOR_PARTS', 'IN_PROGRESS', 'READY', 'WAITING_CUSTOMER'] },
+            },
           }),
 
           // Overdue job cards (older than 3 days, still open)
           this.prisma.jobCard.count({
             where: {
               tenantId,
-              status: { in: ['PENDING', 'IN_PROGRESS'] },
+              status: { in: ['RECEIVED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FOR_PARTS'] },
               createdAt: { lte: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
             },
           }),
 
           // Low stock products (quantity <= 5)
-          this.prisma.product.findMany({
+          this.prisma.shopProduct.findMany({
             where: { tenantId, quantity: { lte: 5 }, isActive: true },
             select: { name: true, quantity: true },
             take: 5,
           }),
 
           // New customers this week
-          this.prisma.customer.count({
+          this.prisma.party.count({
             where: {
               tenantId,
+              partyType: 'CUSTOMER',
               createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
             },
           }),
