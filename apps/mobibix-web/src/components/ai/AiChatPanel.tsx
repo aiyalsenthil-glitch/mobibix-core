@@ -1,5 +1,10 @@
 "use client";
 
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { XIcon, SparklesIcon, Maximize2Icon, Minimize2Icon, GripVertical } from "lucide-react";
+import { useAiChat } from "./useAiChat";
+import { AiChatBubble } from "./AiChatBubble";
+import { AiChatInput } from "./AiChatInput";
 import { useTheme } from "@/context/ThemeContext";
 import { AiQuotaBadge } from "../common/AiQuotaBadge";
 
