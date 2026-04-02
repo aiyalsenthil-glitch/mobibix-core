@@ -13,6 +13,28 @@ import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscript
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
 import { WhatsAppInboxGateway } from './inbox/whatsapp-inbox.gateway';
+import { WhatsAppTokenService } from './whatsapp-token.service';
+import * as fs from 'fs';
+import * as path from 'path';
+import axios from 'axios';
+
+const MEDIA_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'whatsapp-media');
+
+const MIME_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'video/mp4': 'mp4',
+  'video/3gpp': '3gp',
+  'audio/ogg': 'ogg',
+  'audio/mpeg': 'mp3',
+  'audio/aac': 'aac',
+  'audio/mp4': 'm4a',
+  'application/pdf': 'pdf',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+};
 
 @Public()
 @SkipSubscriptionCheck()
@@ -25,6 +47,7 @@ export class WhatsAppWebhookController {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     private readonly router: WhatsAppCapabilityRouter,
     private readonly inboxGateway: WhatsAppInboxGateway,
+    private readonly tokenService: WhatsAppTokenService,
   ) {}
 
   @Get()
@@ -154,8 +177,10 @@ export class WhatsAppWebhookController {
           tenantId: true,
           moduleType: true,
           isSystem: true,
+          accessToken: true,
+          phoneNumberId: true,
         },
-      });
+      }) as any;
 
 
       if (!waNumber) {
@@ -218,6 +243,7 @@ export class WhatsAppWebhookController {
         // 3. Process Content
         const senderPhone = message.from;
         let text = '';
+        let localFile: string | null = null;
 
         if (message.type === 'text') {
           text = message.text?.body;
@@ -228,19 +254,32 @@ export class WhatsAppWebhookController {
           } else if (interactive.type === 'list_reply') {
             text = interactive.list_reply.id;
           }
+        } else if (['image', 'video', 'audio', 'document', 'sticker'].includes(message.type)) {
+          const mediaObj = message[message.type];
+          text = mediaObj?.caption || '';
+          // Download media asynchronously — don't block ACK
+          if (mediaObj?.id) {
+            this.downloadMedia(mediaObj.id, waNumber, tenantId, messageId, message.type)
+              .then((file) => {
+                if (file) {
+                  // Update the stored metadata with localFile once download completes
+                  (this.prisma as any).whatsAppMessageLog.updateMany({
+                    where: { tenantId, metadata: { path: ['id'], equals: messageId } },
+                    data: { metadata: { ...message, localFile: file } },
+                  }).catch(() => {/* best-effort */});
+                }
+              })
+              .catch(() => {/* best-effort */});
+          }
         }
-
-        // REMOVED: console.log message text for security
-        this.logger.debug(`[Webhook] Extracted text from ${senderPhone}`);
-
-        // Extract text for all message types
-        const bodyText = text || message.type || '[media]';
 
         this.logger.log(`📨 Received ${message.type} from ${senderPhone} (Tenant: ${tenantId})`);
 
+        const bodyText = text || `[${message.type}]`;
+
         // Extract Meta timestamp if available (seconds to Date)
-        const metaTimestamp = message.timestamp 
-          ? new Date(parseInt(message.timestamp) * 1000) 
+        const metaTimestamp = message.timestamp
+          ? new Date(parseInt(message.timestamp) * 1000)
           : new Date();
 
         // 4. Log to WhatsAppLog (idempotency / status tracking)
@@ -253,7 +292,7 @@ export class WhatsAppWebhookController {
             status: 'RECEIVED',
             messageId,
             metadata: message,
-            sentAt: metaTimestamp, // Use sentAt for WhatsAppLog
+            sentAt: metaTimestamp,
           },
         });
 
@@ -267,8 +306,8 @@ export class WhatsAppWebhookController {
             status: 'RECEIVED',
             provider: 'META_CLOUD',
             whatsAppNumberId: waNumber.id,
-            metadata: message,
-            createdAt: metaTimestamp, // Correct for WhatsAppMessageLog
+            metadata: { ...message, localFile },
+            createdAt: metaTimestamp,
           },
         });
 
@@ -291,6 +330,54 @@ export class WhatsAppWebhookController {
         `Error handling incoming messages: ${err.message}`,
         err.stack,
       );
+    }
+  }
+
+  /**
+   * Download a Meta media file and save locally.
+   * Returns the relative filename (e.g. "tenantId/messageId.jpg") or null on failure.
+   */
+  private async downloadMedia(
+    mediaId: string,
+    waNumber: any,
+    tenantId: string,
+    messageId: string,
+    mediaType: string,
+  ): Promise<string | null> {
+    try {
+      const accessToken = await this.tokenService.resolveToken(waNumber);
+      if (!accessToken) return null;
+
+      // 1. Resolve media URL from Graph API
+      const { data: mediaInfo } = await axios.get(
+        `https://graph.facebook.com/v19.0/${mediaId}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
+      const mediaUrl: string = mediaInfo.url;
+      const mimeType: string = mediaInfo.mime_type || 'application/octet-stream';
+      const ext = MIME_EXT[mimeType] || mediaType;
+
+      // 2. Download binary content
+      const response = await axios.get(mediaUrl, {
+        responseType: 'arraybuffer',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        maxContentLength: 20 * 1024 * 1024, // 20 MB cap
+      });
+
+      // 3. Save to disk
+      const tenantDir = path.join(MEDIA_UPLOAD_DIR, tenantId);
+      fs.mkdirSync(tenantDir, { recursive: true });
+
+      const safeId = messageId.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${safeId}.${ext}`;
+      fs.writeFileSync(path.join(tenantDir, filename), Buffer.from(response.data));
+
+      this.logger.log(`[Media] Saved ${mediaType} → ${tenantId}/${filename}`);
+      return `${tenantId}/${filename}`;
+    } catch (err) {
+      this.logger.warn(`[Media] Failed to download ${mediaId}: ${err.message}`);
+      return null;
     }
   }
 

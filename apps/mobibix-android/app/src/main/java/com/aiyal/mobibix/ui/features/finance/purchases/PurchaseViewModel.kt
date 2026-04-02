@@ -163,6 +163,35 @@ class PurchaseViewModel @Inject constructor(
         }
     }
 
+    fun loadGrns() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val list = purchaseRepository.listGrns(shopId)
+                _uiState.value = _uiState.value.copy(isLoading = false, grns = list)
+            } catch (e: Exception) {
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
+            }
+        }
+    }
+
+    fun loadGrnDetail(id: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val grn = purchaseRepository.getGrn(id)
+                _uiState.value = _uiState.value.copy(isLoading = false, selectedGRN = grn)
+            } catch (e: Exception) {
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
+            }
+        }
+    }
+
     fun createGrn(data: CreateGRNDto) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)

@@ -7,12 +7,25 @@ import {
   Param,
   Body,
   Req,
+  Res,
   UseGuards,
   ConflictException,
   BadRequestException,
+  NotFoundException,
   Inject,
   Query,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const MEDIA_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'whatsapp-media');
+const MIME_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+  gif: 'image/gif', mp4: 'video/mp4', '3gp': 'video/3gpp', ogg: 'audio/ogg',
+  mp3: 'audio/mpeg', aac: 'audio/aac', m4a: 'audio/mp4', pdf: 'application/pdf',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { ModuleType, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
