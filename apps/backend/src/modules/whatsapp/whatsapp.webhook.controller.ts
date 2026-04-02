@@ -127,7 +127,7 @@ export class WhatsAppWebhookController {
 
       // A. Template status update (approval/rejection from Meta)
       if (field === 'message_template_status_update') {
-        this.handleTemplateStatusUpdate(changes.value).catch((err) =>
+        await this.handleTemplateStatusUpdate(changes.value).catch((err) =>
           this.logger.error(`Template status update error: ${err.message}`),
         );
         return;
@@ -135,14 +135,14 @@ export class WhatsAppWebhookController {
 
       // B. Process Message Delivery Statuses
       for (const status of statuses) {
-        this.handleStatusUpdate(status, metadata).catch((err) =>
+        await this.handleStatusUpdate(status, metadata).catch((err) =>
           this.logger.error(`Status update error: ${err.message}`),
         );
       }
 
       // C. Process Incoming Messages
       if (messages.length > 0) {
-        this.handleIncomingMessages(messages, metadata).catch((err) =>
+        await this.handleIncomingMessages(messages, metadata).catch((err) =>
           this.logger.error(`Message processing error: ${err.message}`),
         );
       }
