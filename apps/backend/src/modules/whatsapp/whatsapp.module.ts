@@ -50,6 +50,10 @@ import { CampaignController } from './campaigns/campaign.controller';
 import { CampaignService } from './campaigns/campaign.service';
 import { CampaignProcessor } from './campaigns/campaign.processor';
 import { AdminWhatsAppController } from './admin-whatsapp.controller';
+import { WhatsAppBotService } from './whatsapp-bot.service';
+import { WhatsAppBotController } from './whatsapp-bot.controller';
+import { WhatsAppMenuService } from './whatsapp-menu.service';
+import { WhatsAppMenuController } from './whatsapp-menu.controller';
 
 @Module({
   controllers: [
@@ -65,6 +69,8 @@ import { AdminWhatsAppController } from './admin-whatsapp.controller';
     FacebookDeletionController,
     CampaignController,
     AdminWhatsAppController,
+    WhatsAppBotController,
+    WhatsAppMenuController,
   ],
   imports: [
     ScheduleModule.forRoot(),
@@ -109,6 +115,10 @@ import { AdminWhatsAppController } from './admin-whatsapp.controller';
     // Campaign Engine
     CampaignService,
     CampaignProcessor,
+    // Bot / Auto-reply
+    WhatsAppBotService,
+    // Menu Bot
+    WhatsAppMenuService,
   ],
   exports: [
     WhatsAppSender,

@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { RetailDemoHandler } from '../capabilities/retail-demo/retail-demo.handler';
 import { WhatsAppCapability } from '../types/whatsapp-capability.enum';
+import { WhatsAppBotService } from '../whatsapp-bot.service';
+import { WhatsAppMenuService } from '../whatsapp-menu.service';
+import { WhatsAppSender } from '../whatsapp.sender';
 
 @Injectable()
 export class WhatsAppCapabilityRouter {
@@ -10,6 +13,9 @@ export class WhatsAppCapabilityRouter {
   constructor(
     private readonly prisma: PrismaService,
     private readonly retailDemoHandler: RetailDemoHandler,
+    private readonly botService: WhatsAppBotService,
+    private readonly menuService: WhatsAppMenuService,
+    private readonly sender: WhatsAppSender,
   ) {}
 
   async routeMessage(
@@ -60,15 +66,23 @@ export class WhatsAppCapabilityRouter {
         break;
 
       case WhatsAppCapability.GYM_PILOT:
-      default:
-        // EXISTING BEHAVIOR PRESERVATION
-        // The current GymPilot system only logs incoming messages in the webhook.
-        // We explicitily do NOTHING here so that the loop in the controller
-        // can continue (or we just return and let the controller finish).
-        this.logger.debug(
-          `[GYM_PILOT] Message parsed, no auto-response action taken.`,
-        );
+      default: {
+        // 1. Menu bot (hierarchical) — runs first
+        const menuReply = await this.menuService.processMenuInput(tenantId, phone, text);
+        if (menuReply) {
+          this.logger.log(`[MenuBot] Menu reply for tenant ${tenantId}`);
+          await this.sender.sendTextMessage(tenantId, phone, menuReply);
+          break;
+        }
+
+        // 2. Keyword auto-reply bot — fallback
+        const reply = await this.botService.matchKeyword(tenantId, text);
+        if (reply) {
+          this.logger.log(`[Bot] Keyword matched for tenant ${tenantId} → sending auto-reply`);
+          await this.sender.sendTextMessage(tenantId, phone, reply);
+        }
         break;
+      }
     }
   }
 }

@@ -83,6 +83,9 @@ model Tenant {
   whatsAppNumbers          WhatsAppNumber[]        @relation("TenantWhatsAppNumbers")
   whatsAppMessageLogs      WhatsAppMessageLog[]
   whatsAppConversationStates WhatsAppConversationState[]
+  whatsAppBotConfig        WhatsAppBotConfig?
+  whatsAppAutoReplies      WhatsAppAutoReply[]
+  whatsAppMenuItems        WhatsAppMenuItem[]
   healthScore              TenantHealthScore?
   aiUsageLogs              AiUsageLog[]
   members                  Member[]                @relation("TenantMembers")
@@ -1119,9 +1122,13 @@ model WhatsAppConversationState {
   expiresAt     DateTime
   updatedAt     DateTime  @updatedAt
   /// Set when a human agent sends a message — bot will pause automatically
-  botPaused     Boolean   @default(false)
+  botPaused          Boolean   @default(false)
   /// Timestamp of last agent outbound message — used to auto-resume bot after inactivity
-  agentActiveAt DateTime?
+  agentActiveAt      DateTime?
+  /// Menu bot session: tracks which node the user is currently at
+  currentMenuNodeId  String?
+  /// When the user entered the menu session (for 10-min timeout)
+  menuEnteredAt      DateTime?
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, phoneNumber])
@@ -1148,6 +1155,66 @@ model WhatsAppMessageLog {
   @@index([phoneNumber])
   @@index([provider])
   @@index([jid])
+}
+
+// ── Bot config per tenant ────────────────────────────────────────────────────
+model WhatsAppBotConfig {
+  id               String   @id @default(uuid())
+  tenantId         String   @unique
+  mode             String   @default("OFF") // REPAIR | SALES | MIXED | OFF
+  botEnabled       Boolean  @default(false)
+  welcomeMessage   String?  @db.Text  // Sent when no keyword matched
+  outOfHoursMsg    String?  @db.Text  // Sent when outside business hours
+  businessHoursOn  Boolean  @default(false)
+  businessHoursStart String? // "09:00"
+  businessHoursEnd   String? // "20:00"
+  menuBotEnabled   Boolean  @default(false) // master toggle for menu bot
+  aiReplyEnabled   Boolean  @default(false) // master toggle for AI replies
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// ── Keyword → reply rules per tenant ────────────────────────────────────────
+model WhatsAppAutoReply {
+  id           String   @id @default(uuid())
+  tenantId     String
+  keyword      String   // Trigger phrase (case-insensitive contains match)
+  replyText    String   @db.Text
+  exactMatch   Boolean  @default(false) // true = exact, false = contains
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)     // Lower = checked first
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, enabled])
+}
+
+// ── Menu Bot — hierarchical reply tree ───────────────────────────────────────
+model WhatsAppMenuItem {
+  id             String   @id @default(cuid())
+  tenantId       String
+  parentId       String?                   // null = root menu item
+  triggerKey     String                    // what user types ("1", "price", etc.)
+  menuLabel      String                    // shown in list ("1. Repair Services")
+  replyText      String?  @db.Text         // static reply (leaf nodes)
+  replyMode      String   @default("STATIC") // STATIC | AI
+  aiSystemPrompt String?  @db.Text         // AI context scope for this node
+  fallbackReply  String?  @db.Text         // sent if AI call fails/times out
+  isLeaf         Boolean  @default(false)  // true = final reply, false = has children
+  sortOrder      Int      @default(0)
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   WhatsAppMenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children WhatsAppMenuItem[] @relation("MenuTree")
+
+  @@index([tenantId])
+  @@index([tenantId, parentId])
 }
 
 model WhatsAppLog {

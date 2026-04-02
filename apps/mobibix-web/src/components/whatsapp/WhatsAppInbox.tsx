@@ -8,7 +8,11 @@ import {
   MessageSquare,
   Check,
   CheckCheck,
-  Loader2
+  Loader2,
+  Image,
+  Video,
+  FileText,
+  Mic,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,6 +27,8 @@ interface Message {
   direction: 'INCOMING' | 'OUTGOING';
   timestamp: string;
   status: 'SENT' | 'DELIVERED' | 'READ';
+  mediaType?: 'image' | 'video' | 'audio' | 'document' | 'sticker';
+  localFile?: string; // "tenantId/filename.jpg"
 }
 
 interface Conversation {
@@ -79,7 +85,11 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
           senderPhone: m.direction === 'OUTGOING' ? 'me' : m.phoneNumber,
           direction: m.direction,
           timestamp: m.createdAt,
-          status: m.status === 'RECEIVED' ? 'READ' : 'SENT'
+          status: m.status === 'RECEIVED' ? 'READ' : 'SENT',
+          mediaType: m.metadata?.type && m.metadata.type !== 'text' && m.metadata.type !== 'interactive'
+            ? m.metadata.type
+            : undefined,
+          localFile: m.metadata?.localFile || undefined,
         })));
         
         // Minor delay to ensure items are rendered before scrolling
@@ -185,9 +195,9 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
                </div>
                {messages.map((msg, idx) => (
                  <div key={msg.id || idx} className={`flex ${msg.direction === 'OUTGOING' ? 'justify-end' : 'justify-start'}`}>
-                   <div className={`max-w-[85%] px-4 py-3 shadow-sm ${msg.direction === 'OUTGOING' ? 'bg-teal-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-teal-500/10' : 'bg-card border border-border text-foreground rounded-2xl rounded-tl-none'}`}>
-                     <p className="text-xs">{msg.body}</p>
-                     <div className={`flex justify-end items-center gap-1 mt-1.5 ${msg.direction === 'OUTGOING' ? 'text-teal-50/50' : 'text-muted-foreground/50'}`}>
+                   <div className={`max-w-[85%] shadow-sm overflow-hidden ${msg.direction === 'OUTGOING' ? 'bg-teal-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-teal-500/10' : 'bg-card border border-border text-foreground rounded-2xl rounded-tl-none'}`}>
+                     <MessageContent msg={msg} tenantId={tenantId} apiUrl={process.env.NEXT_PUBLIC_API_URL || ''} />
+                     <div className={`flex justify-end items-center gap-1 px-4 pb-2 ${msg.direction === 'OUTGOING' ? 'text-teal-50/50' : 'text-muted-foreground/50'}`}>
                        <span className="text-[8px] font-medium tracking-tighter uppercase">
                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                        </span>
@@ -234,4 +244,83 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
     </div>
 
   );
+}
+
+// ── Media-aware message bubble content ──────────────────────────────────────
+function MessageContent({ msg, tenantId, apiUrl }: { msg: Message; tenantId: string; apiUrl: string }) {
+  const mediaUrl = msg.localFile
+    ? `${apiUrl}/whatsapp/media/${msg.localFile}`
+    : null;
+
+  if (msg.mediaType === 'image' || msg.mediaType === 'sticker') {
+    return mediaUrl ? (
+      <div className="p-1">
+        <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+          <img
+            src={mediaUrl}
+            alt="image"
+            className="max-w-[260px] max-h-[200px] rounded-xl object-cover block"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </a>
+        {msg.body && <p className="text-xs px-3 pt-2">{msg.body}</p>}
+      </div>
+    ) : (
+      <div className="flex items-center gap-2 px-4 py-3 opacity-60">
+        <Image className="w-4 h-4" />
+        <span className="text-xs">Image (downloading…)</span>
+      </div>
+    );
+  }
+
+  if (msg.mediaType === 'video') {
+    return mediaUrl ? (
+      <div className="p-1">
+        <video
+          src={mediaUrl}
+          controls
+          className="max-w-[260px] max-h-[200px] rounded-xl block"
+        />
+        {msg.body && <p className="text-xs px-3 pt-2">{msg.body}</p>}
+      </div>
+    ) : (
+      <div className="flex items-center gap-2 px-4 py-3 opacity-60">
+        <Video className="w-4 h-4" />
+        <span className="text-xs">Video (downloading…)</span>
+      </div>
+    );
+  }
+
+  if (msg.mediaType === 'audio') {
+    return mediaUrl ? (
+      <div className="px-3 py-2">
+        <audio src={mediaUrl} controls className="h-8 w-[220px]" />
+      </div>
+    ) : (
+      <div className="flex items-center gap-2 px-4 py-3 opacity-60">
+        <Mic className="w-4 h-4" />
+        <span className="text-xs">Voice message (downloading…)</span>
+      </div>
+    );
+  }
+
+  if (msg.mediaType === 'document') {
+    const filename = msg.localFile?.split('/').pop() || 'document';
+    return (
+      <div className="flex items-center gap-3 px-4 py-3">
+        <FileText className="w-8 h-8 opacity-70 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold truncate max-w-[180px]">{filename}</p>
+          {mediaUrl && (
+            <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] underline opacity-70">
+              Download
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Plain text
+  return <p className="text-xs px-4 pt-3 pb-1">{msg.body}</p>;
 }

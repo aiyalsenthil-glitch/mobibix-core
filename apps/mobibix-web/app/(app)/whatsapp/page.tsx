@@ -31,6 +31,8 @@ const WhatsAppDashboardView = dynamic(() => import("./components/WhatsAppDashboa
 });
 const AuthkeySetupForm = dynamic(() => import("./components/AuthkeySetupForm"));
 const MetaSetupForm = dynamic(() => import("./components/MetaSetupForm"));
+const AutomationsPanel = dynamic(() => import("./components/AutomationsPanel"));
+const MenuBotPanel = dynamic(() => import("./components/MenuBotPanel"));
 const WhatsAppInbox = dynamic(() => import("@/components/whatsapp/WhatsAppInbox"));
 const WhatsAppPlanPicker = dynamic(() => import("@/components/whatsapp/WhatsAppPlanPicker"));
 const MetaTemplateManager = dynamic(() => import("@/components/whatsapp/MetaTemplateManager"));
@@ -317,13 +319,18 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
         {/* Automations Tab */}
         <TabsContent value="automation" className="focus-visible:ring-0">
-          <Card className="rounded-[2.5rem] border-none shadow-sm bg-card p-20 text-center">
-            <Zap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-foreground mb-2">Smart Automations</h3>
-            <p className="text-muted-foreground max-w-sm mx-auto">
-              Auto-replies, keyword triggers, and AI flows are coming soon to this unified dashboard.
-            </p>
-          </Card>
+          <Tabs defaultValue="keyword" className="w-full">
+            <TabsList className="rounded-2xl bg-muted/50 p-1 mb-6">
+              <TabsTrigger value="keyword" className="rounded-xl text-xs font-bold">Keyword Bot</TabsTrigger>
+              <TabsTrigger value="menu" className="rounded-xl text-xs font-bold">Menu Bot</TabsTrigger>
+            </TabsList>
+            <TabsContent value="keyword" className="focus-visible:ring-0">
+              <AutomationsPanel />
+            </TabsContent>
+            <TabsContent value="menu" className="focus-visible:ring-0">
+              <MenuBotPanel />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Broadcasts Tab */}
@@ -498,7 +505,7 @@ function MetaDashboardContent({ tenantId }: { tenantId: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-[40vh] items-center justify-center bg-card rounded-[2rem]">
+      <div className="flex h-[40vh] items-center justify-center bg-card rounded-4xl">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
         <span className="font-bold text-muted-foreground">Syncing Meta Assets...</span>
       </div>

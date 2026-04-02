@@ -230,6 +230,38 @@ export class WhatsAppController {
   }
 
   /**
+   * GET /whatsapp/media/:tenantId/:filename
+   * Serve a locally-stored WhatsApp media file (auth-gated, tenant-scoped).
+   */
+  @Get('media/:tenantId/:filename')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  async serveMedia(
+    @Param('tenantId') tenantId: string,
+    @Param('filename') filename: string,
+    @Req() req: any,
+    @Res() res: any,
+  ) {
+    this.validateAccess(req, tenantId);
+
+    // Security: reject path traversal attempts
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      throw new BadRequestException('Invalid filename');
+    }
+
+    const filePath = path.join(MEDIA_UPLOAD_DIR, tenantId, filename);
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException('Media file not found');
+    }
+
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.sendFile(filePath);
+  }
+
+  /**
    * DELETE /whatsapp/logs/:tenantId
    * Clear all message logs for a tenant (Inbox Reset)
    */
