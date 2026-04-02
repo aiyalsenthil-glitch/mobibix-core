@@ -115,7 +115,7 @@ export class LoyaltyService {
      */
     const result = await prisma.$queryRaw<Array<{ balance: number }>>`
       SELECT COALESCE(SUM(points), 0)::int as balance
-      FROM "mb_loyalty_transaction"
+      FROM public."mb_loyalty_transaction"
       WHERE "tenantId" = ${tenantId}
       AND "customerId" = ${customerId}
       ${shopId ? Prisma.sql`AND "shopId" = ${shopId}` : Prisma.empty}
@@ -237,7 +237,7 @@ export class LoyaltyService {
 
     // Lock the customer row atomically
     await prisma.$executeRawUnsafe(
-      `SELECT id FROM "mb_party" WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+      `SELECT id FROM public."mb_party" WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
       invoice.customerId!,
       tenantId
     );
@@ -354,7 +354,7 @@ export class LoyaltyService {
 
     // Lock Customer Row securely
     await prisma.$executeRawUnsafe(
-      `SELECT id FROM "mb_party" WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+      `SELECT id FROM public."mb_party" WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
       customerId,
       tenantId
     );
@@ -579,8 +579,8 @@ export class LoyaltyService {
 
     const expiringTxns = await this.prisma.$queryRaw<Array<{ id: string, customerId: string, shopId: string, points: number }>>`
       SELECT t.id, t."customerId", t."shopId", t.points 
-      FROM "mb_loyalty_transaction" t
-      LEFT JOIN "mb_loyalty_transaction" exp 
+      FROM public."mb_loyalty_transaction" t
+      LEFT JOIN public."mb_loyalty_transaction" exp 
              ON exp."referenceId" = t.id AND exp.type = 'EXPIRE'
       WHERE t."tenantId" = ${tenantId}
         AND t.type = 'EARN'
@@ -620,7 +620,7 @@ export class LoyaltyService {
     
     const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
       SELECT COALESCE(SUM(points), 0)::int as balance
-      FROM "mb_loyalty_transaction"
+      FROM public."mb_loyalty_transaction"
       WHERE "tenantId" = ${tenantId}
     `;
 
@@ -669,7 +669,7 @@ export class LoyaltyService {
         SELECT COUNT(DISTINCT "customerId") as count
         FROM (
           SELECT "customerId", SUM("points") as balance
-          FROM "mb_loyalty_transaction"
+          FROM public."mb_loyalty_transaction"
           WHERE "tenantId" = ${tenantId}
           ${shopId ? Prisma.sql`AND "shopId" = ${shopId}` : Prisma.empty}
           GROUP BY "customerId"

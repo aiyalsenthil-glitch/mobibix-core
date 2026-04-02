@@ -360,14 +360,14 @@ export class MobileShopReportsService {
     const result = await this.prisma.$queryRaw<{ total_value: bigint }[]>`
       WITH CTE_Balances AS (
         SELECT "shopProductId", SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as qty
-        FROM "mb_stock_ledger"
+        FROM public."mb_stock_ledger"
         WHERE "tenantId" = ${tenantId} ${shopFilter}
         GROUP BY "shopProductId"
         HAVING SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) > 0
       )
       SELECT SUM(cb.qty * p."costPrice") as total_value
       FROM CTE_Balances cb
-      JOIN "mb_shop_product" p ON cb."shopProductId" = p."id"
+      JOIN public."mb_shop_product" p ON cb."shopProductId" = p."id"
     `;
 
     return { totalCurrentValue: paiseToRupees(Number(result[0]?.total_value || 0)) };
@@ -434,7 +434,7 @@ export class MobileShopReportsService {
     >`
       SELECT "shopProductId", 
              SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
-      FROM "mb_stock_ledger"
+      FROM public."mb_stock_ledger"
       WHERE "tenantId" = ${tenantId}
       ${shopFilter}
       GROUP BY "shopProductId"
@@ -506,7 +506,7 @@ export class MobileShopReportsService {
     >`
       WITH filtered_invoices AS (
         SELECT id, "jobCardId"
-        FROM "mb_invoice"
+        FROM public."mb_invoice"
         WHERE "tenantId" = ${tenantId}
           AND "status" != 'VOIDED'
           ${shopFilter}
@@ -519,7 +519,7 @@ export class MobileShopReportsService {
         SUM(CASE WHEN i."jobCardId" IS NULL THEN COALESCE(ii."costAtSale", 0) * ii."quantity" ELSE 0 END) as sales_cost,
         SUM(CASE WHEN i."jobCardId" IS NOT NULL THEN ii."lineTotal" - ii."gstAmount" ELSE 0 END) as repair_revenue,
         SUM(CASE WHEN i."jobCardId" IS NOT NULL THEN COALESCE(ii."costAtSale", 0) * ii."quantity" ELSE 0 END) as repair_cost
-      FROM "mb_invoice_item" ii
+      FROM public."mb_invoice_item" ii
       JOIN filtered_invoices i ON ii."invoiceId" = i."id"
     `;
 
@@ -568,7 +568,7 @@ export class MobileShopReportsService {
 
     const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
       SELECT COALESCE(SUM(points), 0)::int as balance
-      FROM "mb_loyalty_transaction"
+      FROM public."mb_loyalty_transaction"
       WHERE "tenantId" = ${tenantId}
     `;
 

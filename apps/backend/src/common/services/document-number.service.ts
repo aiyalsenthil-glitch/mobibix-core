@@ -112,7 +112,7 @@ export class DocumentNumberService {
         }[]
       >`
         SELECT id, prefix, separator, "documentCode", "yearFormat", "numberLength", "resetPolicy", "currentNumber", "currentYear"
-        FROM "mb_shop_document_setting"
+        FROM public."mb_shop_document_setting"
         WHERE "shopId" = ${shopId}
           AND "documentType" = ${documentType}::"DocumentType"
           AND "isActive" = true
@@ -157,7 +157,7 @@ export class DocumentNumberService {
           }[]
         >`
         SELECT id, prefix, separator, "documentCode", "yearFormat", "numberLength", "resetPolicy", "currentNumber", "currentYear"
-        FROM "mb_shop_document_setting"
+        FROM public."mb_shop_document_setting"
         WHERE "shopId" = ${shopId}
           AND "documentType" = ${documentType}::"DocumentType"
           AND "isActive" = true

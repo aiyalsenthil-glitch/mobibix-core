@@ -81,7 +81,7 @@ export class StockService {
       });
       
       // Manual LOCK because findUnique doesn't support FOR UPDATE in all versions or is risky
-      await prisma.$executeRaw`SELECT id FROM "mb_shop_product" WHERE id = ${productId} FOR UPDATE`;
+      await prisma.$executeRaw`SELECT id FROM public."mb_shop_product" WHERE id = ${productId} FOR UPDATE`;
 
       if (!product || !product.id) {
         throw new BadRequestException('Product not found');
@@ -180,7 +180,7 @@ export class StockService {
 
       // 🛡️ LOCK: Sort IDs and acquire row-level locks to prevent deadlocks
       for (const pid of productIds) {
-        await prisma.$executeRaw`SELECT id FROM "mb_shop_product" WHERE id = ${pid} FOR UPDATE`;
+        await prisma.$executeRaw`SELECT id FROM public."mb_shop_product" WHERE id = ${pid} FOR UPDATE`;
       }
 
       // Bulk fetch products with current stock/value
@@ -286,7 +286,7 @@ export class StockService {
 
       // 🛡️ LOCK: Prevent race conditions in WAC calculation
       for (const pid of productIds) {
-        await prisma.$executeRaw`SELECT id FROM "mb_shop_product" WHERE id = ${pid} FOR UPDATE`;
+        await prisma.$executeRaw`SELECT id FROM public."mb_shop_product" WHERE id = ${pid} FOR UPDATE`;
       }
 
       const products = await prisma.shopProduct.findMany({

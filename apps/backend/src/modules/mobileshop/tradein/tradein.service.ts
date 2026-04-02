@@ -225,7 +225,7 @@ export class TradeInService {
         // Increment stock on existing product
         productId = existing.id;
         await tx.$executeRaw`
-          UPDATE "mb_shop_product"
+          UPDATE public."mb_shop_product"
           SET quantity = quantity + 1,
               "costPrice" = ${costPaisa},
               "avgCost" = ${costPaisa},
@@ -257,7 +257,7 @@ export class TradeInService {
         productId = created.id;
 
         await tx.$executeRaw`
-          UPDATE "mb_shop_product" SET quantity = 1 WHERE id = ${productId}
+          UPDATE public."mb_shop_product" SET quantity = 1 WHERE id = ${productId}
         `;
       }
 
