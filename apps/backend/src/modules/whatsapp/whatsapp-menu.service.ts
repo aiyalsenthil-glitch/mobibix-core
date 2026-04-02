@@ -402,6 +402,10 @@ export class WhatsAppMenuService {
             `Meta CAPI failed: ${(capiErr as any)?.message}`,
           );
         }
+      } catch (err) {
+        this.logger.error(
+          `Failed to create lead for ${phone}: ${(err as any)?.message}`,
+        );
       }
     }
   }

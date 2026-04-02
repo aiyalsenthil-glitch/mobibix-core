@@ -155,6 +155,7 @@ export class MetaProvider implements MessagingProvider {
         ? JSON.stringify(err.response.data)
         : err.message;
       this.logger.error(`[META media] ${error}`);
+      return { success: false, error, providerName: this.providerName };
     }
   }
 
