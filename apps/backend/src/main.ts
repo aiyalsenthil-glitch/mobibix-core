@@ -229,6 +229,8 @@ async function bootstrap() {
     res.status(200).json({ status: 'ok' });
   });
 
+  server.get('/favicon.ico', (_req, res) => res.status(204).end());
+
   server.get('/', (_req, res) => {
     res.status(200).json({ status: 'ok', message: 'MobiBix API' });
   });
