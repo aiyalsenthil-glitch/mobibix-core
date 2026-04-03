@@ -10,12 +10,7 @@ import {
   FC,
   createElement,
 } from "react";
-import {
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signOut,
-} from "REMOVED_AUTH_PROVIDER/auth";
-import { auth } from "@/lib/REMOVED_AUTH_PROVIDER";
+import type { User as FirebaseUser } from "REMOVED_AUTH_PROVIDER/auth";
 import {
   exchangeFirebaseToken,
   logout as apiLogout,
@@ -80,41 +75,58 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If Firebase is not initialized, skip auth setup
-    if (!auth) {
+    let unsubscribe: (() => void) | undefined;
+    let isMounted = true;
 
-      setIsLoading(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setIsLoading(true);
-      setError(null);
-
-      if (user) {
-        setFirebaseUser(user);
-
-        try {
-          const response = await exchangeFirebaseToken(await user.getIdToken());
-          setAuthUser({
-            ...response.user,
-            role: response.user.role?.toLowerCase(), // ✅ Normalize Role
-            pendingInvite: response.pendingInvite,
-          });
-        } catch (err: unknown) {
-          console.error("Auth exchange error:", err);
-          setError((err as any)?.message || "Authentication failed");
-          setFirebaseUser(null);
+    (async () => {
+      try {
+        const { auth } = await import("@/lib/REMOVED_AUTH_PROVIDER");
+        if (!auth) {
+          if (isMounted) setIsLoading(false);
+          return;
         }
-      } else {
-        setFirebaseUser(null);
-        setAuthUser(null);
+
+        const { onAuthStateChanged } = await import("REMOVED_AUTH_PROVIDER/auth");
+
+        unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (!isMounted) return;
+          setIsLoading(true);
+          setError(null);
+
+          if (user) {
+            setFirebaseUser(user);
+
+            try {
+              const response = await exchangeFirebaseToken(await user.getIdToken());
+              if (!isMounted) return;
+              setAuthUser({
+                ...response.user,
+                role: response.user.role?.toLowerCase(), // ✅ Normalize Role
+                pendingInvite: response.pendingInvite,
+              });
+            } catch (err: unknown) {
+              console.error("Auth exchange error:", err);
+              if (!isMounted) return;
+              setError((err as any)?.message || "Authentication failed");
+              setFirebaseUser(null);
+            }
+          } else {
+            setFirebaseUser(null);
+            setAuthUser(null);
+          }
+
+          if (isMounted) setIsLoading(false);
+        });
+      } catch (err) {
+        console.error("Failed to load Firebase auth", err);
+        if (isMounted) setIsLoading(false);
       }
+    })();
 
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const exchangeToken = useCallback(
@@ -194,6 +206,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
+      const { auth } = await import("@/lib/REMOVED_AUTH_PROVIDER");
+      const { signOut } = await import("REMOVED_AUTH_PROVIDER/auth");
+      
       if (auth) {
         await signOut(auth);
       }
