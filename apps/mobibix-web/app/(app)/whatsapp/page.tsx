@@ -12,6 +12,7 @@ import {
   clearWhatsAppInbox,
   getWhatsAppStatus,
   disconnectWhatsApp,
+  getInboxUnreadCount,
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
@@ -36,6 +37,8 @@ const MenuBotPanel = dynamic(() => import("./components/MenuBotPanel"));
 const WhatsAppInbox = dynamic(() => import("@/components/whatsapp/WhatsAppInbox"));
 const WhatsAppPlanPicker = dynamic(() => import("@/components/whatsapp/WhatsAppPlanPicker"));
 const MetaTemplateManager = dynamic(() => import("@/components/whatsapp/MetaTemplateManager"));
+const WhatsAppSettingsPanel = dynamic(() => import("./components/WhatsAppSettingsPanel"));
+const BotAnalyticsCard = dynamic(() => import("./components/BotAnalyticsCard"));
 import {
   Loader2,
   Settings2,
@@ -43,9 +46,10 @@ import {
   Inbox,
   Megaphone,
   Zap,
-  RefreshCw,
+  SlidersHorizontal,
+  BookOpen,
 } from "lucide-react";
-
+import Link from "next/link";
 export default function WhatsAppPage() {
   const { authUser } = useAuth();
   return (
@@ -70,6 +74,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
   const [switching, setSwitching] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [totalUnread, setTotalUnread] = useState(0);
   const tenantId = authUser?.tenantId;
 
   const fetchStatus = async () => {
@@ -103,6 +108,14 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
   useEffect(() => {
     fetchStatus();
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    const poll = () => getInboxUnreadCount().then(d => setTotalUnread(d.total)).catch(() => {});
+    poll();
+    const id = setInterval(poll, 30000);
+    return () => clearInterval(id);
   }, [tenantId]);
 
   const handleModeSelect = async (provider: "AUTHKEY" | "META_CLOUD") => {
@@ -273,6 +286,11 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/whatsapp/guide">
+            <Button variant="outline" size="sm" className="rounded-xl h-9 font-bold text-muted-foreground hover:text-foreground">
+              <BookOpen className="w-4 h-4 mr-2" /> Guide
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -287,19 +305,27 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="dashboard" value={activeTab} onValueChange={v => { setActiveTab(v); if (v === 'inbox') setTotalUnread(0); }} className="w-full">
         <TabsList className="bg-muted p-1 rounded-2xl h-12 w-full md:w-auto justify-start border mb-4 overflow-x-auto no-scrollbar">
           <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <LayoutDashboard className="w-4 h-4" /> Dashboard
           </TabsTrigger>
-          <TabsTrigger value="inbox" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+          <TabsTrigger value="inbox" className="rounded-xl px-5 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Inbox className="w-4 h-4" /> Inbox
+            {totalUnread > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-teal-500 text-white text-[9px] font-black">
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="automation" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Zap className="w-4 h-4" /> Automations
           </TabsTrigger>
           <TabsTrigger value="broadcasts" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Megaphone className="w-4 h-4" /> Broadcasts
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
+            <SlidersHorizontal className="w-4 h-4" /> Settings
           </TabsTrigger>
         </TabsList>
 
@@ -319,18 +345,21 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
         {/* Automations Tab */}
         <TabsContent value="automation" className="focus-visible:ring-0">
-          <Tabs defaultValue="keyword" className="w-full">
-            <TabsList className="rounded-2xl bg-muted/50 p-1 mb-6">
-              <TabsTrigger value="keyword" className="rounded-xl text-xs font-bold">Keyword Bot</TabsTrigger>
-              <TabsTrigger value="menu" className="rounded-xl text-xs font-bold">Menu Bot</TabsTrigger>
-            </TabsList>
-            <TabsContent value="keyword" className="focus-visible:ring-0">
-              <AutomationsPanel />
-            </TabsContent>
-            <TabsContent value="menu" className="focus-visible:ring-0">
-              <MenuBotPanel />
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-6">
+            <BotAnalyticsCard />
+            <Tabs defaultValue="keyword" className="w-full">
+              <TabsList className="rounded-2xl bg-muted/50 p-1 mb-6">
+                <TabsTrigger value="keyword" className="rounded-xl text-xs font-bold">Keyword Bot</TabsTrigger>
+                <TabsTrigger value="menu" className="rounded-xl text-xs font-bold">Menu Bot</TabsTrigger>
+              </TabsList>
+              <TabsContent value="keyword" className="focus-visible:ring-0">
+                <AutomationsPanel />
+              </TabsContent>
+              <TabsContent value="menu" className="focus-visible:ring-0">
+                <MenuBotPanel />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
 
         {/* Broadcasts Tab */}
@@ -355,6 +384,11 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
               </Button>
             </Card>
           )}
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="focus-visible:ring-0">
+          <WhatsAppSettingsPanel />
         </TabsContent>
       </Tabs>
     </div>

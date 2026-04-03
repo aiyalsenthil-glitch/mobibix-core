@@ -218,6 +218,7 @@ export function Header() {
             {/* Mobile: Start CTA + hamburger */}
             <Link href="/auth" className="md:hidden px-4 py-2 rounded-full bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
               Start
+              <span className="sr-only"> Free Trial</span>
             </Link>
             <button
               onClick={() => setMobileOpen(v => !v)}

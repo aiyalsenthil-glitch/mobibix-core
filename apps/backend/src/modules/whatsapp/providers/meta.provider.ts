@@ -59,6 +59,47 @@ export class MetaProvider implements MessagingProvider {
     }
   }
 
+  /**
+   * Send an interactive message (button/list/cta_url) to a WhatsApp user.
+   * @param interactivePayload - Pre-built Meta Cloud API interactive object
+   */
+  async sendInteractiveMessage(payload: {
+    phoneNumberId: string;
+    accessToken: string;
+    to: string;
+    interactivePayload: Record<string, unknown>;
+  }): Promise<ProviderResult> {
+    const url = `https://graph.facebook.com/${this.apiVersion}/${payload.phoneNumberId}/messages`;
+    try {
+      const response = await axios.post(
+        url,
+        {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: payload.to,
+          ...payload.interactivePayload,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${payload.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      return {
+        success: true,
+        messageId: response.data?.messages?.[0]?.id,
+        providerName: this.providerName,
+      };
+    } catch (err: any) {
+      const error = err.response?.data
+        ? JSON.stringify(err.response.data)
+        : err.message;
+      this.logger.error(`[META interactive] ${error}`);
+      return { success: false, error, providerName: this.providerName };
+    }
+  }
+
   async sendTemplate(
     payload: SendTemplatePayload & { phoneNumberId: string; accessToken: string },
   ): Promise<ProviderResult> {

@@ -13,12 +13,21 @@ import {
   Video,
   FileText,
   Mic,
+  UserCheck,
+  Bot,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, Avatar, AvatarFallback } from '@/components/ui/stubs';
 import { authenticatedFetch, extractData } from '@/services/auth.api';
+import {
+  getInboxUnreadCount,
+  markConversationRead,
+  assignConversation,
+  getConversationMeta,
+} from '@/services/whatsapp.api';
+import { listStaff } from '@/services/staff.api';
 
 interface Message {
   id: string;
@@ -28,7 +37,7 @@ interface Message {
   timestamp: string;
   status: 'SENT' | 'DELIVERED' | 'READ';
   mediaType?: 'image' | 'video' | 'audio' | 'document' | 'sticker';
-  localFile?: string; // "tenantId/filename.jpg"
+  localFile?: string;
 }
 
 interface Conversation {
@@ -44,6 +53,10 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  const [metaMap, setMetaMap] = useState<Record<string, { assignedToUserId: string | null; botPaused: boolean; assignedTo: { id: string; fullName: string | null } | null }>>({});
+  const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
+  const [assigning, setAssigning] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,26 +65,44 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
 
   useEffect(() => {
     fetchConversations();
-    // Poll every 15 seconds as fallback for WebSocket gaps
-    const interval = setInterval(fetchConversations, 15000);
+    fetchUnread();
+    fetchMeta();
+    listStaff().then(s => setStaffList(s.filter(u => u.name).map(u => ({ id: u.id, name: u.name! }))));
+    const interval = setInterval(() => { fetchConversations(); fetchUnread(); }, 15000);
     return () => clearInterval(interval);
   }, [tenantId]);
 
   useEffect(() => {
     if (activeChat) {
       fetchMessages(activeChat);
+      markConversationRead(activeChat).catch(() => {});
+      setUnreadMap(prev => ({ ...prev, [activeChat]: 0 }));
     }
   }, [activeChat, tenantId]);
 
   const fetchConversations = async () => {
     try {
       const resp = await authenticatedFetch(`/whatsapp/conversations/${tenantId}`);
-      if (resp.ok) {
-        setConversations(await extractData(resp));
-      }
-    } catch (err) {
-      console.error('Failed to fetch conversations', err);
-    }
+      if (resp.ok) setConversations(await extractData(resp));
+    } catch { /* silent */ }
+  };
+
+  const fetchUnread = async () => {
+    try {
+      const data = await getInboxUnreadCount();
+      const map: Record<string, number> = {};
+      data.conversations.forEach(c => { map[c.phoneNumber] = c.unread; });
+      setUnreadMap(map);
+    } catch { /* silent */ }
+  };
+
+  const fetchMeta = async () => {
+    try {
+      const data = await getConversationMeta();
+      const map: Record<string, any> = {};
+      data.forEach(m => { map[m.phoneNumber] = m; });
+      setMetaMap(map);
+    } catch { /* silent */ }
   };
 
   const fetchMessages = async (phone: string) => {
@@ -87,19 +118,14 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
           timestamp: m.createdAt,
           status: m.status === 'RECEIVED' ? 'READ' : 'SENT',
           mediaType: m.metadata?.type && m.metadata.type !== 'text' && m.metadata.type !== 'interactive'
-            ? m.metadata.type
-            : undefined,
+            ? m.metadata.type : undefined,
           localFile: m.metadata?.localFile || undefined,
         })));
-        
-        // Minor delay to ensure items are rendered before scrolling
         setTimeout(() => {
           if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }, 100);
       }
-    } catch (err) {
-      console.error('Failed to fetch messages', err);
-    }
+    } catch { /* silent */ }
   };
 
   const sendMessage = async () => {
@@ -110,37 +136,42 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
     try {
       const resp = await authenticatedFetch(`/whatsapp/send`, {
         method: 'POST',
-        body: JSON.stringify({ tenantId, phone: activeChat, text })
+        body: JSON.stringify({ tenantId, phone: activeChat, text }),
       });
-
-      if (!resp.ok) {
-        setNewMessage(text); // Restore on failure so user doesn't lose the message
-        throw new Error('Send failed');
-      }
-
+      if (!resp.ok) { setNewMessage(text); throw new Error('Send failed'); }
       const outgoingMsg: Message = {
-        id: Date.now().toString(),
-        body: text,
-        senderPhone: 'me',
-        direction: 'OUTGOING',
-        timestamp: new Date().toISOString(),
-        status: 'SENT'
+        id: Date.now().toString(), body: text, senderPhone: 'me',
+        direction: 'OUTGOING', timestamp: new Date().toISOString(), status: 'SENT',
       };
       setMessages(prev => [...prev, outgoingMsg]);
       setConversations(prev => {
         const existing = prev.find(c => c.phoneNumber === activeChat);
         if (!existing) return prev;
-        return [
-          { ...existing, lastMessage: text, lastTimestamp: new Date().toISOString() },
-          ...prev.filter(c => c.phoneNumber !== activeChat)
-        ];
+        return [{ ...existing, lastMessage: text, lastTimestamp: new Date().toISOString() }, ...prev.filter(c => c.phoneNumber !== activeChat)];
       });
-    } catch (err) {
-      alert('Failed to send. Please try again.');
-    } finally {
-      setSending(false);
-    }
+    } catch { alert('Failed to send. Please try again.'); }
+    finally { setSending(false); }
   };
+
+  const handleAssign = async (userId: string | null) => {
+    if (!activeChat) return;
+    setAssigning(true);
+    try {
+      await assignConversation(activeChat, userId);
+      const staff = userId ? staffList.find(s => s.id === userId) : null;
+      setMetaMap(prev => ({
+        ...prev,
+        [activeChat]: {
+          ...prev[activeChat],
+          assignedToUserId: userId,
+          assignedTo: staff ? { id: staff.id, fullName: staff.name } : null,
+        },
+      }));
+    } catch { /* silent */ }
+    finally { setAssigning(false); }
+  };
+
+  const activeMeta = activeChat ? metaMap[activeChat] : null;
 
   return (
     <div className="flex [height:calc(100vh-280px)] min-h-[500px] w-full border border-border rounded-3xl bg-card shadow-xl shadow-black/5 overflow-hidden font-sans transition-colors duration-200">
@@ -153,19 +184,37 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
           </div>
         </div>
         <ScrollArea className="flex-1">
-          {conversations.map((chat) => (
-            <div
-              key={chat.phoneNumber}
-              onClick={() => setActiveChat(chat.phoneNumber)}
-              className={`p-4 cursor-pointer transition-all border-l-4 ${activeChat === chat.phoneNumber ? 'bg-teal-500/10 border-teal-500 dark:bg-teal-500/20' : 'border-transparent hover:bg-muted/50'}`}
-            >
-              <div className="flex justify-between items-start">
-                <span className="font-black text-sm text-foreground">+{chat.phoneNumber}</span>
-                <span className="text-[10px] text-muted-foreground font-medium">{new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          {conversations.map((chat) => {
+            const unread = unreadMap[chat.phoneNumber] || 0;
+            const meta = metaMap[chat.phoneNumber];
+            return (
+              <div
+                key={chat.phoneNumber}
+                onClick={() => setActiveChat(chat.phoneNumber)}
+                className={`p-4 cursor-pointer transition-all border-l-4 ${activeChat === chat.phoneNumber ? 'bg-teal-500/10 border-teal-500 dark:bg-teal-500/20' : 'border-transparent hover:bg-muted/50'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <span className="font-black text-sm text-foreground">+{chat.phoneNumber}</span>
+                  <div className="flex items-center gap-1.5">
+                    {unread > 0 && (
+                      <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-teal-500 text-white text-[9px] font-bold">
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate mt-1 italic leading-tight">{chat.lastMessage}</p>
+                {meta?.assignedTo?.fullName && (
+                  <span className="text-[10px] text-blue-500 font-semibold flex items-center gap-0.5 mt-0.5">
+                    <UserCheck className="w-2.5 h-2.5" /> {meta.assignedTo.fullName}
+                  </span>
+                )}
               </div>
-              <p className="text-[11px] text-muted-foreground truncate mt-1 italic leading-tight">{chat.lastMessage}</p>
-            </div>
-          ))}
+            );
+          })}
         </ScrollArea>
       </div>
 
@@ -181,10 +230,29 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
                  </Avatar>
                  <div>
                    <h3 className="font-black text-foreground">+{activeChat}</h3>
-                   <span className="flex items-center gap-1 text-[10px] text-teal-500 font-bold uppercase tracking-wider">
-                     <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Connected
-                   </span>
+                   <div className="flex items-center gap-2 mt-0.5">
+                     <span className="flex items-center gap-1 text-[10px] text-teal-500 font-bold uppercase tracking-wider">
+                       <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Connected
+                     </span>
+                     {activeMeta?.botPaused && (
+                       <span className="text-[10px] text-orange-500 font-bold flex items-center gap-0.5">
+                         <Bot className="w-2.5 h-2.5" /> Bot Paused
+                       </span>
+                     )}
+                   </div>
                  </div>
+              </div>
+              {/* Assignment dropdown */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeMeta?.assignedToUserId || ''}
+                  onChange={e => handleAssign(e.target.value || null)}
+                  disabled={assigning}
+                  className="text-xs bg-background border border-border rounded-lg px-2 py-1.5 font-medium text-foreground disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  <option value="">Unassigned</option>
+                  {staffList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
               </div>
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 bg-muted/5 relative">

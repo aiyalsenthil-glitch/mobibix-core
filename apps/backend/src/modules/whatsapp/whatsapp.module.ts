@@ -55,6 +55,8 @@ import { WhatsAppBotService } from './whatsapp-bot.service';
 import { WhatsAppBotController } from './whatsapp-bot.controller';
 import { WhatsAppMenuService } from './whatsapp-menu.service';
 import { WhatsAppMenuController } from './whatsapp-menu.controller';
+import { WhatsAppCapiService } from './whatsapp-capi.service';
+import { WhatsAppOpsController } from './whatsapp-ops.controller';
 
 @Module({
   controllers: [
@@ -72,6 +74,7 @@ import { WhatsAppMenuController } from './whatsapp-menu.controller';
     AdminWhatsAppController,
     WhatsAppBotController,
     WhatsAppMenuController,
+    WhatsAppOpsController,
   ],
   imports: [
     ScheduleModule.forRoot(),
@@ -121,6 +124,8 @@ import { WhatsAppMenuController } from './whatsapp-menu.controller';
     WhatsAppBotService,
     // Menu Bot
     WhatsAppMenuService,
+    // Conversions API (CAPI)
+    WhatsAppCapiService,
   ],
   exports: [
     WhatsAppSender,
@@ -135,6 +140,7 @@ import { WhatsAppMenuController } from './whatsapp-menu.controller';
     WhatsAppRoutingService,
     WhatsAppOnboardingService,
     CampaignService,
+    WhatsAppCapiService,
   ],
 })
 export class WhatsAppModule {}

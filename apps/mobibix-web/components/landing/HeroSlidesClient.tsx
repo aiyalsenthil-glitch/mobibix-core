@@ -4,10 +4,12 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { Header } from "../layout/Header";
-import { Footer } from "../layout/Footer";
 import { motion } from "framer-motion";
-import { BlogSection } from "./BlogSection";
-import { TestimonialsSection } from "./TestimonialsSection";
+import dynamic from "next/dynamic";
+
+const Footer = dynamic(() => import("../layout/Footer").then((m) => m.Footer));
+const BlogSection = dynamic(() => import("./BlogSection").then((m) => m.BlogSection));
+const TestimonialsSection = dynamic(() => import("./TestimonialsSection").then((m) => m.TestimonialsSection));
 
 function StatItem({ value, unit, label }: { value: string; unit: string; label: string }) {
   return (
@@ -91,17 +93,17 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
   }, [activeSection, sections.length]);
 
   return (
-    <div className="bg-background text-foreground selection:bg-primary/30 h-[100svh] w-screen overflow-hidden transition-colors duration-500">
+    <div className="bg-background text-foreground selection:bg-primary/30 h-svh w-screen overflow-hidden transition-colors duration-500">
       <Header />
 
-      <motion.div
-        className="h-full w-full flex flex-col"
-        animate={{ y: `-${activeSection * 100}svh` }}
-        transition={{ type: "spring", stiffness: 70, damping: 20, mass: 1 }}
+      <div
+        className="h-full w-full flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
+        style={{ transform: `translateY(-${activeSection * 100}svh)` }}
       >
         {/* ── Section 1: Hero ── */}
-        <div className="h-[100svh] w-screen flex flex-col items-center justify-center relative pt-20 px-5 shrink-0 overflow-hidden">
+        <div className="h-svh w-screen flex flex-col items-center justify-center relative pt-20 px-5 shrink-0 overflow-hidden">
           <motion.div
+            initial={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
             animate={activeSection === 0
               ? { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }
               : { opacity: 0, scale: 0.9, y: 50, filter: "blur(10px)" }}
@@ -118,12 +120,12 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl md:text-[8rem] font-black mb-6 md:mb-10 tracking-tighter leading-[0.85] md:leading-[0.8] text-foreground uppercase italic text-glow-indigo">
+            <h2 className="text-4xl sm:text-6xl md:text-[8rem] font-black mb-6 md:mb-10 tracking-tighter leading-[0.85] md:leading-[0.8] text-foreground uppercase italic text-glow-indigo">
               Run Your <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-indigo-500 drop-shadow-2xl">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-blue-500 to-indigo-500 drop-shadow-2xl">
                 Mobile Shop.
               </span>
-            </h1>
+            </h2>
 
             <p className="text-muted-foreground text-base md:text-xl lg:text-2xl font-bold max-w-2xl mx-auto mb-8 md:mb-16 leading-relaxed italic opacity-80">
               The SaaS-grade Retail OS. Stop losing track of IMEIs, repairs, and stock.
@@ -151,7 +153,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 2: Features ── */}
-        <div className="h-[100svh] w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-muted/5 relative overflow-hidden">
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-muted/5 relative overflow-hidden">
           <motion.div
             animate={activeSection === 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
             className="w-full max-w-7xl relative z-10"
@@ -180,7 +182,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                     ? { opacity: 1, y: 0, scale: 1 }
                     : { opacity: 0, y: 30, scale: 0.9 }}
                   transition={{ delay: i * 0.1 }}
-                  className="flex-shrink-0 snap-center w-48 sm:w-56 lg:w-auto p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-card/40 backdrop-blur-2xl border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center"
+                  className="shrink-0 snap-center w-48 sm:w-56 lg:w-auto p-6 md:p-10 rounded-4xl md:rounded-[3rem] bg-card/40 backdrop-blur-2xl border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center"
                 >
                   <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-primary/10 flex items-center justify-center mb-4 md:mb-8 mx-auto border border-primary/20 overflow-hidden p-3 md:p-4 group-hover:scale-110 transition-transform">
                     <NextImage src={feat.icon} alt={feat.title} width={80} height={80} className="object-contain filter drop-shadow-xl" />
@@ -194,7 +196,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 3: Stats ── */}
-        <div className="h-[100svh] w-screen flex items-center justify-center px-5 md:px-6 shrink-0 bg-background">
+        <div className="h-svh w-screen flex items-center justify-center px-5 md:px-6 shrink-0 bg-background">
           <motion.div
             animate={activeSection === 2 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
             className="w-full max-w-7xl"
@@ -215,10 +217,10 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 </div>
               </div>
 
-              <div className="relative p-6 md:p-12 rounded-[2rem] md:rounded-[4rem] border border-border/60 bg-muted/10 backdrop-blur-3xl shadow-2xl">
-                <h4 className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-primary mb-6 md:mb-10 text-center">
+              <div className="relative p-6 md:p-12 rounded-4xl md:rounded-[4rem] border border-border/60 bg-muted/10 backdrop-blur-3xl shadow-2xl">
+                <h3 className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-primary mb-6 md:mb-10 text-center">
                   Efficiency Growth
-                </h4>
+                </h3>
                 <div className="space-y-6 md:space-y-8">
                   {["Billing", "Repairs", "Inventory"].map((l, i) => (
                     <div key={i} className="space-y-2 md:space-y-3">
@@ -227,10 +229,9 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                         <span>{75 + i * 10}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
-                        <motion.div
-                          animate={activeSection === 2 ? { width: `${75 + i * 10}%` } : { width: 0 }}
-                          transition={{ duration: 1.5, ease: "circOut", delay: 0.5 }}
-                          className="h-full bg-primary"
+                        <div
+                          className="h-full bg-primary transition-all duration-1500 ease-out delay-500"
+                          style={{ width: activeSection === 2 ? `${75 + i * 10}%` : '0%' }}
                         />
                       </div>
                     </div>
@@ -242,17 +243,17 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 4: Testimonials ── */}
-        <div className="h-[100svh] w-screen flex items-start justify-center shrink-0 bg-muted/5 overflow-y-auto pt-4">
+        <div className="h-svh w-screen flex items-start justify-center shrink-0 bg-muted/5 overflow-y-auto pt-4">
           <TestimonialsSection />
         </div>
 
         {/* ── Section 5: Blog ── */}
-        <div className="h-[100svh] w-screen px-4 md:px-6 shrink-0 flex items-center justify-center bg-background overflow-y-auto">
+        <div className="h-svh w-screen px-4 md:px-6 shrink-0 flex items-center justify-center bg-background overflow-y-auto">
           <BlogSection posts={posts} />
         </div>
 
         {/* ── Section 6: FAQ ── */}
-        <div className="h-[100svh] w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-muted/5 relative overflow-hidden">
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-muted/5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
           <div className="w-full max-w-4xl relative z-10 overflow-y-auto max-h-[90svh] py-4">
             <div className="mb-8 md:mb-16 text-center">
@@ -289,7 +290,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 7: CTA ── */}
-        <div className="h-[100svh] w-screen flex flex-col items-center justify-center relative shrink-0 overflow-hidden px-5">
+        <div className="h-svh w-screen flex flex-col items-center justify-center relative shrink-0 overflow-hidden px-5">
           <motion.div
             animate={activeSection === 6
               ? { opacity: 1, scale: 1, y: 0 }
@@ -320,15 +321,15 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 8: Footer ── */}
-        <div className="h-[100svh] w-screen flex flex-col relative shrink-0 bg-background overflow-y-auto">
+        <div className="h-svh w-screen flex flex-col relative shrink-0 bg-background overflow-y-auto">
           <div className="mt-auto mb-auto w-full py-6 md:py-10">
             <Footer compact={false} />
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Section Rail — Desktop only */}
-      <div className="fixed right-6 lg:right-10 top-1/2 -translate-y-1/2 z-[100] hidden lg:flex flex-col items-center gap-5">
+      <div className="fixed right-6 lg:right-10 top-1/2 -translate-y-1/2 z-100 hidden lg:flex flex-col items-center gap-5">
         {sections.map((_, index) => (
           <button
             key={index}
@@ -346,16 +347,19 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
       </div>
 
       {/* Progress Dots — Mobile */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] lg:hidden flex items-center px-5 py-3 rounded-full bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-        <div className="flex gap-3">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-100 lg:hidden flex items-center px-3 py-1 rounded-full bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+        <div className="flex gap-1">
           {sections.map((_, index) => (
             <button
               key={index}
               onClick={() => setActiveSection(index)}
-              className={`h-2 rounded-full transition-all duration-500
-                ${activeSection === index ? "w-8 bg-primary" : "w-2 bg-white/20"}
-              `}
-            />
+              aria-label={`Go to section ${index + 1}`}
+              className="px-2 py-4"
+            >
+              <div 
+                className={`h-2 rounded-full transition-all duration-500 ${activeSection === index ? "w-8 bg-primary" : "w-2 bg-white/20"}`}
+              />
+            </button>
           ))}
         </div>
       </div>

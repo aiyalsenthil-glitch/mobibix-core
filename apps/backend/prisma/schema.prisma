@@ -256,6 +256,7 @@ model User {
   assignedFollowUps  CustomerFollowUp[]
   customerNotes      CustomerNote[]
   assignedJobs       JobCard[]          @relation("JobCardAssignment")
+  assignedConversations WhatsAppConversationState[] @relation("ConversationAssignment")
   notificationLogs   NotificationLog[]
   shopStaffs         ShopStaff[]
   promoUsages        PromoUsage[]
@@ -1095,6 +1096,11 @@ model WhatsAppNumber {
   metaUserId         String?                    // FB user_id who connected — required for Data Deletion Callback
   tokenExpiresAt     DateTime?                  // For user tokens; null = system user (no expiry)
 
+  // Conversions API (CAPI) — for Click-to-WhatsApp ad attribution
+  // Tenant configures these via WhatsApp Settings → Conversions API tab
+  capiDatasetId      String?                    // Meta Events Manager Dataset ID linked to this WABA
+  capiAccessToken    String?                    @map("capiEncryptedToken") // Encrypted CAPI System User token
+
   metadata           Json?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
@@ -1130,7 +1136,12 @@ model WhatsAppConversationState {
   currentMenuNodeId  String?
   /// When the user entered the menu session (for 10-min timeout)
   menuEnteredAt      DateTime?
+  /// Staff member assigned to handle this conversation
+  assignedToUserId   String?
+  /// Timestamp when this conversation was last read by any agent
+  lastReadAt         DateTime?
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  assignedTo    User?     @relation("ConversationAssignment", fields: [assignedToUserId], references: [id])
 
   @@unique([tenantId, phoneNumber])
   @@index([tenantId])
@@ -1169,9 +1180,11 @@ model WhatsAppBotConfig {
   businessHoursOn  Boolean  @default(false)
   businessHoursStart String? // "09:00"
   businessHoursEnd   String? // "20:00"
-  menuBotEnabled   Boolean  @default(false) // master toggle for menu bot
-  aiReplyEnabled   Boolean  @default(false) // master toggle for AI replies
-  createdAt        DateTime @default(now())
+  menuBotEnabled       Boolean  @default(false)
+  aiReplyEnabled       Boolean  @default(false)
+  // PLATFORM = use Mobibix Authkey number | OWN_NUMBER = use tenant's connected Meta number
+  notificationSource   String   @default("PLATFORM")
+  createdAt            DateTime @default(now())
   updatedAt        DateTime @updatedAt
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
@@ -1185,6 +1198,9 @@ model WhatsAppAutoReply {
   exactMatch   Boolean  @default(false) // true = exact, false = contains
   enabled      Boolean  @default(true)
   sortOrder    Int      @default(0)     // Lower = checked first
+  // Interactive Message (Button) Config
+  buttonType   String?                  // null | QUICK_REPLY | LIST | CTA_URL
+  buttonConfig Json?                    // Stores button labels, IDs, sections, URL etc.
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1208,6 +1224,9 @@ model WhatsAppMenuItem {
   sortOrder      Int      @default(0)
   enabled        Boolean  @default(true)
   actionType     String?                   // null | CREATE_LEAD | NOTIFY_OWNER | etc.
+  // Interactive Message (Button) Config
+  buttonType     String?                   // null | QUICK_REPLY | LIST | CTA_URL
+  buttonConfig   Json?                     // Stores button labels, IDs, sections, URL etc.
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

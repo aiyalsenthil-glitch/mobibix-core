@@ -1,9 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { buildInteractivePayload } from './utils/interactive-message.builder';
 
 export type BotMode = 'REPAIR' | 'SALES' | 'MIXED' | 'OFF';
 
-const PRESETS: Record<Exclude<BotMode, 'OFF'>, Array<{ keyword: string; replyText: string; exactMatch: boolean; sortOrder: number }>> = {
+/** Structured reply — text + optional interactive payload for button messages */
+export interface KeywordReply {
+  text: string | null;
+  interactive: Record<string, unknown> | null;
+}
+
+const PRESETS: Record<
+  Exclude<BotMode, 'OFF'>,
+  Array<{ keyword: string; replyText: string; exactMatch: boolean; sortOrder: number }>
+> = {
   REPAIR: [
     { keyword: 'status', replyText: 'Hi! Please reply with your Job Card number (e.g. JC-1234) to check your repair status.', exactMatch: false, sortOrder: 1 },
     { keyword: 'ready', replyText: 'Your device is ready for pickup! Please visit us during business hours. Thank you for choosing us.', exactMatch: false, sortOrder: 2 },
@@ -12,7 +22,7 @@ const PRESETS: Record<Exclude<BotMode, 'OFF'>, Array<{ keyword: string; replyTex
   ],
   SALES: [
     { keyword: 'price', replyText: 'Thanks for your interest! Please visit our shop or check our latest offers. We will send you a price list shortly.', exactMatch: false, sortOrder: 1 },
-    { keyword: 'offer', replyText: 'We have exciting offers running this week! Visit our shop or reply "DETAILS" for more information.', exactMatch: false, sortOrder: 2 },
+    { keyword: 'offer', replyText: 'We have exciting offers running this week! Visit our shop or reply DETAILS for more information.', exactMatch: false, sortOrder: 2 },
     { keyword: 'buy', replyText: 'Great! We carry a wide range of products. Reply with what you are looking for and we will help you find the best deal.', exactMatch: false, sortOrder: 3 },
     { keyword: 'stock', replyText: 'We maintain a large stock of devices and accessories. Please call us or visit for the latest availability.', exactMatch: false, sortOrder: 4 },
   ],
@@ -43,18 +53,20 @@ export class WhatsAppBotService {
     return config || { tenantId, mode: 'OFF', botEnabled: false };
   }
 
-  async upsertBotConfig(tenantId: string, dto: {
-    mode?: BotMode;
-    botEnabled?: boolean;
-    welcomeMessage?: string;
-    outOfHoursMsg?: string;
-    businessHoursOn?: boolean;
-    businessHoursStart?: string;
-    businessHoursEnd?: string;
-  }) {
+  async upsertBotConfig(
+    tenantId: string,
+    dto: {
+      mode?: BotMode;
+      botEnabled?: boolean;
+      welcomeMessage?: string;
+      outOfHoursMsg?: string;
+      businessHoursOn?: boolean;
+      businessHoursStart?: string;
+      businessHoursEnd?: string;
+    },
+  ) {
     const updateData: any = { ...dto };
     if (dto.botEnabled === true) {
-      // Mutual Exclusivity: Turn off menu bot if keyword bot is active
       updateData.menuBotEnabled = false;
     }
     return (this.prisma as any).whatsAppBotConfig.upsert({
@@ -64,16 +76,13 @@ export class WhatsAppBotService {
     });
   }
 
-  /**
-   * Apply preset keyword rules for a mode (clears existing rules first).
-   */
   async applyPreset(tenantId: string, mode: Exclude<BotMode, 'OFF'>) {
     const rules = PRESETS[mode];
     const welcome = DEFAULT_WELCOME[mode];
 
     await (this.prisma as any).whatsAppAutoReply.deleteMany({ where: { tenantId } });
     await (this.prisma as any).whatsAppAutoReply.createMany({
-      data: rules.map(r => ({ tenantId, ...r, enabled: true })),
+      data: rules.map((r) => ({ tenantId, ...r, enabled: true })),
     });
     await (this.prisma as any).whatsAppBotConfig.upsert({
       where: { tenantId },
@@ -92,13 +101,44 @@ export class WhatsAppBotService {
     });
   }
 
-  async createRule(tenantId: string, dto: { keyword: string; replyText: string; exactMatch?: boolean; sortOrder?: number }) {
+  async createRule(
+    tenantId: string,
+    dto: {
+      keyword: string;
+      replyText: string;
+      exactMatch?: boolean;
+      sortOrder?: number;
+      buttonType?: string | null;
+      buttonConfig?: Record<string, unknown> | null;
+    },
+  ) {
     return (this.prisma as any).whatsAppAutoReply.create({
-      data: { tenantId, ...dto, enabled: true },
+      data: {
+        tenantId,
+        keyword: dto.keyword,
+        replyText: dto.replyText,
+        exactMatch: dto.exactMatch ?? false,
+        sortOrder: dto.sortOrder ?? 0,
+        enabled: true,
+        buttonType: dto.buttonType ?? null,
+        buttonConfig: dto.buttonConfig ?? undefined,
+      },
     });
   }
 
-  async updateRule(tenantId: string, ruleId: string, dto: Partial<{ keyword: string; replyText: string; exactMatch: boolean; enabled: boolean; sortOrder: number }>) {
+  async updateRule(
+    tenantId: string,
+    ruleId: string,
+    dto: Partial<{
+      keyword: string;
+      replyText: string;
+      exactMatch: boolean;
+      enabled: boolean;
+      sortOrder: number;
+      buttonType: string | null;
+      buttonConfig: Record<string, unknown> | null;
+    }>,
+  ) {
     return (this.prisma as any).whatsAppAutoReply.updateMany({
       where: { id: ruleId, tenantId },
       data: dto,
@@ -115,9 +155,12 @@ export class WhatsAppBotService {
 
   /**
    * Check incoming text against keyword rules.
-   * Returns the reply text if matched, null otherwise.
+   * Returns a KeywordReply (text + optional interactive payload) or null.
    */
-  async matchKeyword(tenantId: string, incomingText: string): Promise<string | null> {
+  async matchKeyword(
+    tenantId: string,
+    incomingText: string,
+  ): Promise<KeywordReply | null> {
     const config = await (this.prisma as any).whatsAppBotConfig.findUnique({
       where: { tenantId },
     });
@@ -125,7 +168,11 @@ export class WhatsAppBotService {
     if (!config?.botEnabled || config.mode === 'OFF') return null;
 
     // Business hours gate
-    if (config.businessHoursOn && config.businessHoursStart && config.businessHoursEnd) {
+    if (
+      config.businessHoursOn &&
+      config.businessHoursStart &&
+      config.businessHoursEnd
+    ) {
       const now = new Date();
       const [sh, sm] = config.businessHoursStart.split(':').map(Number);
       const [eh, em] = config.businessHoursEnd.split(':').map(Number);
@@ -133,7 +180,9 @@ export class WhatsAppBotService {
       const startMins = sh * 60 + sm;
       const endMins = eh * 60 + em;
       if (nowMins < startMins || nowMins > endMins) {
-        return config.outOfHoursMsg || null;
+        return config.outOfHoursMsg
+          ? { text: config.outOfHoursMsg, interactive: null }
+          : null;
       }
     }
 
@@ -146,9 +195,16 @@ export class WhatsAppBotService {
     for (const rule of rules) {
       const kw = rule.keyword.toLowerCase().trim();
       const matched = rule.exactMatch ? lower === kw : lower.includes(kw);
-      if (matched) return rule.replyText;
+      if (matched) {
+        const interactive = buildInteractivePayload(
+          rule.replyText,
+          rule.buttonType,
+          rule.buttonConfig,
+        );
+        return { text: interactive ? null : rule.replyText, interactive };
+      }
     }
 
-    return null; // Don't spam welcome message on every miss
+    return null;
   }
 }

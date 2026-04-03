@@ -10,6 +10,7 @@ import { WhatsAppSender } from './whatsapp.sender';
 import { ProviderManager } from './providers/provider-manager.service';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { CustomerLifecycle, PartyType } from '@prisma/client';
+import { buildInteractivePayload } from './utils/interactive-message.builder';
 
 export interface MenuNodeDto {
   parentId?: string | null;
@@ -23,7 +24,16 @@ export interface MenuNodeDto {
   sortOrder?: number;
   enabled?: boolean;
   actionType?: string | null;
+  buttonType?: string | null;
+  buttonConfig?: Record<string, unknown> | null;
 }
+
+/** Structured reply — text + optional interactive payload for button messages */
+export interface MenuReply {
+  text: string | null;
+  interactive: Record<string, unknown> | null;
+}
+
 
 @Injectable()
 export class WhatsAppMenuService {
@@ -74,6 +84,8 @@ export class WhatsAppMenuService {
         sortOrder: dto.sortOrder ?? 0,
         enabled: dto.enabled ?? true,
         actionType: dto.actionType ?? null,
+        buttonType: dto.buttonType ?? null,
+        buttonConfig: (dto.buttonConfig ?? null) as any,
       },
     });
   }
@@ -93,6 +105,8 @@ export class WhatsAppMenuService {
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
     if (dto.enabled !== undefined) data.enabled = dto.enabled;
     if (dto.actionType !== undefined) data.actionType = dto.actionType;
+    if (dto.buttonType !== undefined) data.buttonType = dto.buttonType;
+    if (dto.buttonConfig !== undefined) data.buttonConfig = dto.buttonConfig;
 
     return this.prisma.whatsAppMenuItem.update({ where: { id: nodeId }, data });
   }
@@ -138,7 +152,7 @@ export class WhatsAppMenuService {
    * Main entry point called by WhatsAppCapabilityRouter for every inbound text.
    * Returns the reply string to send, or null if menu bot is inactive / no match.
    */
-  async processMenuInput(tenantId: string, jid: string, userText: string): Promise<string | null> {
+  async processMenuInput(tenantId: string, jid: string, userText: string): Promise<MenuReply | null> {
     const config = await this.prisma.whatsAppBotConfig.findUnique({ where: { tenantId } });
     if (!config?.menuBotEnabled) return null;
 
@@ -173,7 +187,7 @@ export class WhatsAppMenuService {
         });
         const siblingMenu = await this.getChildMenuText(tenantId, parentNode?.parentId ?? null);
         await this.setMenuSession(tenantId, phoneKey, parentNode?.parentId ?? ROOT_SENTINEL, now);
-        return siblingMenu;
+        return { text: siblingMenu, interactive: null };
       } else {
         await this.resetMenuSession(tenantId, phoneKey);
         return null;
@@ -188,7 +202,7 @@ export class WhatsAppMenuService {
         orderBy: { sortOrder: 'asc' },
       });
       if (rootItems.length === 0) return null;
-      return this.formatMenuText(config.welcomeMessage ?? 'Home Menu', rootItems);
+      return { text: this.formatMenuText(config.welcomeMessage ?? 'Home Menu', rootItems), interactive: null };
     }
 
     // Not in a session — start if root items exist
@@ -204,7 +218,7 @@ export class WhatsAppMenuService {
         rootItems,
       );
       await this.setMenuSession(tenantId, phoneKey, ROOT_SENTINEL, now);
-      return menuText;
+      return { text: menuText, interactive: null };
     }
 
     // In a session — find child matching user input
@@ -221,7 +235,8 @@ export class WhatsAppMenuService {
       const header = parentId
         ? (await this.prisma.whatsAppMenuItem.findUnique({ where: { id: parentId } }))?.menuLabel ?? 'Menu'
         : 'Menu';
-      return `❌ Invalid option.\n\n` + this.formatMenuText(header, children);
+      const invalid = `❌ Invalid option.\n\n` + this.formatMenuText(header, children);
+      return { text: invalid, interactive: null };
     }
 
     if (!matched.isLeaf) {
@@ -232,7 +247,7 @@ export class WhatsAppMenuService {
       });
       const subMenuText = this.formatMenuText(matched.menuLabel, subChildren);
       await this.setMenuSession(tenantId, phoneKey, matched.id, now);
-      return subMenuText;
+      return { text: subMenuText, interactive: null };
     }
 
     // Leaf node — generate reply
@@ -254,12 +269,17 @@ export class WhatsAppMenuService {
         matched.aiSystemPrompt ?? '',
         userText,
       );
-      if (aiReply) return aiReply;
-      // Fall through to fallback
-      if (matched.fallbackReply) return matched.fallbackReply;
+      const aiText = aiReply ?? matched.fallbackReply ?? null;
+      if (aiText) {
+        const interactive = buildInteractivePayload(aiText, (matched as any).buttonType, (matched as any).buttonConfig);
+        return { text: interactive ? null : aiText, interactive };
+      }
     }
 
-    return matched.replyText ?? matched.fallbackReply ?? null;
+    const replyText = matched.replyText ?? matched.fallbackReply ?? null;
+    if (!replyText) return null;
+    const interactive = buildInteractivePayload(replyText, (matched as any).buttonType, (matched as any).buttonConfig);
+    return { text: interactive ? null : replyText, interactive };
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -377,13 +397,14 @@ export class WhatsAppMenuService {
         });
 
         if (tenant?.contactPhone) {
-          const alertMsg = `🚀 *New Lead Alert!*\n\nCustomer *${phone}* just expressed interest in *${label}* via WhatsApp Menu.\n\nCRM: https://app.mobibix.io/customers/${party.id}`;
-
+          const crmUrl = `https://app.mobibix.io/customers/${party.id}`;
+          const alertMsg = `🚀 *New Lead Alert!*\n\nCustomer *${phone}* just expressed interest in *${label}* via WhatsApp Menu.\n\nCRM: ${crmUrl}`;
+          const notifNumberId = await this.sender.resolveNotificationNumberId(tenantId);
           await this.sender.sendTextMessage(
             tenantId,
             tenant.contactPhone,
             alertMsg,
-            undefined,
+            notifNumberId,
             true,
           );
         }

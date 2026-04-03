@@ -23,6 +23,9 @@ interface MenuNode {
   isLeaf: boolean;
   sortOrder: number;
   enabled: boolean;
+  actionType: string | null;
+  buttonType: string | null;
+  buttonConfig: Record<string, unknown> | null;
   children: MenuNode[];
 }
 
@@ -42,6 +45,14 @@ interface NodeFormState {
   replyText: string;
   aiSystemPrompt: string;
   fallbackReply: string;
+  actionType: string;
+  buttonType: string;
+  quickReplyButtons: { id: string; title: string }[];
+  listButtonLabel: string;
+  listSectionTitle: string;
+  listRows: { id: string; title: string; description: string }[];
+  ctaButtonLabel: string;
+  ctaUrl: string;
 }
 
 const EMPTY_FORM: NodeFormState = {
@@ -54,6 +65,14 @@ const EMPTY_FORM: NodeFormState = {
   replyText: '',
   aiSystemPrompt: '',
   fallbackReply: '',
+  actionType: '',
+  buttonType: '',
+  quickReplyButtons: [{ id: 'btn_1', title: '' }],
+  listButtonLabel: 'View Options',
+  listSectionTitle: 'Options',
+  listRows: [{ id: 'row_1', title: '', description: '' }],
+  ctaButtonLabel: 'Open Link',
+  ctaUrl: '',
 };
 
 export default function MenuBotPanel() {
@@ -105,7 +124,23 @@ export default function MenuBotPanel() {
   };
 
   const openEditForm = (node: MenuNode) => {
+    let buttonState = {};
+    if (node.buttonType === 'QUICK_REPLY' && node.buttonConfig?.buttons) {
+      const bts = (node.buttonConfig.buttons as any[]).map((b, i) => ({ id: `btn_${i}`, title: b.title || '' }));
+      buttonState = { quickReplyButtons: bts.length ? bts : [{ id: 'btn_1', title: '' }] };
+    }
+    if (node.buttonType === 'LIST' && node.buttonConfig?.sections) {
+      const sections = node.buttonConfig.sections as any[];
+      const rows = sections[0]?.rows?.map((r: any, i: number) => ({ id: `row_${i}`, title: r.title || '', description: r.description || '' })) || [{ id: 'row_1', title: '', description: '' }];
+      buttonState = { listButtonLabel: node.buttonConfig.buttonLabel || 'View Options', listSectionTitle: sections[0]?.title || 'Options', listRows: rows };
+    }
+    if (node.buttonType === 'CTA_URL') {
+      buttonState = { ctaButtonLabel: node.buttonConfig?.buttonLabel || 'Open Link', ctaUrl: node.buttonConfig?.url || '' };
+    }
+
     setForm({
+      ...EMPTY_FORM,
+      ...buttonState,
       editId: node.id,
       parentId: node.parentId,
       triggerKey: node.triggerKey,
@@ -115,6 +150,8 @@ export default function MenuBotPanel() {
       replyText: node.replyText ?? '',
       aiSystemPrompt: node.aiSystemPrompt ?? '',
       fallbackReply: node.fallbackReply ?? '',
+      actionType: node.actionType ?? '',
+      buttonType: node.buttonType ?? '',
     });
   };
 
@@ -126,6 +163,22 @@ export default function MenuBotPanel() {
 
     setSubmitting(true);
     try {
+      const buildButtonConfig = () => {
+        if (form.buttonType === 'QUICK_REPLY') {
+          return { buttons: form.quickReplyButtons.filter(b => b.title.trim()) };
+        }
+        if (form.buttonType === 'LIST') {
+          return {
+            buttonLabel: form.listButtonLabel || 'View Options',
+            sections: [{ title: form.listSectionTitle || 'Options', rows: form.listRows.filter(r => r.title.trim()).map(r => ({ id: r.id, title: r.title, ...(r.description && { description: r.description }) })) }],
+          };
+        }
+        if (form.buttonType === 'CTA_URL') {
+          return { buttonLabel: form.ctaButtonLabel || 'Open Link', url: form.ctaUrl };
+        }
+        return null;
+      };
+
       const payload = {
         parentId: form.parentId,
         triggerKey: form.triggerKey.trim(),
@@ -135,6 +188,9 @@ export default function MenuBotPanel() {
         replyText: form.replyText.trim() || null,
         aiSystemPrompt: form.aiSystemPrompt.trim() || null,
         fallbackReply: form.fallbackReply.trim() || null,
+        actionType: form.actionType || null,
+        buttonType: form.buttonType || null,
+        buttonConfig: form.isLeaf ? buildButtonConfig() : null,
       };
 
       if (form.editId) {
@@ -416,6 +472,121 @@ export default function MenuBotPanel() {
                     </div>
                   </div>
                 )}
+
+                {/* ── Button / Action Config ─────────────────────────────── */}
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Attach Buttons <span className="normal-case font-normal text-muted-foreground/70">(optional)</span></p>
+
+                  {/* Button type selector */}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(['', 'QUICK_REPLY', 'LIST', 'CTA_URL'] as const).map(bt => (
+                      <button
+                        key={bt || 'none'}
+                        onClick={() => setForm(f => f ? { ...f, buttonType: bt } : f)}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                          form.buttonType === bt
+                            ? 'border-teal-500 bg-teal-500/10 text-teal-400'
+                            : 'border-border text-muted-foreground hover:border-border/80'
+                        }`}
+                      >
+                        {bt === '' ? 'None' : bt === 'QUICK_REPLY' ? 'Quick Reply' : bt === 'LIST' ? 'List' : 'CTA URL'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Quick Reply builder */}
+                  {form.buttonType === 'QUICK_REPLY' && (
+                    <div className="space-y-2">
+                      <p className="text-[9px] text-muted-foreground">Up to 3 tap-to-reply buttons</p>
+                      {form.quickReplyButtons.map((btn, i) => (
+                        <div key={btn.id} className="flex gap-2 items-center">
+                          <Input
+                            value={btn.title}
+                            onChange={e => setForm(f => {
+                              if (!f) return f;
+                              const btns = [...f.quickReplyButtons];
+                              btns[i] = { ...btns[i], title: e.target.value };
+                              return { ...f, quickReplyButtons: btns };
+                            })}
+                            placeholder={`Button ${i + 1} label`}
+                            className="h-7 text-xs rounded-lg flex-1"
+                            maxLength={20}
+                          />
+                          {form.quickReplyButtons.length > 1 && (
+                            <button
+                              onClick={() => setForm(f => f ? { ...f, quickReplyButtons: f.quickReplyButtons.filter((_, idx) => idx !== i) } : f)}
+                              className="text-destructive hover:opacity-80 p-1"
+                            ><Trash2 className="w-3 h-3" /></button>
+                          )}
+                        </div>
+                      ))}
+                      {form.quickReplyButtons.length < 3 && (
+                        <button
+                          onClick={() => setForm(f => f ? { ...f, quickReplyButtons: [...f.quickReplyButtons, { id: `btn_${Date.now()}`, title: '' }] } : f)}
+                          className="text-[10px] text-teal-400 font-semibold flex items-center gap-1 hover:opacity-80"
+                        ><Plus className="w-3 h-3" /> Add Button</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* List builder */}
+                  {form.buttonType === 'LIST' && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <p className="text-[9px] text-muted-foreground mb-1">Button label</p>
+                          <Input value={form.listButtonLabel} onChange={e => setForm(f => f ? { ...f, listButtonLabel: e.target.value } : f)} placeholder="View Options" className="h-7 text-xs rounded-lg" maxLength={20} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[9px] text-muted-foreground mb-1">Section title</p>
+                          <Input value={form.listSectionTitle} onChange={e => setForm(f => f ? { ...f, listSectionTitle: e.target.value } : f)} placeholder="Services" className="h-7 text-xs rounded-lg" maxLength={24} />
+                        </div>
+                      </div>
+                      {form.listRows.map((row, i) => (
+                        <div key={row.id} className="flex gap-1 items-center">
+                          <Input value={row.title} onChange={e => setForm(f => { if (!f) return f; const rows = [...f.listRows]; rows[i] = { ...rows[i], title: e.target.value }; return { ...f, listRows: rows }; })} placeholder={`Row ${i + 1} title`} className="h-7 text-xs rounded-lg flex-1" maxLength={24} />
+                          <Input value={row.description} onChange={e => setForm(f => { if (!f) return f; const rows = [...f.listRows]; rows[i] = { ...rows[i], description: e.target.value }; return { ...f, listRows: rows }; })} placeholder="Description (opt)" className="h-7 text-xs rounded-lg flex-1" maxLength={72} />
+                          {form.listRows.length > 1 && <button onClick={() => setForm(f => f ? { ...f, listRows: f.listRows.filter((_, idx) => idx !== i) } : f)} className="text-destructive p-1"><Trash2 className="w-3 h-3" /></button>}
+                        </div>
+                      ))}
+                      {form.listRows.length < 10 && (
+                        <button onClick={() => setForm(f => f ? { ...f, listRows: [...f.listRows, { id: `row_${Date.now()}`, title: '', description: '' }] } : f)} className="text-[10px] text-teal-400 font-semibold flex items-center gap-1"><Plus className="w-3 h-3" /> Add Row</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CTA URL builder */}
+                  {form.buttonType === 'CTA_URL' && (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[9px] text-muted-foreground mb-1">Button label</p>
+                        <Input value={form.ctaButtonLabel} onChange={e => setForm(f => f ? { ...f, ctaButtonLabel: e.target.value } : f)} placeholder="Book Now" className="h-7 text-xs rounded-lg" maxLength={20} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-muted-foreground mb-1">URL</p>
+                        <Input value={form.ctaUrl} onChange={e => setForm(f => f ? { ...f, ctaUrl: e.target.value } : f)} placeholder="https://yourbusiness.com/book" className="h-7 text-xs rounded-lg" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action on select */}
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 mt-2">Action on Select</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[{ value: '', label: 'None' }, { value: 'CREATE_LEAD', label: '🚀 Create Lead' }, { value: 'NOTIFY_OWNER', label: '🔔 Notify Owner' }].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setForm(f => f ? { ...f, actionType: opt.value } : f)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                            form.actionType === opt.value
+                              ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                              : 'border-border text-muted-foreground'
+                          }`}
+                        >{opt.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

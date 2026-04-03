@@ -301,3 +301,89 @@ export async function clearWhatsAppInbox(tenantId: string): Promise<void> {
     throw new Error(error?.message || "Failed to clear inbox");
   }
 }
+
+// ── Ops: notification source ────────────────────────────────────────────────
+
+export async function getNotificationSource(): Promise<{
+  notificationSource: 'PLATFORM' | 'OWN_NUMBER';
+  hasOwnNumber: boolean;
+  ownNumber: { id: string; displayNumber: string; phoneNumberId: string } | null;
+}> {
+  const r = await authenticatedFetch('/whatsapp/settings/notification-source');
+  return extractData(r);
+}
+
+export async function setNotificationSource(source: 'PLATFORM' | 'OWN_NUMBER'): Promise<void> {
+  await authenticatedFetch('/whatsapp/settings/notification-source', {
+    method: 'PATCH',
+    body: JSON.stringify({ notificationSource: source }),
+  });
+}
+
+// ── Ops: CAPI settings ───────────────────────────────────────────────────────
+
+export async function getCapiSettings(): Promise<{
+  configured: boolean;
+  numberId?: string;
+  displayNumber?: string;
+  capiDatasetId?: string;
+  hasCapiToken?: boolean;
+}> {
+  const r = await authenticatedFetch('/whatsapp/settings/capi');
+  return extractData(r);
+}
+
+export async function saveCapiSettings(data: { capiDatasetId: string; capiAccessToken?: string }): Promise<void> {
+  await authenticatedFetch('/whatsapp/settings/capi', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+// ── Ops: inbox unread / assignment ───────────────────────────────────────────
+
+export async function getInboxUnreadCount(): Promise<{
+  total: number;
+  conversations: { phoneNumber: string; unread: number }[];
+}> {
+  const r = await authenticatedFetch('/whatsapp/inbox/unread-count');
+  return extractData(r);
+}
+
+export async function markConversationRead(phone: string): Promise<void> {
+  await authenticatedFetch(`/whatsapp/inbox/mark-read/${phone}`, { method: 'PATCH' });
+}
+
+export async function assignConversation(phone: string, userId: string | null): Promise<void> {
+  await authenticatedFetch(`/whatsapp/inbox/assign/${phone}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export async function getConversationMeta(phone?: string): Promise<{
+  phoneNumber: string;
+  assignedToUserId: string | null;
+  lastReadAt: string | null;
+  botPaused: boolean;
+  assignedTo: { id: string; fullName: string | null; email: string } | null;
+}[]> {
+  const url = phone ? `/whatsapp/inbox/conversations?phone=${phone}` : '/whatsapp/inbox/conversations';
+  const r = await authenticatedFetch(url);
+  return extractData(r);
+}
+
+// ── Ops: bot analytics ───────────────────────────────────────────────────────
+
+export async function getBotAnalytics(days = 7): Promise<{
+  period: string;
+  totalInbound: number;
+  botHandled: number;
+  agentHandled: number;
+  botRate: number;
+  uniqueConversations: number;
+  topKeywords: { keyword: string; count: number }[];
+}> {
+  const r = await authenticatedFetch(`/whatsapp/analytics/bot?days=${days}`);
+  return extractData(r);
+}

@@ -20,6 +20,23 @@ export class WhatsAppSender {
     private readonly providerManager: ProviderManager,
   ) {}
 
+  /**
+   * Returns the WhatsAppNumber ID to use for owner notifications.
+   * Respects `notificationSource`: OWN_NUMBER → tenant's META_CLOUD number, else undefined (platform default).
+   */
+  async resolveNotificationNumberId(tenantId: string): Promise<string | undefined> {
+    const config = await this.prisma.whatsAppBotConfig.findUnique({
+      where: { tenantId },
+      select: { notificationSource: true },
+    });
+    if (config?.notificationSource !== 'OWN_NUMBER') return undefined;
+    const ownNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, provider: 'META_CLOUD', isEnabled: true },
+      select: { id: true },
+    });
+    return ownNumber?.id ?? undefined;
+  }
+
   private async resolveTenantModule(tenantId: string): Promise<ModuleType> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },

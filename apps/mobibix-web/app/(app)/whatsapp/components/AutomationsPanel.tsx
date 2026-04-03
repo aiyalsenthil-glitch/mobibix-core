@@ -30,7 +30,22 @@ interface AutoReplyRule {
   exactMatch: boolean;
   enabled: boolean;
   sortOrder: number;
+  buttonType?: string | null;
+  buttonConfig?: Record<string, unknown> | null;
 }
+
+const EMPTY_RULE = {
+  keyword: '',
+  replyText: '',
+  exactMatch: false,
+  buttonType: '',
+  quickReplyButtons: [{ id: 'btn_1', title: '' }],
+  listButtonLabel: 'View Options',
+  listSectionTitle: 'Options',
+  listRows: [{ id: 'row_1', title: '', description: '' }],
+  ctaButtonLabel: 'Open Link',
+  ctaUrl: '',
+};
 
 const MODES: { value: Exclude<BotMode, 'OFF'>; label: string; desc: string; icon: any; color: string }[] = [
   { value: 'REPAIR', label: 'Repair Mode', desc: 'Job status, warranty, repair pricing keywords', icon: Wrench, color: 'border-orange-400 bg-orange-500/10 text-orange-400' },
@@ -44,7 +59,7 @@ export default function AutomationsPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [applyingPreset, setApplyingPreset] = useState<BotMode | null>(null);
-  const [newRule, setNewRule] = useState({ keyword: '', replyText: '', exactMatch: false });
+  const [newRule, setNewRule] = useState(EMPTY_RULE);
   const [addingRule, setAddingRule] = useState(false);
   const [showRuleForm, setShowRuleForm] = useState(false);
 
@@ -115,11 +130,35 @@ export default function AutomationsPanel() {
     if (!newRule.keyword.trim() || !newRule.replyText.trim()) return;
     setAddingRule(true);
     try {
+      const buildButtonConfig = () => {
+        if (newRule.buttonType === 'QUICK_REPLY') {
+          return { buttons: newRule.quickReplyButtons.filter(b => b.title.trim()) };
+        }
+        if (newRule.buttonType === 'LIST') {
+          return {
+            buttonLabel: newRule.listButtonLabel || 'View Options',
+            sections: [{ title: newRule.listSectionTitle || 'Options', rows: newRule.listRows.filter(r => r.title.trim()).map(r => ({ id: r.id, title: r.title, ...(r.description && { description: r.description }) })) }],
+          };
+        }
+        if (newRule.buttonType === 'CTA_URL') {
+          return { buttonLabel: newRule.ctaButtonLabel || 'Open Link', url: newRule.ctaUrl };
+        }
+        return null;
+      };
+
+      const payload = {
+        keyword: newRule.keyword,
+        replyText: newRule.replyText,
+        exactMatch: newRule.exactMatch,
+        buttonType: newRule.buttonType || null,
+        buttonConfig: buildButtonConfig(),
+      };
+
       await authenticatedFetch('/whatsapp/bot/rules', {
         method: 'POST',
-        body: JSON.stringify(newRule),
+        body: JSON.stringify(payload),
       });
-      setNewRule({ keyword: '', replyText: '', exactMatch: false });
+      setNewRule(EMPTY_RULE);
       setShowRuleForm(false);
       await loadAll();
     } finally {
@@ -314,6 +353,102 @@ export default function AutomationsPanel() {
                 rows={2}
                 className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               />
+            </div>
+
+            {/* ── Button Config ─────────────────────────────── */}
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-3">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Attach Buttons <span className="normal-case font-normal text-muted-foreground/70">(optional)</span></p>
+
+              {/* Button type selector */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {(['', 'QUICK_REPLY', 'LIST', 'CTA_URL'] as const).map(bt => (
+                  <button
+                    key={bt || 'none'}
+                    onClick={() => setNewRule(f => ({ ...f, buttonType: bt }))}
+                    className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                      newRule.buttonType === bt
+                        ? 'border-teal-500 bg-teal-500/10 text-teal-400'
+                        : 'border-border text-muted-foreground hover:border-border/80'
+                    }`}
+                  >
+                    {bt === '' ? 'None' : bt === 'QUICK_REPLY' ? 'Quick Reply' : bt === 'LIST' ? 'List' : 'CTA URL'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Quick Reply builder */}
+              {newRule.buttonType === 'QUICK_REPLY' && (
+                <div className="space-y-2">
+                  <p className="text-[9px] text-muted-foreground">Up to 3 tap-to-reply buttons</p>
+                  {newRule.quickReplyButtons.map((btn, i) => (
+                    <div key={btn.id} className="flex gap-2 items-center">
+                      <Input
+                        value={btn.title}
+                        onChange={e => setNewRule(f => {
+                          const btns = [...f.quickReplyButtons];
+                          btns[i] = { ...btns[i], title: e.target.value };
+                          return { ...f, quickReplyButtons: btns };
+                        })}
+                        placeholder={`Button ${i + 1} label`}
+                        className="h-7 text-xs rounded-lg flex-1"
+                        maxLength={20}
+                      />
+                      {newRule.quickReplyButtons.length > 1 && (
+                        <button
+                          onClick={() => setNewRule(f => ({ ...f, quickReplyButtons: f.quickReplyButtons.filter((_, idx) => idx !== i) }))}
+                          className="text-destructive hover:opacity-80 p-1"
+                        ><Trash2 className="w-3 h-3" /></button>
+                      )}
+                    </div>
+                  ))}
+                  {newRule.quickReplyButtons.length < 3 && (
+                    <button
+                      onClick={() => setNewRule(f => ({ ...f, quickReplyButtons: [...f.quickReplyButtons, { id: `btn_${Date.now()}`, title: '' }] }))}
+                      className="text-[10px] text-teal-400 font-semibold flex items-center gap-1 hover:opacity-80"
+                    ><Plus className="w-3 h-3" /> Add Button</button>
+                  )}
+                </div>
+              )}
+
+              {/* List builder */}
+              {newRule.buttonType === 'LIST' && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <p className="text-[9px] text-muted-foreground mb-1">Button label</p>
+                      <Input value={newRule.listButtonLabel} onChange={e => setNewRule(f => ({ ...f, listButtonLabel: e.target.value }))} placeholder="View Options" className="h-7 text-xs rounded-lg" maxLength={20} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[9px] text-muted-foreground mb-1">Section title</p>
+                      <Input value={newRule.listSectionTitle} onChange={e => setNewRule(f => ({ ...f, listSectionTitle: e.target.value }))} placeholder="Services" className="h-7 text-xs rounded-lg" maxLength={24} />
+                    </div>
+                  </div>
+                  {newRule.listRows.map((row, i) => (
+                    <div key={row.id} className="flex gap-1 items-center">
+                      <Input value={row.title} onChange={e => setNewRule(f => { const rows = [...f.listRows]; rows[i] = { ...rows[i], title: e.target.value }; return { ...f, listRows: rows }; })} placeholder={`Row ${i + 1} title`} className="h-7 text-xs rounded-lg flex-1" maxLength={24} />
+                      <Input value={row.description} onChange={e => setNewRule(f => { const rows = [...f.listRows]; rows[i] = { ...rows[i], description: e.target.value }; return { ...f, listRows: rows }; })} placeholder="Description (opt)" className="h-7 text-xs rounded-lg flex-1" maxLength={72} />
+                      {newRule.listRows.length > 1 && <button onClick={() => setNewRule(f => ({ ...f, listRows: f.listRows.filter((_, idx) => idx !== i) }))} className="text-destructive p-1"><Trash2 className="w-3 h-3" /></button>}
+                    </div>
+                  ))}
+                  {newRule.listRows.length < 10 && (
+                    <button onClick={() => setNewRule(f => ({ ...f, listRows: [...f.listRows, { id: `row_${Date.now()}`, title: '', description: '' }] }))} className="text-[10px] text-teal-400 font-semibold flex items-center gap-1"><Plus className="w-3 h-3" /> Add Row</button>
+                  )}
+                </div>
+              )}
+
+              {/* CTA URL builder */}
+              {newRule.buttonType === 'CTA_URL' && (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-[9px] text-muted-foreground mb-1">Button label</p>
+                    <Input value={newRule.ctaButtonLabel} onChange={e => setNewRule(f => ({ ...f, ctaButtonLabel: e.target.value }))} placeholder="Book Now" className="h-7 text-xs rounded-lg" maxLength={20} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-muted-foreground mb-1">URL</p>
+                    <Input value={newRule.ctaUrl} onChange={e => setNewRule(f => ({ ...f, ctaUrl: e.target.value }))} placeholder="https://yourbusiness.com/book" className="h-7 text-xs rounded-lg" />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={addRule} disabled={addingRule} className="rounded-xl bg-teal-600 hover:bg-teal-500 font-bold">

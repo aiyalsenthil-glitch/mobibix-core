@@ -14,6 +14,7 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
 import { WhatsAppInboxGateway } from './inbox/whatsapp-inbox.gateway';
 import { WhatsAppTokenService } from './whatsapp-token.service';
+import { WhatsAppCapiService } from './whatsapp-capi.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
@@ -49,6 +50,7 @@ export class WhatsAppWebhookController {
     private readonly router: WhatsAppCapabilityRouter,
     private readonly inboxGateway: WhatsAppInboxGateway,
     private readonly tokenService: WhatsAppTokenService,
+    private readonly capiService: WhatsAppCapiService,
   ) {}
 
   @Get()
@@ -369,7 +371,66 @@ export class WhatsAppWebhookController {
           timestamp: metaTimestamp.toISOString(),
         });
 
-        // 7. Route to Automation (text only)
+        // 7. CTWA Attribution — capture ctwa_clid from ad-driven messages & fire Contact event
+        if (!isFromBusiness) {
+          const ctwaClid = message.referral?.ctwa_clid as string | undefined;
+          const adSourceId = message.referral?.source_id as string | undefined;
+
+          if (ctwaClid) {
+            // Persist the click ID on conversation state for use in downstream conversion events
+            await this.prisma.whatsAppConversationState
+              .upsert({
+                where: {
+                  tenantId_phoneNumber: { tenantId, phoneNumber: senderPhone },
+                },
+                update: {
+                  metadata: {
+                    ctwaClid,
+                    adSourceId,
+                    adClickedAt: new Date().toISOString(),
+                  },
+                },
+                create: {
+                  tenantId,
+                  phoneNumber: senderPhone,
+                  step: 'START',
+                  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day CAPI attribution window
+                  metadata: {
+                    ctwaClid,
+                    adSourceId,
+                    adClickedAt: new Date().toISOString(),
+                  },
+                },
+              })
+              .catch((err: Error) =>
+                this.logger.error(`[CAPI] Failed to store ctwa_clid: ${err.message}`),
+              );
+
+            // Resolve tenant CAPI credentials (tenant config → env fallback)
+            const capiNumberConfig = await (this.prisma as any).whatsAppNumber
+              .findUnique({
+                where: { id: waNumber.id },
+                select: { capiDatasetId: true, capiAccessToken: true },
+              })
+              .catch(() => null);
+
+            const creds = this.capiService.resolveCreds(capiNumberConfig);
+            if (creds) {
+              // Fire Contact event — first meaningful interaction from a CTWA ad
+              await this.capiService.fireEvent({
+                eventName: 'Contact',
+                phone: senderPhone,
+                ctwaClid,
+                adSourceId,
+                eventId: messageId, // deduplicate by message ID
+                tenantId,
+                ...creds,
+              });
+            }
+          }
+        }
+
+        // 8. Route to Automation (text only)
         if (text && !isFromBusiness) {
           await this.router.routeMessage(
             tenantId,
