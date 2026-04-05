@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
+    <!-- Enforce HTTPS for all connections by default -->
+    <base-config cleartextTrafficPermitted="false" />
+    <!-- Production API domain - HTTPS only -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">REMOVED_ENDPOINT</domain>
     </domain-config>
 </network-security-config>

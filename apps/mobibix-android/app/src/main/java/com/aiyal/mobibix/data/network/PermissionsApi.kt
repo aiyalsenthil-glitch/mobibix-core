@@ -5,6 +5,10 @@ import retrofit2.http.*
 
 interface PermissionsApi {
 
+    // --- Permission Catalog ---
+    @GET("permissions/roles/modules")
+    suspend fun getPermissionModules(): List<PermissionModuleResponse>
+
     // --- Roles ---
     @GET("permissions/roles")
     suspend fun listRoles(): List<PermissionRoleResponse>

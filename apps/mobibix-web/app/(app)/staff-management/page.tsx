@@ -9,6 +9,7 @@ import ApprovalsTab from "./components/ApprovalsTab";
 import CommissionTab from "./components/CommissionTab";
 import LeaderboardTab from "./components/LeaderboardTab";
 import { HelpGuide } from "@/components/common/HelpGuide";
+import { useAuth } from "@/hooks/useAuth";
 
 const COMMISSION_GUIDE = [
   {
@@ -42,13 +43,22 @@ function StaffManagementContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
-  
+
+  const canManageStaff = user?.role && ["owner", "admin", "manager"].includes(user.role.toLowerCase());
+
   // Wait until mounted to prevent hydration errors with search params
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (mounted && !canManageStaff) {
+      router.replace("/dashboard");
+    }
+  }, [mounted, canManageStaff, router]);
 
   const currentTab = searchParams.get("tab") || "staff";
 
@@ -56,7 +66,7 @@ function StaffManagementContent() {
     router.replace(`${pathname}?tab=${tabId}`);
   };
 
-  if (!mounted) return null;
+  if (!mounted || !canManageStaff) return null;
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 animate-fade-in pb-24">

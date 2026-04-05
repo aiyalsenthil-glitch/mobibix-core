@@ -41,6 +41,11 @@ import com.aiyal.mobibix.ui.features.finance.receipts.CreateReceiptScreen
 import com.aiyal.mobibix.ui.features.finance.receipts.ReceiptListScreen
 import com.aiyal.mobibix.ui.features.finance.vouchers.CreateVoucherScreen
 import com.aiyal.mobibix.ui.features.finance.vouchers.VoucherListScreen
+import com.aiyal.mobibix.ui.features.finance.purchases.GRNListScreen
+import com.aiyal.mobibix.ui.features.finance.purchases.GRNDetailScreen
+import com.aiyal.mobibix.ui.features.finance.ewaybill.EWayBillScreen
+import com.aiyal.mobibix.ui.features.commission.CommissionScreen
+import com.aiyal.mobibix.ui.features.intelligence.DemandForecastScreen
 import com.aiyal.mobibix.ui.features.ComingSoonScreen
 import com.aiyal.mobibix.ui.features.login.GoogleSignInViewModel
 import com.aiyal.mobibix.ui.features.login.AuthScreen
@@ -355,6 +360,30 @@ fun AppNavGraph(
                 viewModel = hiltViewModel()
             )
         }
+
+        // ── Roles & Permissions ────────────────────────────────────────────────
+        composable("role_list") {
+            com.aiyal.mobibix.ui.features.roles.RoleListScreen(
+                appState = appState,
+                onNavigateBack = { navController.navigateUp() },
+                onNavigateToRoleEdit = { roleId ->
+                    if (roleId == null) navController.navigate("role_edit/new")
+                    else navController.navigate("role_edit/$roleId")
+                }
+            )
+        }
+        composable(
+            route = "role_edit/{roleId}",
+            arguments = listOf(navArgument("roleId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val rawId = backStackEntry.arguments?.getString("roleId")
+            val roleId = if (rawId == "new") null else rawId
+            com.aiyal.mobibix.ui.features.roles.RoleEditScreen(
+                appState = appState,
+                roleId = roleId,
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
         composable("job_card_settings") {
             val activeShopId = shopContextProvider.getActiveShopId() ?: ""
             JobCardSettingsScreen(shopId = activeShopId, navController = navController, shopApi = shopApi)
@@ -597,17 +626,18 @@ fun AppNavGraph(
         
         // Placeholder routes for drawer items not yet implemented
         composable("settings") {
-            val appState by produceState<AppState?>(initialValue = null) {
-                value = try { appStateResolver.resolve() } catch (e: Exception) {
-                    android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
-                    null
-                }
+            val isOwner = appState is AppState.Owner ||
+                (appState is AppState.Staff && (appState as AppState.Staff).role == com.aiyal.mobibix.core.app.UserRole.ADMIN)
+            if (!isOwner) {
+                // Non-owners redirected back; drawer already hides this item
+                android.util.Log.w("AppNavGraph", "Blocked non-owner from settings")
+                navController.navigateUp()
+                return@composable
             }
-            val isOwner = appState is AppState.Owner
             com.aiyal.mobibix.ui.features.settings.SettingsScreen(
                 navController = navController,
                 shopContextProvider = shopContextProvider,
-                isOwner = isOwner
+                isOwner = true
             )
         }
         composable("delete_account") {
@@ -801,6 +831,36 @@ fun AppNavGraph(
         composable("restock") {
             com.aiyal.mobibix.ui.features.b2b.RestockScreen(
                 navController = navController
+            )
+        }
+
+        // ── GRNs (Goods Receipt Notes) ────────────────────────────────────────
+        composable("grns") {
+            GRNListScreen(navController = navController)
+        }
+        composable(
+            route = "grn_detail/{grnId}",
+            arguments = listOf(navArgument("grnId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val grnId = backStackEntry.arguments?.getString("grnId") ?: ""
+            GRNDetailScreen(grnId = grnId, navController = navController)
+        }
+
+        // ── E-Way Bill ────────────────────────────────────────────────────────
+        composable("eway_bill") {
+            EWayBillScreen(navController = navController)
+        }
+
+        // ── Staff Commission ──────────────────────────────────────────────────
+        composable("commission") {
+            CommissionScreen(navController = navController)
+        }
+
+        // ── Demand Forecast ───────────────────────────────────────────────────
+        composable("demand_forecast") {
+            DemandForecastScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
             )
         }
 

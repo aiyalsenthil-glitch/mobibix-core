@@ -49,3 +49,14 @@ data class ResolveApprovalRequest(
     val status: String, // APPROVED | REJECTED
     val comment: String?
 )
+
+// Permission catalog — from GET permissions/roles/modules
+data class PermissionModuleResponse(
+    val moduleType: String,
+    val resources: List<PermissionResourceResponse>
+)
+
+data class PermissionResourceResponse(
+    val resourceName: String,
+    val actions: List<String>
+)
