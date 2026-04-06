@@ -1,6 +1,9 @@
 package com.aiyal.mobibix.ui.features.quotations
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -8,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,22 +27,47 @@ import androidx.navigation.NavController
 import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.data.network.CreateQuotationDto
 import com.aiyal.mobibix.data.network.CreateQuotationItemDto
+import com.aiyal.mobibix.ui.features.customers.CustomerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateQuotationScreen(
     navController: NavController,
     shopContextProvider: ShopContextProvider,
-    viewModel: QuotationViewModel = hiltViewModel()
+    viewModel: QuotationViewModel = hiltViewModel(),
+    customerViewModel: CustomerViewModel = hiltViewModel()
 ) {
     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
     val saving by viewModel.saving.collectAsState()
+    val customerUiState by customerViewModel.uiState.collectAsState()
 
+    var customerId by remember { mutableStateOf<String?>(null) }
     var customerName by remember { mutableStateOf("") }
     var customerPhone by remember { mutableStateOf("") }
+    var showCustomerCreate by remember { mutableStateOf(false) }
+    var newCustName by remember { mutableStateOf("") }
+    var newCustPhone by remember { mutableStateOf("") }
     var validityDays by remember { mutableStateOf("7") }
     var notes by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(customerName) {
+        kotlinx.coroutines.delay(300)
+        if (customerName.length >= 2) customerViewModel.loadCustomers(customerName)
+    }
+    LaunchedEffect(customerUiState.operationSuccess) {
+        if (customerUiState.operationSuccess) {
+            val created = customerUiState.customers.firstOrNull {
+                it.name.equals(newCustName, ignoreCase = true)
+            }
+            if (created != null) {
+                customerId = created.id
+                customerName = created.name
+                customerPhone = created.phone ?: ""
+            }
+            showCustomerCreate = false
+        }
+    }
 
     data class LineItem(var description: String, var qty: String, var price: String, var gstRate: String = "0")
     val items = remember { mutableStateListOf(LineItem("", "1", "")) }
@@ -63,15 +93,91 @@ fun CreateQuotationScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text("Customer", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(
-                value = customerName, onValueChange = { customerName = it },
-                label = { Text("Customer Name *") }, modifier = Modifier.fillMaxWidth(), singleLine = true
-            )
-            OutlinedTextField(
-                value = customerPhone, onValueChange = { customerPhone = it },
-                label = { Text("Phone (optional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-            )
+
+            if (showCustomerCreate) {
+                // Inline create new customer
+                OutlinedTextField(
+                    value = newCustName, onValueChange = { newCustName = it },
+                    label = { Text("Name *") }, modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                Spacer(Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = newCustPhone, onValueChange = { newCustPhone = it },
+                    label = { Text("Phone *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { showCustomerCreate = false }, modifier = Modifier.weight(1f)) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            customerViewModel.createCustomer(
+                                name = newCustName, phone = newCustPhone, email = null,
+                                address = "", businessType = "B2C", partyType = "CUSTOMER", gst = null
+                            )
+                        },
+                        enabled = newCustName.isNotBlank() && newCustPhone.isNotBlank() && !customerUiState.operationLoading,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (customerUiState.operationLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary)
+                        } else Text("Create")
+                    }
+                }
+            } else {
+                Box {
+                    OutlinedTextField(
+                        value = customerName,
+                        onValueChange = { customerName = it; customerId = null },
+                        label = { Text("Customer Name *") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = {
+                            if (customerUiState.loading) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            else if (customerId != null) Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true
+                    )
+                    if (customerUiState.customers.isNotEmpty() && customerId == null && customerName.isNotBlank()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(top = 58.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        ) {
+                            Column {
+                                customerUiState.customers.take(6).forEach { c ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().clickable {
+                                            customerId = c.id; customerName = c.name; customerPhone = c.phone
+                                            customerViewModel.loadCustomers(null) // clear results
+                                        }.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Person, contentDescription = null,
+                                            modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                        Column {
+                                            Text(c.name, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                            Text(c.phone, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                    HorizontalDivider()
+                                }
+                                TextButton(
+                                    onClick = { showCustomerCreate = true; newCustName = customerName },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("+ Create \"$customerName\" as new customer") }
+                            }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = customerPhone, onValueChange = { customerPhone = it },
+                    label = { Text("Phone (optional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+            }
             OutlinedTextField(
                 value = validityDays, onValueChange = { validityDays = it },
                 label = { Text("Valid for (days)") }, modifier = Modifier.fillMaxWidth(), singleLine = true,

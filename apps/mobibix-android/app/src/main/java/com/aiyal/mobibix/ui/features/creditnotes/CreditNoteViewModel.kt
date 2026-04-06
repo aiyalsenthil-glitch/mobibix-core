@@ -7,8 +7,13 @@ import com.aiyal.mobibix.data.network.CreditNote
 import com.aiyal.mobibix.data.network.CreditNoteApi
 import com.aiyal.mobibix.data.network.CreateCreditNoteDto
 import com.aiyal.mobibix.data.network.CustomerApi
+import com.aiyal.mobibix.data.network.InvoiceDetails
+import com.aiyal.mobibix.data.network.SalesApi
 import com.aiyal.mobibix.data.network.ShopApi
+import com.aiyal.mobibix.data.network.dto.CustomerResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -35,10 +40,23 @@ data class CreditNoteDetailState(
     val actionSuccess: String? = null
 )
 
+data class CustomerSearchState(
+    val loading: Boolean = false,
+    val results: List<CustomerResponse> = emptyList()
+)
+
+data class InvoiceLookupState(
+    val loading: Boolean = false,
+    val invoice: InvoiceDetails? = null,
+    val error: String? = null
+)
+
 @HiltViewModel
 class CreditNoteViewModel @Inject constructor(
     private val creditNoteApi: CreditNoteApi,
-    private val shopApi: ShopApi
+    private val shopApi: ShopApi,
+    private val customerApi: CustomerApi,
+    private val salesApi: SalesApi
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(CreditNoteListState())
@@ -53,13 +71,68 @@ class CreditNoteViewModel @Inject constructor(
     private val _createState = MutableStateFlow(CreditNoteCreateState())
     val createState = _createState.asStateFlow()
 
+    private val _customerSearch = MutableStateFlow(CustomerSearchState())
+    val customerSearch = _customerSearch.asStateFlow()
+
+    private val _invoiceLookup = MutableStateFlow(InvoiceLookupState())
+    val invoiceLookup = _invoiceLookup.asStateFlow()
+
+    private var customerSearchJob: Job? = null
+    private var invoiceLookupJob: Job? = null
+
     fun clearCreateState() { _createState.value = CreditNoteCreateState() }
+    fun clearCustomerSearch() { _customerSearch.value = CustomerSearchState() }
+    fun clearInvoiceLookup() { _invoiceLookup.value = InvoiceLookupState() }
+
+    // ── Customer Search ───────────────────────────────────────────────────────
+
+    fun searchCustomers(query: String) {
+        customerSearchJob?.cancel()
+        if (query.length < 2) {
+            _customerSearch.value = CustomerSearchState()
+            return
+        }
+        customerSearchJob = viewModelScope.launch {
+            delay(300)
+            _customerSearch.value = CustomerSearchState(loading = true)
+            try {
+                val results = customerApi.searchCustomers(query, limit = 6)
+                _customerSearch.value = CustomerSearchState(loading = false, results = results)
+            } catch (e: Exception) {
+                _customerSearch.value = CustomerSearchState(loading = false)
+            }
+        }
+    }
+
+    // ── Invoice Lookup ────────────────────────────────────────────────────────
+
+    fun lookupInvoice(shopId: String, invoiceNumber: String) {
+        invoiceLookupJob?.cancel()
+        if (invoiceNumber.length < 3) {
+            _invoiceLookup.value = InvoiceLookupState()
+            return
+        }
+        invoiceLookupJob = viewModelScope.launch {
+            delay(500)
+            _invoiceLookup.value = InvoiceLookupState(loading = true)
+            try {
+                val inv = salesApi.getInvoiceByNumber(invoiceNumber.trim(), shopId)
+                _invoiceLookup.value = InvoiceLookupState(loading = false, invoice = inv)
+            } catch (e: Exception) {
+                _invoiceLookup.value = InvoiceLookupState(
+                    loading = false,
+                    error = MobiError.extractMessage(e)
+                )
+            }
+        }
+    }
 
     fun createSalesReturn(
         shopId: String,
+        customerId: String?,
         customerName: String,
         customerPhone: String?,
-        originalInvoiceNo: String?,
+        linkedInvoiceId: String?,
         notes: String?,
         items: List<com.aiyal.mobibix.data.network.CreateCreditNoteItemDto>
     ) {
@@ -69,10 +142,9 @@ class CreditNoteViewModel @Inject constructor(
                 val dto = CreateCreditNoteDto(
                     type = "CUSTOMER",
                     reason = "SALES_RETURN",
-                    notes = buildString {
-                        if (originalInvoiceNo != null) append("Ref: $originalInvoiceNo. ")
-                        if (notes != null) append(notes)
-                    }.takeIf { it.isNotBlank() },
+                    customerId = customerId,
+                    linkedInvoiceId = linkedInvoiceId,
+                    notes = notes,
                     items = items
                 )
                 creditNoteApi.createCreditNote(shopId, dto)

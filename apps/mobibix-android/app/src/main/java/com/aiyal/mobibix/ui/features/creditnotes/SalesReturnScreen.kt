@@ -1,14 +1,17 @@
 package com.aiyal.mobibix.ui.features.creditnotes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +28,8 @@ import com.aiyal.mobibix.data.network.CreateCreditNoteItemDto
 
 /**
  * Sales Return Screen — Creates a CUSTOMER credit note with SALES_RETURN reason.
- * This is a dedicated, streamlined flow for handling customer returns.
+ * - Supports customer search autocomplete
+ * - Entering an invoice number auto-populates return items from that invoice
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,13 +39,37 @@ fun SalesReturnScreen(
     viewModel: CreditNoteViewModel = hiltViewModel()
 ) {
     val state by viewModel.createState.collectAsState()
+    val customerSearch by viewModel.customerSearch.collectAsState()
+    val invoiceLookup by viewModel.invoiceLookup.collectAsState()
     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState(initial = null)
 
-    var customerName by remember { mutableStateOf("") }
+    var customerId by remember { mutableStateOf<String?>(null) }
+    var customerQuery by remember { mutableStateOf("") }
     var customerPhone by remember { mutableStateOf("") }
-    var originalInvoiceNo by remember { mutableStateOf("") }
+    var invoiceNumberInput by remember { mutableStateOf("") }
+    var linkedInvoiceId by remember { mutableStateOf<String?>(null) }
     var returnReason by remember { mutableStateOf("") }
     var items by remember { mutableStateOf(listOf(ReturnItemRow())) }
+
+    // When invoice lookup succeeds, pre-fill items
+    LaunchedEffect(invoiceLookup.invoice) {
+        val inv = invoiceLookup.invoice ?: return@LaunchedEffect
+        linkedInvoiceId = inv.id
+        val populated = inv.items.map { item ->
+            ReturnItemRow(
+                description = item.productName ?: item.shopProductId,
+                shopProductId = item.shopProductId,
+                qty = item.quantity.toString(),
+                unitPrice = item.rate.toString(),
+                gstRate = (item.gstRate ?: 0.0).toString()
+            )
+        }
+        if (populated.isNotEmpty()) items = populated
+        // Pre-fill customer name if not already set
+        if (customerQuery.isBlank() && inv.customerName != null) {
+            customerQuery = inv.customerName
+        }
+    }
 
     LaunchedEffect(state.success) {
         if (state.success) {
@@ -61,7 +89,7 @@ fun SalesReturnScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -90,16 +118,53 @@ fun SalesReturnScreen(
                         Text(
                             "RETURN",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF00C896)
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00C896)
                         )
                     }
                     Text(
-                        "Credit note will be issued to the customer for returned goods.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "Enter invoice number to auto-fill items. Credit note will be issued to the customer.",
+                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            // Invoice Number (lookup first)
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Original Invoice", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = invoiceNumberInput,
+                        onValueChange = { input ->
+                            invoiceNumberInput = input
+                            linkedInvoiceId = null
+                            viewModel.lookupInvoice(activeShopId ?: "", input)
+                        },
+                        label = { Text("Invoice Number") },
+                        placeholder = { Text("e.g. MB-S-25-001") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        trailingIcon = {
+                            if (invoiceLookup.loading) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else if (linkedInvoiceId != null) {
+                                Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF00C896))
+                            }
+                        }
+                    )
+                    when {
+                        invoiceLookup.error != null -> Text(
+                            invoiceLookup.error!!, fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        linkedInvoiceId != null -> Text(
+                            "✓ Invoice found — items pre-filled below", fontSize = 11.sp,
+                            color = Color(0xFF00C896)
+                        )
+                    }
                 }
             }
 
@@ -108,35 +173,81 @@ fun SalesReturnScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Customer Details", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+
+                    // Customer search
+                    Box {
+                        OutlinedTextField(
+                            value = customerQuery,
+                            onValueChange = { q ->
+                                customerQuery = q
+                                customerId = null
+                                viewModel.searchCustomers(q)
+                            },
+                            label = { Text("Customer Name *") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = {
+                                if (customerSearch.loading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                } else if (customerId != null) {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF00C896))
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        if (customerSearch.results.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 58.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                            ) {
+                                Column {
+                                    customerSearch.results.forEach { c ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    customerId = c.id
+                                                    customerQuery = c.name
+                                                    customerPhone = c.phone ?: ""
+                                                    viewModel.clearCustomerSearch()
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(Icons.Default.Person, contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary)
+                                            Column {
+                                                Text(c.name, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                                if (!c.phone.isNullOrBlank()) {
+                                                    Text(c.phone, fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                        }
+                                        HorizontalDivider()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
-                        value = customerName,
-                        onValueChange = { customerName = it },
-                        label = { Text("Customer Name *") },
+                        value = customerPhone,
+                        onValueChange = { customerPhone = it },
+                        label = { Text("Phone (optional)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         shape = RoundedCornerShape(10.dp)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(
-                            value = customerPhone,
-                            onValueChange = { customerPhone = it },
-                            label = { Text("Phone") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        OutlinedTextField(
-                            value = originalInvoiceNo,
-                            onValueChange = { originalInvoiceNo = it },
-                            label = { Text("Original Invoice #") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                    }
                 }
             }
 
@@ -195,8 +306,7 @@ fun SalesReturnScreen(
                         onValueChange = { returnReason = it },
                         label = { Text("Describe reason for return") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 4,
+                        minLines = 2, maxLines = 4,
                         shape = RoundedCornerShape(10.dp)
                     )
                 }
@@ -207,7 +317,8 @@ fun SalesReturnScreen(
                     shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Text(state.error!!, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                    Text(state.error!!, modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                 }
             }
 
@@ -221,30 +332,34 @@ fun SalesReturnScreen(
                         if (row.description.isBlank()) return@mapNotNull null
                         val gst = row.gstRate.toDoubleOrNull() ?: 0.0
                         CreateCreditNoteItemDto(
+                            shopProductId = row.shopProductId,
                             description = row.description,
                             quantity = qty,
                             rate = price,
                             gstRate = gst,
                             gstAmount = price * qty * gst / 100.0,
-                            lineTotal = price * qty * (1 + gst / 100.0)
+                            lineTotal = price * qty * (1 + gst / 100.0),
+                            restockItem = true
                         )
                     }
                     viewModel.createSalesReturn(
                         shopId = shopId,
-                        customerName = customerName,
+                        customerId = customerId,
+                        customerName = customerQuery,
                         customerPhone = customerPhone.takeIf { it.isNotBlank() },
-                        originalInvoiceNo = originalInvoiceNo.takeIf { it.isNotBlank() },
+                        linkedInvoiceId = linkedInvoiceId,
                         notes = returnReason.takeIf { it.isNotBlank() },
                         items = creditItems
                     )
                 },
-                enabled = customerName.isNotBlank() && items.any { it.description.isNotBlank() } && !state.loading,
+                enabled = customerQuery.isNotBlank() && items.any { it.description.isNotBlank() } && !state.loading,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C896))
             ) {
                 if (state.loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                 } else {
                     Text("Create Sales Return", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 }
@@ -278,7 +393,8 @@ private fun ReturnItemEntry(
                 )
                 if (onRemove != null) {
                     IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -317,6 +433,7 @@ private fun ReturnItemEntry(
 
 data class ReturnItemRow(
     val description: String = "",
+    val shopProductId: String? = null,
     val qty: String = "1",
     val unitPrice: String = "",
     val gstRate: String = "0"

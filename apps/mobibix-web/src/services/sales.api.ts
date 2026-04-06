@@ -216,6 +216,20 @@ export async function getInvoice(invoiceId: string): Promise<SalesInvoice> {
   return extractData(response);
 }
 
+/**
+ * Look up an invoice by human-readable invoice number (e.g. "MB-S-25-001")
+ */
+export async function getInvoiceByNumber(shopId: string, invoiceNumber: string): Promise<SalesInvoice> {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/lookup?number=${encodeURIComponent(invoiceNumber)}&shopId=${shopId}`,
+  );
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Invoice not found");
+  }
+  return extractData(response);
+}
+
 export interface PublicInvoiceResponse {
   invoice: SalesInvoice;
   shop: Shop;

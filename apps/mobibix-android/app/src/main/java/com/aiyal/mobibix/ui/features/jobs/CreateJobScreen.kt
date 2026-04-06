@@ -387,55 +387,102 @@ private fun JobCustomerPickerDialog(
 ) {
     val uiState by customerViewModel.uiState.collectAsState()
     var query by remember { mutableStateOf("") }
+    var showCreate by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var newPhone by remember { mutableStateOf("") }
 
-    val filtered by remember(query, uiState.customers) {
-        derivedStateOf {
-            if (query.isBlank()) uiState.customers
-            else uiState.customers.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                it.phone.contains(query, ignoreCase = true)
+    LaunchedEffect(query) {
+        kotlinx.coroutines.delay(300)
+        customerViewModel.loadCustomers(query.takeIf { it.isNotBlank() })
+    }
+    LaunchedEffect(uiState.operationSuccess) {
+        if (uiState.operationSuccess) {
+            val created = uiState.customers.firstOrNull {
+                it.name.equals(newName, ignoreCase = true) && it.phone == newPhone
             }
+            onCustomerSelected(created?.name ?: newName, created?.phone ?: newPhone)
         }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Customer") },
+        title = { Text(if (showCreate) "New Customer" else "Select Customer") },
         text = {
             Column {
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it },
-                    placeholder = { Text("Search by name or phone") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true
-                )
-                Spacer(Modifier.height(8.dp))
-                if (uiState.loading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp))
-                } else if (filtered.isEmpty()) {
-                    Text(
-                        if (query.isBlank()) "No customers found" else "No match for \"$query\"",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(8.dp)
+                if (showCreate) {
+                    OutlinedTextField(
+                        value = newName, onValueChange = { newName = it },
+                        label = { Text("Name *") }, modifier = Modifier.fillMaxWidth(), singleLine = true
                     )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newPhone, onValueChange = { newPhone = it },
+                        label = { Text("Phone *") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    )
+                    if (uiState.error != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(uiState.error!!, color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                 } else {
-                    LazyColumn(modifier = Modifier.height(300.dp)) {
-                        items(filtered.take(50)) { customer ->
-                            ListItem(
-                                headlineContent = { Text(customer.name) },
-                                supportingContent = { Text(customer.phone) },
-                                modifier = Modifier.clickable {
-                                    onCustomerSelected(customer.name, customer.phone)
-                                }
-                            )
-                            HorizontalDivider()
+                    OutlinedTextField(
+                        value = query, onValueChange = { query = it },
+                        placeholder = { Text("Search by name or phone") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    if (uiState.loading) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp))
+                    } else if (uiState.customers.isEmpty()) {
+                        Text(
+                            if (query.isBlank()) "Start typing to search" else "No match for \"$query\"",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    } else {
+                        LazyColumn(modifier = Modifier.height(260.dp)) {
+                            items(uiState.customers.take(20)) { customer ->
+                                ListItem(
+                                    headlineContent = { Text(customer.name) },
+                                    supportingContent = { Text(customer.phone) },
+                                    modifier = Modifier.clickable { onCustomerSelected(customer.name, customer.phone) }
+                                )
+                                HorizontalDivider()
+                            }
                         }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("+ Create New Customer")
                     }
                 }
             }
         },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = {
+            if (showCreate) {
+                Button(
+                    onClick = {
+                        customerViewModel.createCustomer(
+                            name = newName, phone = newPhone, email = null,
+                            address = "", businessType = "B2C", partyType = "CUSTOMER", gst = null
+                        )
+                    },
+                    enabled = newName.isNotBlank() && newPhone.isNotBlank() && !uiState.operationLoading
+                ) {
+                    if (uiState.operationLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary)
+                    } else Text("Create")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { if (showCreate) showCreate = false else onDismiss() }) {
+                Text(if (showCreate) "Back" else "Cancel")
+            }
+        }
     )
 }

@@ -134,6 +134,20 @@ export class SalesController {
     );
   }
 
+  @Get('invoice/lookup')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.VIEW)
+  async getInvoiceByNumber(
+    @Req() req: any,
+    @Query('number') invoiceNumber: string,
+    @Query('shopId') shopId: string,
+  ) {
+    const tenantId = req.user.tenantId;
+    if (!tenantId || !invoiceNumber || !shopId) {
+      throw new BadRequestException('number and shopId are required');
+    }
+    return this.service.getInvoiceByNumber(tenantId, shopId, invoiceNumber);
+  }
+
   @Get('invoice/:invoiceId')
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.VIEW)
   async getInvoice(@Req() req: any, @Param('invoiceId') invoiceId: string) {

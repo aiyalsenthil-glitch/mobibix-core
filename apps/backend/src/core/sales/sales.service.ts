@@ -1281,6 +1281,15 @@ export class SalesService {
     };
   }
 
+  async getInvoiceByNumber(tenantId: string, shopId: string, invoiceNumber: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { tenantId, shopId, invoiceNumber },
+      select: { id: true },
+    });
+    if (!invoice) throw new BadRequestException('Invoice not found');
+    return this.getInvoiceDetails(tenantId, invoice.id);
+  }
+
   async getInvoiceDetails(tenantId: string, invoiceId: string) {
     if (!tenantId) {
       throw new BadRequestException('Invalid tenant');

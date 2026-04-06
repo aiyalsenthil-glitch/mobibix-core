@@ -146,6 +146,12 @@ interface SalesApi {
         @Path("invoiceId") invoiceId: String
     ): InvoiceDetails
 
+    @GET("api/mobileshop/sales/invoice/lookup")
+    suspend fun getInvoiceByNumber(
+        @Query("number") invoiceNumber: String,
+        @Query("shopId") shopId: String
+    ): InvoiceDetails
+
     @POST("api/mobileshop/sales/invoice/{invoiceId}/cancel")
     suspend fun cancelInvoice(
         @Path("invoiceId") invoiceId: String

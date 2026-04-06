@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   listCreditNotes,
   createCreditNote,
@@ -14,6 +14,8 @@ import {
   type CreateCreditNoteItemDto,
 } from "@/services/credit-notes.api";
 import { listProducts, type ShopProduct } from "@/services/products.api";
+import { searchCustomers, type Customer } from "@/services/customers.api";
+import { getInvoiceByNumber, type SalesInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
@@ -130,6 +132,18 @@ export default function CreditNotesPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Customer search
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [customerSearching, setCustomerSearching] = useState(false);
+  const customerSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Invoice lookup
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceLooking, setInvoiceLooking] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const invoiceLookupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ─── Shop sync ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -184,6 +198,65 @@ export default function CreditNotesPage() {
 
   const availableReasons = form.type === "CUSTOMER" ? CUSTOMER_REASONS : SUPPLIER_REASONS;
 
+  // ─── Customer search ───────────────────────────────────────────────────────
+
+  function handleCustomerQuery(q: string) {
+    setCustomerQuery(q);
+    setCustomerResults([]);
+    if (customerSearchRef.current) clearTimeout(customerSearchRef.current);
+    if (q.length < 2) return;
+    customerSearchRef.current = setTimeout(async () => {
+      setCustomerSearching(true);
+      try {
+        const res = await searchCustomers(q, 6);
+        setCustomerResults(res);
+      } catch { /* silent */ } finally {
+        setCustomerSearching(false);
+      }
+    }, 300);
+  }
+
+  function selectCustomer(c: Customer) {
+    setForm((f) => ({ ...f, customerId: c.id } as any));
+    setCustomerQuery(c.name);
+    setCustomerResults([]);
+  }
+
+  // ─── Invoice number lookup ─────────────────────────────────────────────────
+
+  function handleInvoiceNumberChange(num: string) {
+    setInvoiceNumber(num);
+    setInvoiceError(null);
+    if (invoiceLookupRef.current) clearTimeout(invoiceLookupRef.current);
+    if (num.trim().length < 3) return;
+    invoiceLookupRef.current = setTimeout(async () => {
+      if (!shopId) return;
+      setInvoiceLooking(true);
+      try {
+        const inv = await getInvoiceByNumber(shopId, num.trim());
+        setForm((f) => ({
+          ...f,
+          linkedInvoiceId: inv.id,
+          items: inv.items?.map((it) => ({
+            shopProductId: it.shopProductId,
+            description: (it as any).product?.name ?? it.shopProductId,
+            quantity: it.quantity,
+            rate: it.rate,
+            gstRate: it.gstRate ?? 0,
+            gstAmount: it.gstAmount ?? 0,
+            lineTotal: it.lineTotal ?? it.rate * it.quantity,
+            restockItem: true,
+          })) ?? f.items,
+        }));
+        if (inv.customerName && !customerQuery) setCustomerQuery(inv.customerName);
+      } catch (e: any) {
+        setInvoiceError(e.message ?? "Invoice not found");
+      } finally {
+        setInvoiceLooking(false);
+      }
+    }, 500);
+  }
+
   // ─── Actions ───────────────────────────────────────────────────────────────
 
   async function handleCreate(e: React.FormEvent) {
@@ -194,6 +267,7 @@ export default function CreditNotesPage() {
       await createCreditNote(shopId, form);
       setShowCreate(false);
       setForm({ type: "CUSTOMER", reason: "SALES_RETURN", items: [{ ...EMPTY_ITEM }] });
+      setCustomerQuery(""); setCustomerResults([]); setInvoiceNumber(""); setInvoiceError(null);
       load();
     } catch (e: any) {
       alert(e.message);
@@ -396,7 +470,7 @@ export default function CreditNotesPage() {
           <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl ${card}`}>
             <div className="flex items-center justify-between p-5 border-b border-gray-700/30">
               <h2 className="text-lg font-semibold">Issue Credit Note</h2>
-              <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg hover:bg-gray-700/30"><X size={18} /></button>
+              <button onClick={() => { setShowCreate(false); setCustomerQuery(""); setCustomerResults([]); setInvoiceNumber(""); setInvoiceError(null); }} className="p-1 rounded-lg hover:bg-gray-700/30"><X size={18} /></button>
             </div>
             <form onSubmit={handleCreate} className="p-5 space-y-4">
               {/* Type */}
@@ -422,17 +496,40 @@ export default function CreditNotesPage() {
 
               {/* Party + Reason */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="relative">
                   <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                    {form.type === "CUSTOMER" ? "Customer Name *" : "Supplier Name *"}
+                    {form.type === "CUSTOMER" ? "Customer *" : "Supplier Name *"}
                   </label>
-                  <input
-                    required
-                    value={(form as any).partyName ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, partyName: e.target.value } as any))}
-                    placeholder={form.type === "CUSTOMER" ? "Customer name" : "Supplier name"}
-                    className={input}
-                  />
+                  <div className="relative">
+                    <input
+                      required
+                      value={customerQuery}
+                      onChange={(e) => handleCustomerQuery(e.target.value)}
+                      placeholder={form.type === "CUSTOMER" ? "Search customer…" : "Supplier name"}
+                      className={input}
+                      autoComplete="off"
+                    />
+                    {customerSearching && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <div className="w-3 h-3 border border-teal-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  {customerResults.length > 0 && (
+                    <div className={`absolute z-10 mt-1 w-full rounded-xl border shadow-lg overflow-hidden ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                      {customerResults.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => selectCustomer(c)}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-teal-500/10 transition-colors ${isDark ? "text-white" : "text-gray-900"}`}
+                        >
+                          <div className="font-medium">{c.name}</div>
+                          {c.phone && <div className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{c.phone}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Reason *</label>
@@ -452,18 +549,29 @@ export default function CreditNotesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                    {form.type === "CUSTOMER" ? "Invoice ID (optional)" : "Purchase ID (optional)"}
+                    {form.type === "CUSTOMER" ? "Invoice Number (auto-fill items)" : "Purchase ID (optional)"}
                   </label>
-                  <input
-                    value={form.type === "CUSTOMER" ? (form.linkedInvoiceId ?? "") : (form.linkedPurchaseId ?? "")}
-                    onChange={(e) => setForm((f) =>
-                      form.type === "CUSTOMER"
-                        ? { ...f, linkedInvoiceId: e.target.value || undefined }
-                        : { ...f, linkedPurchaseId: e.target.value || undefined }
+                  <div className="relative">
+                    <input
+                      value={form.type === "CUSTOMER" ? invoiceNumber : (form.linkedPurchaseId ?? "")}
+                      onChange={(e) =>
+                        form.type === "CUSTOMER"
+                          ? handleInvoiceNumberChange(e.target.value)
+                          : setForm((f) => ({ ...f, linkedPurchaseId: e.target.value || undefined }))
+                      }
+                      placeholder={form.type === "CUSTOMER" ? "e.g. MB-S-25-001" : "Purchase ID"}
+                      className={input}
+                    />
+                    {invoiceLooking && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <div className="w-3 h-3 border border-teal-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
                     )}
-                    placeholder={form.type === "CUSTOMER" ? "Invoice ID" : "Purchase ID"}
-                    className={input}
-                  />
+                  </div>
+                  {invoiceError && <p className="text-xs text-red-400 mt-1">{invoiceError}</p>}
+                  {form.linkedInvoiceId && !invoiceError && (
+                    <p className="text-xs text-teal-500 mt-1">✓ Invoice found — items pre-filled</p>
+                  )}
                 </div>
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Notes</label>
