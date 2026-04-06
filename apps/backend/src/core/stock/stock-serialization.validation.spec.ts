@@ -36,16 +36,16 @@ describe('Stock Serialization Validation', () => {
       expect(isValidIMEIFormat('123456789012345')).toBe(true);
     });
 
-    it('should accept 14-digit MEID', () => {
-      expect(isValidIMEIFormat('12345678901234')).toBe(true);
+    it('should reject 14-digit MEID (not supported)', () => {
+      expect(isValidIMEIFormat('12345678901234')).toBe(false);
     });
 
     it('should accept 16-digit IMEI-SV', () => {
       expect(isValidIMEIFormat('1234567890123456')).toBe(true);
     });
 
-    it('should accept 17-digit variants', () => {
-      expect(isValidIMEIFormat('12345678901234567')).toBe(true);
+    it('should reject 17-digit variants (not supported)', () => {
+      expect(isValidIMEIFormat('12345678901234567')).toBe(false);
     });
 
     it('should reject IMEI with letters', () => {

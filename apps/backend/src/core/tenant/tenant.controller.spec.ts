@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
 import { TenantStatusGuard } from './guards/tenant-status.guard';
 import { JwtService } from '@nestjs/jwt';
+import { PermissionService } from '../permissions/permissions.service';
+import { CacheService } from '../cache/cache.service';
 
 describe('TenantController', () => {
   let controller: TenantController;
@@ -50,6 +52,14 @@ describe('TenantController', () => {
           useValue: {
             verify: jest.fn(),
           },
+        },
+        {
+          provide: PermissionService,
+          useValue: { hasPermission: jest.fn().mockResolvedValue(true) },
+        },
+        {
+          provide: CacheService,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
         },
       ],
     }).compile();

@@ -6,6 +6,9 @@ import { SubscriptionsService } from '../billing/subscriptions/subscriptions.ser
 import { JwtService } from '@nestjs/jwt';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { EmailService } from '../../common/email/email.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PartnersService } from '../../modules/partners/partners.service';
+import { DocumentNumberService } from '../../common/services/document-number.service';
 
 describe('TenantService', () => {
   let service: TenantService;
@@ -43,6 +46,18 @@ describe('TenantService', () => {
         {
           provide: EmailService,
           useValue: { sendEmail: jest.fn() },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: { emit: jest.fn() },
+        },
+        {
+          provide: PartnersService,
+          useValue: { findByReferralCode: jest.fn() },
+        },
+        {
+          provide: DocumentNumberService,
+          useValue: { initializeShopDocumentSettings: jest.fn() },
         },
       ],
     }).compile();

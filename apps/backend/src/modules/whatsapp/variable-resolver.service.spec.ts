@@ -4,6 +4,7 @@ import {
   VariableResolutionContext,
 } from './variable-resolver.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
 import { WhatsAppModule } from './variable-registry';
 
 describe('WhatsAppVariableResolver Dynamic Links', () => {
@@ -20,6 +21,12 @@ describe('WhatsAppVariableResolver Dynamic Links', () => {
             jobCard: {
               findUnique: jest.fn(),
             },
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn().mockReturnValue('https://test.mobibix.in'),
           },
         },
       ],

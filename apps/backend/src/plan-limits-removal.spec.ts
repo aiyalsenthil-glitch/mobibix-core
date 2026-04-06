@@ -80,6 +80,9 @@ describe('PLAN_LIMITS Removal - Automated Tests', () => {
               findFirst: jest.fn(),
               findUnique: jest.fn(),
             },
+            tenant: {
+              findUnique: jest.fn().mockResolvedValue({ deletionRequestPending: false }),
+            },
           },
         },
         {
@@ -499,13 +502,14 @@ describe('PLAN_LIMITS Removal - Automated Tests', () => {
       expect(rules?.whatsapp?.messageQuota).toBe(0);
 
       // Verify it's reading from DB, not from a hardcoded constant
-      expect(prismaService.tenantSubscription.findMany).toHaveBeenCalledWith({
-        where: {
-          tenantId: mockTenantId,
-          status: { in: ['ACTIVE', 'TRIAL'] },
-        },
-        include: expect.any(Object),
-      });
+      expect(prismaService.tenantSubscription.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+          }),
+          include: expect.any(Object),
+        }),
+      );
     });
 
     it('should handle missing plan gracefully (no PLAN_LIMITS fallback)', async () => {

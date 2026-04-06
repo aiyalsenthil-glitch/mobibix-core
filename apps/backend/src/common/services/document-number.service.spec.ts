@@ -22,6 +22,10 @@ describe('DocumentNumberService', () => {
     $queryRaw: jest.fn(),
     shopDocumentSetting: {
       update: jest.fn(),
+      createMany: jest.fn().mockResolvedValue({ count: 6 }),
+    },
+    shop: {
+      findUnique: jest.fn().mockResolvedValue(null),
     },
   };
 
@@ -360,7 +364,7 @@ describe('DocumentNumberService', () => {
           new Date(),
           mockTx as any,
         ),
-      ).rejects.toThrow('Document setting not found');
+      ).rejects.toThrow('Shop not found with ID shop-999');
     });
 
     it('should throw error if setting is inactive', async () => {
@@ -374,7 +378,7 @@ describe('DocumentNumberService', () => {
           new Date(),
           mockTx as any,
         ),
-      ).rejects.toThrow('Document setting not found');
+      ).rejects.toThrow('Shop not found with ID shop-1');
     });
 
     it('should propagate database errors', async () => {

@@ -19,7 +19,7 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     tenantId: mockTenantId,
     shopId: mockShopId,
     invoiceNumber: 'INV-001',
-    amount: 10000,
+    amount: 1000000,
     paidAmount: 0,
     status: InvoiceStatus.UNPAID,
     invoiceDate: new Date('2024-12-01'),
@@ -31,10 +31,10 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     notes: null,
     discountAmount: 0,
     taxAmount: 0,
-    grandTotal: 10000,
-    subTotal: 10000,
+    grandTotal: 1000000,
+    subTotal: 1000000,
     isTaxInclusive: false,
-    balance: 10000,
+    balance: 1000000,
   };
 
   beforeEach(async () => {
@@ -211,7 +211,7 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     it('should transition invoice from PARTIALLY_PAID to PAID', async () => {
       const partialInvoice = {
         ...mockInvoice,
-        paidAmount: 5000,
+        paidAmount: 500000,
         status: InvoiceStatus.PARTIALLY_PAID,
       };
 

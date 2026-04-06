@@ -143,8 +143,11 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)sx?$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "[/\\\\]node_modules[/\\\\](?!@react-email)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

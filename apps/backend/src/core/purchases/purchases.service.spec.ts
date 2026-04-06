@@ -33,7 +33,7 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
     sgst: 900,
     igst: 0,
     totalGst: 1800,
-    invoiceDate: new Date('2025-08-20'),
+    invoiceDate: new Date(Date.now() - 30 * 86400000), // 30 days ago (within ITC window)
     dueDate: null,
     isLegacyGstApproximation: false,
     outstanding: 10000,
@@ -146,6 +146,9 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(mockPurchase);
+      jest
+        .spyOn(prisma.purchaseItem, 'findMany')
+        .mockResolvedValueOnce(mockItems as any);
 
       // Mock transaction
       jest
@@ -196,7 +199,7 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
           id: 'p1',
           invoiceNumber: 'INV1',
           supplierName: 'S1',
-          grandTotal: 1000,
+          grandTotal: 100000,
           paidAmount: 0,
           dueDate: new Date(today.getTime() + 86400000), // Future (Current)
           invoiceDate: today,
@@ -205,8 +208,8 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
           id: 'p2',
           invoiceNumber: 'INV2',
           supplierName: 'S2',
-          grandTotal: 500,
-          paidAmount: 100,
+          grandTotal: 50000,
+          paidAmount: 10000,
           dueDate: new Date(today.getTime() - 10 * 86400000), // 10 days ago (1-30)
           invoiceDate: today,
         },
@@ -214,7 +217,7 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
           id: 'p3',
           invoiceNumber: 'INV3',
           supplierName: 'S3',
-          grandTotal: 2000,
+          grandTotal: 200000,
           paidAmount: 0,
           dueDate: new Date(today.getTime() - 100 * 86400000), // 100 days ago (over90)
           invoiceDate: today,

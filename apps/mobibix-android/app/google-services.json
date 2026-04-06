@@ -67,6 +67,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "927893624866-du5bbemluq5subjq492lekp9qgesh2f2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aiyal.mobibix",
+            "certificate_hash": "5046aa3c345018296b3f2da34313179ce3f26042"
+          }
+        },
+        {
+          "client_id": "927893624866-u5n9tc3ndjvlr0sr2gd9obcc2cvln7lq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aiyal.mobibix",
+            "certificate_hash": "e132f7022fbff9ce8eb3bbb66349943719e06bb3"
+          }
+        },
+        {
           "client_id": "927893624866-i6p0u1b23q3a6es9dq3giobh6kjm0fo5.apps.googleusercontent.com",
           "client_type": 3
         }
