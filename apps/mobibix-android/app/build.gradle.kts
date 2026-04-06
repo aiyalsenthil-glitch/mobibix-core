@@ -122,6 +122,9 @@ dependencies {
     implementation(platform(libs.REMOVED_AUTH_PROVIDER.bom))
     implementation(libs.REMOVED_AUTH_PROVIDER.auth)
     implementation(libs.REMOVED_AUTH_PROVIDER.crashlytics)
+
+    // reCAPTCHA Enterprise — required when Firebase "Email enumeration protection" is enabled
+    implementation("com.google.android.recaptcha:recaptcha:18.4.0")
     
     // Credential Manager
     implementation(libs.credentials)

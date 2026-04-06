@@ -43,7 +43,7 @@ function StaffManagementContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { authUser: user } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   const canManageStaff = user?.role && ["owner", "admin", "manager"].includes(user.role.toLowerCase());

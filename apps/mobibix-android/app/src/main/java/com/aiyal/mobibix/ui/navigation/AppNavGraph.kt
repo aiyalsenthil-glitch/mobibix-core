@@ -82,6 +82,13 @@ fun AppNavGraph(
     val staffApi = staffEntryPoint.staffApi()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
+    val appState by produceState<AppState?>(initialValue = null, activeShopId) {
+        value = try { appStateResolver.resolve() } catch (e: Exception) {
+            android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
+            null
+        }
+    }
 
     // Global 401 handler
     LaunchedEffect(Unit) {
@@ -160,14 +167,6 @@ fun AppNavGraph(
         }
 
         composable("home") {
-            val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
-            
-            val appState by produceState<AppState?>(initialValue = null, activeShopId) {
-                value = try { appStateResolver.resolve() } catch (e: Exception) {
-                    android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
-                    null
-                }
-            }
 
             // Validate shopId against actual shops to fix stale DataStore values
             LaunchedEffect(appState) {
@@ -376,14 +375,16 @@ fun AppNavGraph(
 
         // ── Roles & Permissions ────────────────────────────────────────────────
         composable("role_list") {
-            com.aiyal.mobibix.ui.features.roles.RoleListScreen(
-                appState = appState,
-                onNavigateBack = { navController.navigateUp() },
-                onNavigateToRoleEdit = { roleId ->
-                    if (roleId == null) navController.navigate("role_edit/new")
-                    else navController.navigate("role_edit/$roleId")
-                }
-            )
+            appState?.let { state ->
+                com.aiyal.mobibix.ui.features.roles.RoleListScreen(
+                    appState = state,
+                    onNavigateBack = { navController.navigateUp() },
+                    onNavigateToRoleEdit = { roleId ->
+                        if (roleId == null) navController.navigate("role_edit/new")
+                        else navController.navigate("role_edit/$roleId")
+                    }
+                )
+            }
         }
         composable(
             route = "role_edit/{roleId}",
@@ -391,11 +392,13 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val rawId = backStackEntry.arguments?.getString("roleId")
             val roleId = if (rawId == "new") null else rawId
-            com.aiyal.mobibix.ui.features.roles.RoleEditScreen(
-                appState = appState,
-                roleId = roleId,
-                onNavigateBack = { navController.navigateUp() }
-            )
+            appState?.let { state ->
+                com.aiyal.mobibix.ui.features.roles.RoleEditScreen(
+                    appState = state,
+                    roleId = roleId,
+                    onNavigateBack = { navController.navigateUp() }
+                )
+            }
         }
         composable("job_card_settings") {
             val activeShopId = shopContextProvider.getActiveShopId() ?: ""
