@@ -190,17 +190,19 @@ fun AppNavGraph(
             }
 
             appState?.let { state ->
-                if (state is AppState.ComingSoonBusiness) {
-                    LaunchedEffect(state) {
+                when (state) {
+                    is AppState.ComingSoonBusiness -> LaunchedEffect(state) {
                         navController.navigate("coming_soon_business") { popUpTo(0) }
                     }
-                } else if (state is AppState.TenantRequired) {
-                    LaunchedEffect(state) {
+                    is AppState.TenantRequired -> LaunchedEffect(state) {
                         navController.navigate("tenant_required") { popUpTo(0) }
                     }
-                } else {
-                    MainScreen(
-                        mainNavController = navController, 
+                    is AppState.Distributor -> LaunchedEffect(state) {
+                        // Pure distributor — no ERP — go to distributor hub
+                        navController.navigate("distributor_dashboard") { popUpTo(0) }
+                    }
+                    else -> MainScreen(
+                        mainNavController = navController,
                         appState = state,
                         shopContextProvider = shopContextProvider,
                         shopApi = shopApi
@@ -211,6 +213,17 @@ fun AppNavGraph(
 
         composable("tenant_required") {
             TenantRequiredScreen(navController = navController)
+        }
+
+        // ── Distributor Hub (pure distributor — no ERP tenant) ─────────────────
+        composable("distributor_dashboard") {
+            com.aiyal.mobibix.ui.features.distributor.DistributorDashboardScreen(
+                navController = navController,
+                onUpgradeToERP = {
+                    // Navigate to onboarding/pricing — same as TenantRequiredScreen flow
+                    navController.navigate("tenant_required") { popUpTo(0) }
+                }
+            )
         }
 
         composable("coming_soon_business") {

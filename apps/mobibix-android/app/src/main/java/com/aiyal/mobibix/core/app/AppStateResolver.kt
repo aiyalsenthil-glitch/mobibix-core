@@ -40,18 +40,31 @@ class AppStateResolver @Inject constructor(
         }
 
         return when {
+            // Pure distributor — no ERP tenant
+            me.isDistributor == true && me.tenantId.isNullOrBlank() ->
+                AppState.Distributor(
+                    userId = me.id,
+                    email = "",  // me() doesn't return email; acceptable for now
+                    name = null,
+                    hasActiveERP = me.hasActiveERP == true
+                )
+            // Distributor who upgraded to ERP (has tenantId)
             me.tenantId.isNullOrBlank() -> AppState.TenantRequired
             me.isComingSoon == true -> AppState.ComingSoonBusiness
             me.isSystemOwner == true -> AppState.Owner(
                 role = me.role,
                 isSystemOwner = true,
-                permissions = me.permissions ?: emptyList()
+                permissions = me.permissions ?: emptyList(),
+                isDistributor = me.isDistributor == true,
+                hasActiveERP = me.hasActiveERP == true
             )
             else -> AppState.Staff(
-                shopId = me.tenantId, // Using tenantId for shopId temporarily, though this may change with multi-branch logic
+                shopId = me.tenantId,
                 role = me.role,
                 isSystemOwner = false,
-                permissions = me.permissions ?: emptyList()
+                permissions = me.permissions ?: emptyList(),
+                isDistributor = me.isDistributor == true,
+                hasActiveERP = me.hasActiveERP == true
             )
         }
     }

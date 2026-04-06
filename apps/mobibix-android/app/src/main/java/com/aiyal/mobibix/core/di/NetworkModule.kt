@@ -29,10 +29,16 @@ import com.aiyal.mobibix.data.network.TenantApi
 import com.aiyal.mobibix.data.network.TokenProvider
 import com.aiyal.mobibix.data.network.UserApi
 import com.aiyal.mobibix.data.network.VoucherApi
+import com.aiyal.mobibix.core.auth.PartnerTokenStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Qualifier
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PartnerRetrofit
 import com.google.gson.GsonBuilder
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
@@ -272,8 +278,40 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun providePartnerApi(retrofit: Retrofit): PartnerApi =
-        retrofit.create(PartnerApi::class.java)
+    @PartnerRetrofit
+    fun providePartnerOkHttpClient(): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                    else HttpLoggingInterceptor.Level.NONE
+        }
+        return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(logging)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @PartnerRetrofit
+    fun providePartnerRetrofit(@PartnerRetrofit okHttpClient: OkHttpClient): Retrofit {
+        val gson = GsonBuilder()
+            .registerTypeAdapter(String::class.java, NullSafeStringAdapter)
+            .create()
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.API_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun providePartnerApi(
+        @PartnerRetrofit retrofit: Retrofit,
+        partnerTokenStore: PartnerTokenStore
+    ): PartnerApi = PartnerApiFactory.create(retrofit, partnerTokenStore)
 
     @Provides
     @Singleton
@@ -304,4 +342,24 @@ object NetworkModule {
     @Singleton
     fun provideAppVersionApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.AppVersionApi =
         retrofit.create(com.aiyal.mobibix.data.network.AppVersionApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideEWayBillApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.EWayBillApi =
+        retrofit.create(com.aiyal.mobibix.data.network.EWayBillApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCommissionApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.CommissionApi =
+        retrofit.create(com.aiyal.mobibix.data.network.CommissionApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDemandForecastApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.DemandForecastApi =
+        retrofit.create(com.aiyal.mobibix.data.network.DemandForecastApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDistributorApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.DistributorApi =
+        retrofit.create(com.aiyal.mobibix.data.network.DistributorApi::class.java)
 }

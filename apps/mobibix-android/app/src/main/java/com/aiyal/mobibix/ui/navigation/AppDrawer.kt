@@ -178,8 +178,10 @@ fun AppDrawerContent(
         else -> false
     }
 
+    val isDistributor = appState.isDistributorUser
+
     val sections = remember(appState) {
-        buildDrawerSections().mapNotNull { section ->
+        val base = buildDrawerSections().mapNotNull { section ->
             val visibleItems = section.items.filter { item ->
                 val permOk = item.requiredPermission == null || appState.hasPermission(item.requiredPermission)
                 val roleOk = item.allowedRoles == null || isSystemOwner ||
@@ -187,7 +189,18 @@ fun AppDrawerContent(
                 permOk && roleOk
             }
             if (visibleItems.isEmpty()) null else section.copy(items = visibleItems)
+        }.toMutableList()
+
+        // Add distributor section for users who are BOTH distributor+ERP
+        if (isDistributor && (appState is AppState.Owner || appState is AppState.Staff)) {
+            base.add(0, DrawerSection(
+                title = "Distributor Network",
+                items = listOf(
+                    DrawerItem("Distributor Hub", Icons.Default.Hub, "distributor_dashboard", null)
+                )
+            ))
         }
+        base
     }
 
     // Drawer background: glass-style gradient

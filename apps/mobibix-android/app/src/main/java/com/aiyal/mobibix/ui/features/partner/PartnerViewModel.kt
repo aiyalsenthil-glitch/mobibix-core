@@ -2,6 +2,7 @@ package com.aiyal.mobibix.ui.features.partner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.auth.PartnerTokenStore
 import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,7 +29,8 @@ data class PartnerDashboardState(
 
 @HiltViewModel
 class PartnerViewModel @Inject constructor(
-    private val partnerApi: PartnerApi
+    private val partnerApi: PartnerApi,
+    private val partnerTokenStore: PartnerTokenStore
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow(PartnerAuthState())
@@ -37,11 +39,20 @@ class PartnerViewModel @Inject constructor(
     private val _dashboardState = MutableStateFlow(PartnerDashboardState())
     val dashboardState = _dashboardState.asStateFlow()
 
+    init {
+        // Auto-restore session if token is already stored
+        val stored = partnerTokenStore.getToken()
+        if (stored != null) {
+            _authState.value = PartnerAuthState(token = stored)
+        }
+    }
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = PartnerAuthState(loading = true)
             try {
                 val resp = partnerApi.login(PartnerLoginRequest(email, password))
+                partnerTokenStore.saveToken(resp.token)   // Persist token
                 _authState.value = PartnerAuthState(loading = false, token = resp.token, profile = resp.partner)
             } catch (e: Exception) {
                 _authState.value = PartnerAuthState(loading = false, error = MobiError.extractMessage(e))
@@ -68,6 +79,7 @@ class PartnerViewModel @Inject constructor(
     }
 
     fun logout() {
+        partnerTokenStore.clear()
         _authState.value = PartnerAuthState()
         _dashboardState.value = PartnerDashboardState()
     }

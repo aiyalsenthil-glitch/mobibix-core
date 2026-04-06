@@ -6,12 +6,14 @@ import retrofit2.http.POST
 
 data class UserMeResponse(
     val id: String,
-    val role: String,      // Dynamic role name
-    val tenantId: String?,  // null or uuid
+    val role: String,
+    val tenantId: String?,
     val isSystemOwner: Boolean? = false,
     val permissions: List<String>? = emptyList(),
-    val inviteToken: String?, // Present if user is invited but has not accepted
-    val isComingSoon: Boolean? = false
+    val inviteToken: String?,
+    val isComingSoon: Boolean? = false,
+    val isDistributor: Boolean? = false,
+    val hasActiveERP: Boolean? = false
 )
 
 data class FcmTokenRequest(val token: String)

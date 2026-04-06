@@ -13,33 +13,50 @@ object UserRole {
 sealed class AppState {
     object TenantRequired : AppState()
     object ComingSoonBusiness : AppState()
+
     data class Owner(
         val role: String,
         val isSystemOwner: Boolean,
-        val permissions: List<String>
+        val permissions: List<String>,
+        val isDistributor: Boolean = false,
+        val hasActiveERP: Boolean = true
     ) : AppState()
-    
+
     data class Staff(
         val shopId: String,
         val role: String,
         val isSystemOwner: Boolean = false,
-        val permissions: List<String>
+        val permissions: List<String>,
+        val isDistributor: Boolean = false,
+        val hasActiveERP: Boolean = true
     ) : AppState()
 
-    fun toRoute(): String {
-        return when (this) {
-            is TenantRequired -> "tenant_required"
-            is ComingSoonBusiness -> "coming_soon_business"
-            is Owner -> "owner_dashboard"
-            is Staff -> "staff_dashboard/$shopId"
-        }
+    /** Pure distributor — no ERP tenant, just the wholesale/referral network */
+    data class Distributor(
+        val userId: String,
+        val email: String,
+        val name: String?,
+        val hasActiveERP: Boolean = false    // false until they upgrade
+    ) : AppState()
+
+    fun toRoute(): String = when (this) {
+        is TenantRequired -> "tenant_required"
+        is ComingSoonBusiness -> "coming_soon_business"
+        is Owner -> "owner_dashboard"
+        is Staff -> "staff_dashboard/$shopId"
+        is Distributor -> "distributor_dashboard"
     }
 
-    fun hasPermission(action: String): Boolean {
-        return when (this) {
-            is Owner -> isSystemOwner || permissions.contains(action)
-            is Staff -> isSystemOwner || permissions.contains(action)
-            else -> false
-        }
+    fun hasPermission(action: String): Boolean = when (this) {
+        is Owner -> isSystemOwner || permissions.contains(action)
+        is Staff -> isSystemOwner || permissions.contains(action)
+        else -> false
+    }
+
+    val isDistributorUser: Boolean get() = when (this) {
+        is Owner -> isDistributor
+        is Staff -> isDistributor
+        is Distributor -> true
+        else -> false
     }
 }
