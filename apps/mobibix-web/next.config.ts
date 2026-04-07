@@ -57,7 +57,8 @@ https://*.facebook.com
 https://*.REMOVED_PAYMENT_INFRA.com
 https://lumberjack.REMOVED_PAYMENT_INFRA.com
 https://googleads.g.doubleclick.net
-https://stats.g.doubleclick.net;
+https://stats.g.doubleclick.net
+https://*.adtrafficquality.google;
 img-src 'self' data: https://*.googleusercontent.com https://www.googletagmanager.com https://grainy-gradients.vercel.app https://www.facebook.com https://*.facebook.com https://*.googlesyndication.com https://ad.doubleclick.net https://googleads.g.doubleclick.net;
 frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com https://www.facebook.com https://*.facebook.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://tpc.googlesyndication.com;
 frame-ancestors 'none';
