@@ -29,12 +29,13 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
       <Header />
       
       {/* Background Ambience */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none text-center text-center">
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none text-center">
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="container mx-auto max-w-5xl pt-44 pb-32 px-6 relative z-10">
+      <div className="container mx-auto max-w-5xl flex flex-col items-center justify-start pb-32 px-6 relative z-10">
+        <div className="h-28 md:h-44 w-full shrink-0" />
         <div className="text-center mb-20">
             <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter uppercase leading-none italic">
                 Retail <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Growth</span> Hub.

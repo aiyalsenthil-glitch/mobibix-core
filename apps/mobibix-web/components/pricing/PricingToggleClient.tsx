@@ -24,13 +24,14 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
       </div>
 
       {/* Hero & Plans - Compressed for Single Viewport */}
-      <section className="relative pt-32 pb-10 z-10 flex flex-col items-center justify-center min-h-[90vh]">
+      <section className="relative z-10 flex flex-col items-center justify-start min-h-[90vh]">
+        <div className="h-28 md:h-44 w-full shrink-0" />
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="container mx-auto max-w-4xl text-center mb-8"
         >
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 leading-none uppercase italic">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter mb-4 leading-none uppercase italic">
             Simple Tools. <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Powerful Growth.</span>
           </h1>
           
@@ -40,7 +41,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
               <button
                 key={cycle}
                 onClick={() => setBillingCycle(cycle)}
-                className={`relative px-8 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-500 z-10 ${
+                className={`relative px-5 md:px-8 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-500 z-10 ${
                   billingCycle === cycle
                     ? "text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -126,7 +127,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1, duration: 0.6 }}
                     viewport={{ once: true }}
-                    className={`group relative rounded-[2.5rem] border p-8 flex flex-col transition-all duration-700 hover:shadow-2xl ${
+                    className={`group relative rounded-3xl md:rounded-[2.5rem] border p-6 md:p-8 flex flex-col transition-all duration-700 hover:shadow-2xl ${
                       isPro
                         ? "border-primary/40 bg-card/60 shadow-primary/5 scale-[1.02] z-20 backdrop-blur-3xl"
                         : "border-border bg-card/40 hover:bg-card/60 backdrop-blur-3xl"

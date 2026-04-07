@@ -122,7 +122,8 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         style={{ transform: `translateY(-${activeSection * 100}svh)` }}
       >
         {/* ── Section 1: Hero ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center relative pt-20 px-5 shrink-0 overflow-hidden">
+        <div className="h-svh w-screen flex flex-col items-center justify-start relative px-5 shrink-0 overflow-hidden">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             initial={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
             animate={activeSection === 0
@@ -141,7 +142,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               </span>
             </div>
 
-            <h2 className="text-4xl sm:text-6xl md:text-[8rem] font-black mb-6 md:mb-10 tracking-tighter leading-[0.85] md:leading-[0.8] text-foreground uppercase italic text-glow-indigo">
+            <h2 className="text-3xl sm:text-5xl md:text-[8rem] font-black mb-6 md:mb-10 tracking-tighter leading-[0.85] md:leading-[0.8] text-foreground uppercase italic text-glow-indigo">
               All-in-One <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-blue-500 to-indigo-500 drop-shadow-2xl">
                 POS for Mobile Shops.
@@ -174,15 +175,16 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 2: Problem ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500 overflow-y-auto">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-            className="w-full max-w-5xl text-center z-10"
+            className="w-full max-w-5xl text-center z-10 flex-1"
           >
             <span className="text-red-500 text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] mb-4 block">
               The Reality
             </span>
-            <h2 className="text-4xl sm:text-6xl md:text-[7rem] font-black text-foreground mb-8 md:mb-12 tracking-tighter leading-[0.85] uppercase italic">
+            <h2 className="text-3xl sm:text-5xl md:text-[7rem] font-black text-foreground mb-8 md:mb-12 tracking-tighter leading-[0.85] uppercase italic">
               Running a mobile <br />shop is <span className="text-red-500">messy.</span>
             </h2>
             
@@ -208,21 +210,22 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 3: Features (Solution) ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-4 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500 overflow-y-auto">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
-            className="w-full max-w-7xl relative z-10"
+            className="w-full max-w-7xl relative z-10 flex-1"
           >
             <div className="mb-8 md:mb-16 lg:mb-20 text-center">
               <span className="text-primary text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] mb-3 block">
                 The Solution
               </span>
-              <h2 className="text-3xl sm:text-5xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.85] md:leading-[0.8]">
+              <h2 className="text-2xl sm:text-4xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.85] md:leading-[0.8]">
                 Everything your <br className="hidden md:block" />shop needs.
               </h2>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none lg:grid lg:grid-cols-5 lg:gap-6 lg:overflow-visible lg:pb-0">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 pb-10 lg:pb-0">
               {[
                 { title: "IMEI TRACKING", desc: "Track every device serial-perfect.", icon: "/assets/landing/inventory-icon.png" },
                 { title: "REPAIR HUB", desc: "Manage jobs, status & delivery.", icon: "/assets/landing/repairs-icon.png" },
@@ -236,13 +239,13 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                     ? { opacity: 1, y: 0, scale: 1 }
                     : { opacity: 0, y: 30, scale: 0.9 }}
                   transition={{ delay: i * 0.1 }}
-                  className="shrink-0 snap-center w-52 sm:w-64 lg:w-auto p-6 md:p-10 rounded-4xl bg-card border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center shadow-sm"
+                  className={`${i === 4 ? "col-span-2 lg:col-span-1" : ""} w-full p-4 sm:p-6 md:p-10 rounded-2xl sm:rounded-3xl md:rounded-4xl bg-card border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center shadow-sm flex flex-col items-center justify-center`}
                 >
-                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 md:mb-8 mx-auto border border-primary/20 p-3 md:p-4 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-20 md:h-20 rounded-xl sm:rounded-2xl bg-primary/10 flex items-center justify-center mb-3 sm:mb-4 md:mb-8 mx-auto border border-primary/20 p-2 sm:p-3 md:p-4 group-hover:scale-110 transition-transform">
                     <NextImage src={feat.icon} alt={feat.title} width={80} height={80} className="object-contain" />
                   </div>
-                  <h3 className="text-sm md:text-lg font-black uppercase tracking-tight mb-2 leading-none">{feat.title}</h3>
-                  <p className="text-muted-foreground font-bold text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 leading-relaxed">{feat.desc}</p>
+                  <h3 className="text-[10px] sm:text-xs md:text-lg font-black uppercase tracking-tight mb-1 sm:mb-2 leading-none">{feat.title}</h3>
+                  <p className="text-muted-foreground font-bold text-[8px] sm:text-[10px] uppercase tracking-widest opacity-60 leading-tight sm:leading-relaxed">{feat.desc}</p>
                 </motion.div>
               ))}
             </div>
@@ -250,18 +253,18 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 4: Showcase ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background transition-colors duration-500 overflow-y-auto">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background transition-colors duration-500 overflow-y-auto scrollbar-none">
           <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 3 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-            className="w-full max-w-7xl"
+            className="w-full max-w-7xl flex-1"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 lg:gap-32 items-center">
               <div>
                 <span className="text-primary text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] mb-4 md:mb-6 block">
                   Built for Reality
                 </span>
-                <h2 className="text-4xl sm:text-6xl md:text-[8rem] font-black text-foreground mb-8 md:mb-12 tracking-tighter leading-[0.85] md:leading-[0.8] uppercase italic">
+                <h2 className="text-3xl sm:text-5xl md:text-[8rem] font-black text-foreground mb-8 md:mb-12 tracking-tighter leading-[0.85] md:leading-[0.8] uppercase italic">
                   Visual <br />Profit.
                 </h2>
                 <div className="grid grid-cols-2 gap-6 md:gap-12">
@@ -272,7 +275,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 </div>
               </div>
 
-              <div className="relative p-6 md:p-8 rounded-4xl border border-border/60 bg-muted/20 shadow-2xl">
+              <div className="relative p-5 md:p-8 rounded-3xl md:rounded-4xl border border-border/60 bg-muted/20 shadow-2xl">
                 <div className="bg-card p-6 rounded-2xl shadow-inner border border-border/20 mb-6 font-bold tracking-tight">
                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Empty State UX</p>
                    <p className="text-2xl font-black text-foreground leading-tight italic">"No sales yet. Start by adding your first customer."</p>
@@ -297,42 +300,42 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 5: Insights (Blog) ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-start px-4 md:px-6 shrink-0 bg-background relative overflow-hidden">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-4 md:px-6 shrink-0 bg-background relative overflow-hidden overflow-y-auto scrollbar-none">
           <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 4 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-            className="w-full max-w-7xl pb-10 overflow-y-auto scrollbar-none"
+            className="w-full max-w-7xl pb-10 overflow-y-auto scrollbar-none flex-1"
           >
-             <BlogSection posts={posts} />
+            <BlogSection posts={posts} />
           </motion.div>
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         </div>
 
         {/* ── Section 6: Trust ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-start shrink-0 bg-background transition-colors duration-500 overflow-y-auto">
+        <div className="h-svh w-screen flex flex-col items-center justify-start shrink-0 bg-background transition-colors duration-500 overflow-y-auto scrollbar-none">
           <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-            className="w-full flex flex-col items-center"
+            className="w-full flex flex-col items-center flex-1"
           >
             <TestimonialsSection />
           </motion.div>
         </div>
 
         {/* ── Section 7: Pricing ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500 overflow-y-auto">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500 overflow-y-auto scrollbar-none">
           <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 6 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-            className="w-full max-w-5xl z-10 pb-10"
+            className="w-full max-w-5xl z-10 pb-10 flex-1"
           >
             <div className="text-center mb-12 md:mb-20">
                <span className="text-primary text-[9px] font-black uppercase tracking-[0.4em] mb-4 block">Fair & Simple</span>
-               <h2 className="text-4xl sm:text-6xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-none">Starting at ₹ 299</h2>
+               <h2 className="text-3xl sm:text-5xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-none">Starting at ₹ 299</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-               <div className="p-10 rounded-4xl bg-card border border-border shadow-2xl text-center">
+               <div className="p-6 md:p-10 rounded-3xl md:rounded-4xl bg-card border border-border shadow-2xl text-center">
                   <h3 className="text-xl font-black uppercase mb-2">Basic</h3>
                   <p className="text-4xl font-black text-foreground mb-6">₹ 299<span className="text-xs text-muted-foreground">/mo</span></p>
                   <ul className="text-left space-y-4 mb-10 text-xs font-bold text-muted-foreground uppercase tracking-widest">
@@ -342,7 +345,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                   </ul>
                   <Link href="/auth" className="block w-full py-4 rounded-2xl bg-muted hover:bg-muted font-black uppercase tracking-widest transition-all">Start Trial</Link>
                </div>
-               <div className="p-10 rounded-4xl bg-primary text-white text-center shadow-2xl shadow-primary/20">
+               <div className="p-6 md:p-10 rounded-3xl md:rounded-4xl bg-primary text-white text-center shadow-2xl shadow-primary/20">
                   <h3 className="text-xl font-black uppercase mb-2">Pro</h3>
                   <p className="text-4xl font-black mb-6">₹ 499<span className="text-xs opacity-70">/mo</span></p>
                   <ul className="text-left space-y-4 mb-10 text-xs font-black uppercase tracking-widest">
@@ -365,7 +368,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               <span className="text-primary text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] mb-3 block">
                 Operations Mastery
               </span>
-              <h2 className="text-3xl sm:text-5xl md:text-[6rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.85] md:leading-[0.8] mb-4 md:mb-8">
+              <h2 className="text-2xl sm:text-4xl md:text-[6rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.85] md:leading-[0.8] mb-4 md:mb-8">
                 The FAQ.
               </h2>
             </div>
@@ -402,7 +405,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               : { opacity: 0, scale: 1.1, y: 50 }}
             className="flex flex-col items-center justify-center text-center relative z-10 w-full"
           >
-            <h2 className="text-4xl sm:text-6xl md:text-[9rem] lg:text-[11rem] font-black text-foreground mb-10 md:mb-16 tracking-tighter leading-[0.75] md:leading-[0.7] uppercase italic drop-shadow-2xl">
+            <h2 className="text-3xl sm:text-5xl md:text-[9rem] lg:text-[11rem] font-black text-foreground mb-10 md:mb-16 tracking-tighter leading-[0.75] md:leading-[0.7] uppercase italic drop-shadow-2xl">
               STOP <br />LEAKING.
             </h2>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5 md:gap-10 w-full">

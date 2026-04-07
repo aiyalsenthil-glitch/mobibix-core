@@ -115,8 +115,9 @@ export function FeaturesClient() {
       </div>
 
       {/* Hero */}
-      <section className="relative pt-44 pb-32 text-center z-10 overflow-hidden">
-        <div className="container mx-auto max-w-4xl">
+      <section className="relative flex flex-col items-center justify-start z-10 overflow-hidden">
+        <div className="h-28 md:h-44 w-full shrink-0" />
+        <div className="container mx-auto max-w-4xl text-center">
           <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full border border-border bg-muted/50 text-muted-foreground text-[10px] font-black uppercase tracking-[0.3em] mb-12 shadow-sm">
             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
             Core Capabilities

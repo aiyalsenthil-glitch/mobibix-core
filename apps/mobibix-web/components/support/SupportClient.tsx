@@ -17,7 +17,8 @@ export function SupportClient() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] animate-pulse" />
       </div>
 
-      <div className="container mx-auto max-w-4xl pt-44 pb-20 relative z-10">
+      <div className="container mx-auto max-w-4xl flex flex-col items-center justify-start pb-20 relative z-10">
+        <div className="h-28 md:h-44 w-full shrink-0" />
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -26,7 +27,7 @@ export function SupportClient() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-10 shadow-sm">
                 24/7 Dedicated Assistance
             </div>
-            <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter uppercase leading-none italic">How can we help?</h1>
+            <h1 className="text-4xl md:text-8xl font-black mb-6 tracking-tighter uppercase leading-none italic">How can we help?</h1>
             <p className="text-xl text-muted-foreground font-bold max-w-2xl mx-auto leading-relaxed">
                 Our team is standing by to help you modernize your retail business. From onboarding to troubleshooting, we&apos;ve got you covered.
             </p>
@@ -38,7 +39,7 @@ export function SupportClient() {
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="p-10 rounded-[3.5rem] border border-border bg-card/40 backdrop-blur-3xl hover:bg-card transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 group"
+              className="p-7 md:p-10 rounded-3xl md:rounded-[3.5rem] border border-border bg-card/40 backdrop-blur-3xl hover:bg-card transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 group"
             >
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-8 border border-primary/20 group-hover:bg-primary transition-colors duration-500 shadow-lg">
                     <svg className="w-8 h-8 text-primary group-hover:text-primary-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -58,7 +59,7 @@ export function SupportClient() {
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="p-10 rounded-[3.5rem] border border-border bg-card/40 backdrop-blur-3xl hover:bg-card transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 group"
+              className="p-7 md:p-10 rounded-3xl md:rounded-[3.5rem] border border-border bg-card/40 backdrop-blur-3xl hover:bg-card transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 group"
             >
                 <div className="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center mb-8 border border-green-500/20 group-hover:bg-green-500 transition-colors duration-500 shadow-lg">
                     <svg className="w-8 h-8 text-green-500 group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
@@ -77,7 +78,7 @@ export function SupportClient() {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="mt-24 p-12 rounded-[3.5rem] border border-border bg-muted/20 backdrop-blur-3xl text-center shadow-xl"
+          className="mt-24 p-8 md:p-12 rounded-3xl md:rounded-[3.5rem] border border-border bg-muted/20 backdrop-blur-3xl text-center shadow-xl"
         >
             <h4 className="text-xl font-black mb-4 uppercase tracking-widest text-foreground">Knowledge Base</h4>
             <p className="text-muted-foreground font-bold mb-8 max-w-lg mx-auto leading-relaxed">

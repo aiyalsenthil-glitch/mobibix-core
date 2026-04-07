@@ -12,7 +12,8 @@ export default function TermsPage() {
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500">
       <Header />
 
-      <div className="container mx-auto max-w-4xl pt-40 pb-20 px-6">
+      <div className="container mx-auto max-w-4xl flex flex-col items-center justify-start pb-20 px-6 relative z-10">
+        <div className="h-28 md:h-44 w-full shrink-0" />
         <h1 className="text-5xl font-black mb-4 tracking-tighter text-foreground">Terms & Conditions</h1>
         <p className="text-teal-500 font-bold uppercase tracking-[0.2em] text-xs mb-12">Last updated: March 3, 2026</p>
         

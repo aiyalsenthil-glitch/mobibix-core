@@ -72,7 +72,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <div className="absolute top-[40%] left-[-20%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="container mx-auto max-w-4xl pt-44 pb-32 px-6 relative z-10 w-full">
+      <div className="container mx-auto max-w-4xl flex flex-col items-center justify-start pb-32 px-6 relative z-10 w-full">
+        <div className="h-28 md:h-44 w-full shrink-0" />
         <Breadcrumbs 
           items={[
             { name: "Home", item: "https://REMOVED_DOMAIN/" },
