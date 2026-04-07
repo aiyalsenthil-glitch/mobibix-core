@@ -125,12 +125,12 @@ export default function RootLayout({
              })
           }}
         />
-        {/* Google AdSense — required in root layout for site verification */}
-        <Script
+        {/* Google AdSense — plain script tag so Google crawler finds it in static HTML */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9978470190162608"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
         <Script
           async
