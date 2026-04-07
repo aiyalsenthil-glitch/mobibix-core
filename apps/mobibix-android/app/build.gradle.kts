@@ -24,20 +24,20 @@ android {
         applicationId = "com.aiyal.mobibix"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
             "API_BASE_URL",
-            "\"${localProperties.getProperty("API_BASE_URL") ?: "https://REMOVED_ENDPOINT/"}\"" // TODO: update fallback to MobiBix prod domain when provisioned
+            "\"${localProperties.getProperty("API_BASE_URL") ?: "https://REMOVED_ENDPOINT/"}\""
         )
         buildConfigField(
             "String",
             "PUBLIC_BASE_URL",
-            "\"${localProperties.getProperty("PUBLIC_BASE_URL") ?: "https://mobibix-api.onrender.com"}\""
+            "\"${localProperties.getProperty("PUBLIC_BASE_URL") ?: "https://REMOVED_ENDPOINT/"}\""
         )
     }
 
@@ -63,8 +63,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Live key — used in production; backend also returns this key
-            buildConfigField("String", "RAZORPAY_KEY_ID", "\"rzp_live_RxqXZcZmLfgGqB\"")
+            // Razorpay key is fetched from backend at runtime — not hardcoded here.
+            // Backend returns the live key via the billing/session API.
+            buildConfigField("String", "RAZORPAY_KEY_ID", "\"\"")
         }
     }
     compileOptions {

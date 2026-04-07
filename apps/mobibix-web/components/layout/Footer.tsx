@@ -26,7 +26,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
           
           <div className="col-span-1">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Company</h4>
+            <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Company</h3>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/features" className="hover:text-primary transition-colors">Features</Link>
               <Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
@@ -38,7 +38,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="col-span-1 mt-8 md:mt-0">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Compare</h4>
+            <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Compare</h3>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/compare/repairdesk" className="hover:text-primary transition-colors">vs RepairDesk</Link>
               <Link href="/compare/repairshopr" className="hover:text-primary transition-colors">vs RepairShopr</Link>
@@ -51,7 +51,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="col-span-1 mt-8 md:mt-0">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Regions</h4>
+            <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Regions</h3>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/regions/india" className="hover:text-primary transition-colors">India</Link>
               <Link href="/regions/uae" className="hover:text-primary transition-colors">UAE</Link>
@@ -62,7 +62,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="col-span-1 mt-8 md:mt-0">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Cities</h4>
+            <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Cities</h3>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/locations/mumbai" className="hover:text-primary transition-colors">Mumbai</Link>
               <Link href="/locations/delhi" className="hover:text-primary transition-colors">Delhi</Link>
@@ -76,7 +76,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="col-span-1 mt-8 md:mt-0">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Legal</h4>
+            <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Legal</h3>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link>

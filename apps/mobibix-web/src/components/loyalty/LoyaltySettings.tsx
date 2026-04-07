@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { LoyaltyConfig, updateLoyaltyConfig } from "@/services/loyalty.api";
 import { 
   Card, 
@@ -28,6 +28,7 @@ interface LoyaltySettingsProps {
 }
 
 export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
+  const baseId = useId();
   const [config, setConfig] = useState<LoyaltyConfig | null>(initialConfig);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -142,10 +143,10 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="earnAmount">Spend Amount (₹)</Label>
+              <Label htmlFor={`${baseId}-earnAmount`}>Spend Amount (₹)</Label>
               <div className="relative">
                 <Input
-                  id="earnAmount"
+                  id={`${baseId}-earnAmount`}
                   type="number"
                   value={config.earnAmountPerPoint / 100}
                   onChange={(e) => handleChange('earnAmountPerPoint', (parseInt(e.target.value) * 100).toString())}
@@ -156,9 +157,9 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
               <p className="text-[10px] text-muted-foreground italic">Customer spends this amount to earn units.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="earnPoints">Points Awarded</Label>
+              <Label htmlFor={`${baseId}-earnPoints`}>Points Awarded</Label>
               <Input
-                id="earnPoints"
+                id={`${baseId}-earnPoints`}
                 type="number"
                 value={config.pointsPerEarnUnit}
                 onChange={(e) => handleChange('pointsPerEarnUnit', e.target.value)}
@@ -166,10 +167,10 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
               <p className="text-[10px] text-muted-foreground italic">Number of points awarded per unit spent.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="minInvoice">Min Invoice Value (₹)</Label>
+              <Label htmlFor={`${baseId}-minInvoice`}>Min Invoice Value (₹)</Label>
               <div className="relative">
                 <Input
-                  id="minInvoice"
+                  id={`${baseId}-minInvoice`}
                   type="number"
                   value={config.minInvoiceForEarn ? config.minInvoiceForEarn / 100 : ""}
                   onChange={(e) => handleChange('minInvoiceForEarn', e.target.value === "" ? "" : (parseInt(e.target.value) * 100).toString())}
@@ -199,10 +200,10 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="pointValue">Point Value (₹)</Label>
+              <Label htmlFor={`${baseId}-pointValue`}>Point Value (₹)</Label>
               <div className="relative">
                 <Input
-                  id="pointValue"
+                  id={`${baseId}-pointValue`}
                   type="number"
                   step="0.1"
                   value={config.pointValueInRupees}
@@ -214,10 +215,10 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
               <p className="text-[10px] text-muted-foreground italic">Rupee value of a single point when redeemed.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxRedeem">Max Discount (%)</Label>
+              <Label htmlFor={`${baseId}-maxRedeem`}>Max Discount (%)</Label>
               <div className="relative">
                 <Input
-                  id="maxRedeem"
+                  id={`${baseId}-maxRedeem`}
                   type="number"
                   value={config.maxRedeemPercent}
                   onChange={(e) => handleChange('maxRedeemPercent', e.target.value)}
@@ -228,9 +229,9 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
               <p className="text-[10px] text-muted-foreground italic">Maximum percentage of bill value that can be paid via points.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expiryDays">Points Expiry (Days)</Label>
+              <Label htmlFor={`${baseId}-expiryDays`}>Points Expiry (Days)</Label>
               <Input
-                id="expiryDays"
+                id={`${baseId}-expiryDays`}
                 type="number"
                 value={config.expiryDays || ""}
                 onChange={(e) => handleChange('expiryDays', e.target.value)}

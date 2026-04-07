@@ -1,5 +1,6 @@
 "use client";
 
+import "../../app/animations.css";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import NextImage from "next/image";

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useId } from "react";
 import { 
   TrendingUp, PieChart, BarChart3, 
   Lightbulb, Calendar, RefreshCw, AlertCircle, 
@@ -25,6 +25,7 @@ function formatCurrency(paisa: number) {
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export function ExpenseIntelligenceDashboard({ shopId, selectedShopName }: { shopId: string, selectedShopName?: string }) {
+  const gradientId = useId();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ExpenseIntelligence | null>(null);
   const [error, setError] = useState("");
@@ -90,7 +91,7 @@ export function ExpenseIntelligenceDashboard({ shopId, selectedShopName }: { sho
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data.monthlyTrend}>
                 <defs>
-                  <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                   </linearGradient>
@@ -102,7 +103,7 @@ export function ExpenseIntelligenceDashboard({ shopId, selectedShopName }: { sho
                   contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '12px' }}
                   formatter={(val: any) => [formatCurrency(Number(val) || 0), 'Spent']}
                 />
-                <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} fill="url(#colorSpend)" />
+                <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} fill={`url(#${gradientId})`} />
               </AreaChart>
             </ResponsiveContainer>
          </div>

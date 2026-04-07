@@ -31,8 +31,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
@@ -945,38 +955,175 @@ private fun LoadingPlaceholder() {
     }
 }
 
+private data class ErrorInfo(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val iconTint: Color,
+    val title: String,
+    val subtitle: String,
+    val hint: String
+)
+
+private fun resolveErrorInfo(message: String): ErrorInfo {
+    val lower = message.lowercase()
+    return when {
+        lower.contains("401") || lower.contains("unauthorized") || lower.contains("unauthenticated") ->
+            ErrorInfo(
+                icon = Icons.Default.Lock,
+                iconTint = Color(0xFFEF4444),
+                title = "Session Expired",
+                subtitle = "Your login session has ended. Please sign in again to continue.",
+                hint = "Tap below to go back to the login screen."
+            )
+        lower.contains("403") || lower.contains("forbidden") ->
+            ErrorInfo(
+                icon = Icons.Default.Block,
+                iconTint = Color(0xFFF59E0B),
+                title = "Access Denied",
+                subtitle = "You don't have permission to access this. Contact your admin if you think this is a mistake.",
+                hint = "Your account role may not include this feature."
+            )
+        lower.contains("404") || lower.contains("not found") ->
+            ErrorInfo(
+                icon = Icons.Default.SearchOff,
+                iconTint = Color(0xFF8B5CF6),
+                title = "Not Found",
+                subtitle = "The requested resource doesn't exist or may have been deleted.",
+                hint = "Please retry or contact support if this keeps happening."
+            )
+        lower.contains("500") || lower.contains("502") || lower.contains("503") || lower.contains("server") ->
+            ErrorInfo(
+                icon = Icons.Default.CloudOff,
+                iconTint = Color(0xFFEF4444),
+                title = "Server Unavailable",
+                subtitle = "Our servers are temporarily down for maintenance. We're working on it!",
+                hint = "Please wait a moment and try again."
+            )
+        lower.contains("timeout") || lower.contains("timed out") ->
+            ErrorInfo(
+                icon = Icons.Default.HourglassEmpty,
+                iconTint = Color(0xFFF59E0B),
+                title = "Request Timed Out",
+                subtitle = "The server took too long to respond. This may be a temporary issue.",
+                hint = "Check your internet connection and try again."
+            )
+        lower.contains("no internet") || lower.contains("network") || lower.contains("unreachable") || lower.contains("unable to resolve") ->
+            ErrorInfo(
+                icon = Icons.Default.WifiOff,
+                iconTint = Color(0xFF6B7280),
+                title = "No Internet Connection",
+                subtitle = "It looks like you're offline. Please check your Wi-Fi or mobile data.",
+                hint = "Reconnect and tap Retry."
+            )
+        else ->
+            ErrorInfo(
+                icon = Icons.Default.CloudOff,
+                iconTint = Color(0xFF6B7280),
+                title = "Something Went Wrong",
+                subtitle = "We couldn't connect to MobiBix right now. This is usually a temporary issue.",
+                hint = "Please try again in a moment."
+            )
+    }
+}
+
 @Composable
 private fun ErrorRecoveryScreen(message: String, onRetry: () -> Unit) {
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val info = resolveErrorInfo(message)
+
     Box(
-        modifier = Modifier.fillMaxSize().background(Color.White).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (isDark) Color(0xFF0F0F1A) else Color(0xFFF8FAFC)),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.CloudOff,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(Modifier.height(24.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+        ) {
+            // Icon bubble
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .background(
+                        info.iconTint.copy(alpha = 0.10f),
+                        androidx.compose.foundation.shape.CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .background(
+                            info.iconTint.copy(alpha = 0.15f),
+                            androidx.compose.foundation.shape.CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        info.icon,
+                        contentDescription = null,
+                        tint = info.iconTint,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(28.dp))
+
             Text(
-                "Connection Error",
+                info.title,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = if (isDark) Color.White else Color(0xFF111827),
+                textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(8.dp))
+
+            Spacer(Modifier.height(10.dp))
+
             Text(
-                message,
+                info.subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isDark) Color(0xAAFFFFFF) else Color(0xFF6B7280),
+                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
             )
-            Spacer(Modifier.height(32.dp))
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                info.hint,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = if (isDark) Color(0x66FFFFFF) else Color(0xFF9CA3AF)
+            )
+
+            Spacer(Modifier.height(36.dp))
+
             Button(
                 onClick = onRetry,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
             ) {
-                Text("Retry Connection", fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Try Again", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Show raw code subtly for debugging reference (not alarming)
+            if (message.isNotBlank()) {
+                Text(
+                    "Error code: $message",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isDark) Color(0x33FFFFFF) else Color(0xFFD1D5DB),
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }

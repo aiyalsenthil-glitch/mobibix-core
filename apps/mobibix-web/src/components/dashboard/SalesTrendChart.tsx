@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   AreaChart,
   Area,
@@ -52,6 +53,7 @@ export function SalesTrendChart({
   currentMonthRevenue,
   lastMonthRevenue,
 }: SalesTrendChartProps) {
+  const gradientId = useId();
   // MoM calculation
   const momDelta =
     lastMonthRevenue && lastMonthRevenue > 0 && currentMonthRevenue != null
@@ -103,7 +105,7 @@ export function SalesTrendChart({
               margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                 </linearGradient>
@@ -152,7 +154,7 @@ export function SalesTrendChart({
                 name="Sales"
                 stroke="#0ea5e9"
                 strokeWidth={2.5}
-                fill="url(#salesGradient)"
+                fill={`url(#${gradientId})`}
                 dot={{ r: 3.5, fill: "#0ea5e9", strokeWidth: 0 }}
                 activeDot={{ r: 5, fill: "#0ea5e9", strokeWidth: 2, stroke: "#fff" }}
               />

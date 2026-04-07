@@ -111,9 +111,9 @@ export function TestimonialsSection() {
                   />
                 </div>
                 <div>
-                  <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground leading-none">
+                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground leading-none">
                     {t.name}
-                  </h4>
+                  </h3>
                   <p className="text-[8px] md:text-[9px] font-bold text-primary uppercase tracking-widest mt-1">
                     {t.lang}
                   </p>

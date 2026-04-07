@@ -146,6 +146,7 @@ export default function RootLayout({
             gtag('config', 'G-D8LB3XZ1XQ');
           `}
         </Script>
+        <link rel="preconnect" href="https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com" crossOrigin="anonymous" />
       </head>
       <body 
         className="antialiased bg-background text-foreground transition-colors duration-200"

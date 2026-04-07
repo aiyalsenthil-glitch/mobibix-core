@@ -6,9 +6,11 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.aiyal.mobibix.ui.navigation.AppNavGraph
 import com.aiyal.mobibix.ui.theme.MobiBixTheme
+import com.aiyal.mobibix.ui.theme.ThemeState
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -29,7 +31,8 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            MobiBixTheme {
+            val isDark = ThemeState.isDarkMode
+            MobiBixTheme(darkTheme = isDark ?: isSystemInDarkTheme()) {
                 AppNavGraph()
             }
         }
