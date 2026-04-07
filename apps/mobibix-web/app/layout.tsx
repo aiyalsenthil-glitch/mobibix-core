@@ -98,6 +98,7 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
              __html: JSON.stringify({
                "@context": "https://schema.org",
@@ -110,6 +111,7 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
              __html: JSON.stringify({
                "@context": "https://schema.org",
@@ -131,6 +133,7 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9978470190162608"
           crossOrigin="anonymous"
+          suppressHydrationWarning
         />
         <Script
           async

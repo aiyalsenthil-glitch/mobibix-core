@@ -72,6 +72,7 @@ export function Header() {
                 width={100}
                 height={32}
                 className={`h-7 md:h-8 w-auto ${isDark ? "invert brightness-200" : ""}`}
+                style={{ height: "auto" }}
               />
             </div>
             <div className="flex flex-col">
