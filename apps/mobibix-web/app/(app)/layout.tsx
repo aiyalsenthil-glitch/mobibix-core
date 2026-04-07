@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { authGuard } from "@/lib/authGuard";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import Script from "next/script";
 import { SubscriptionBanner } from "@/components/layout/SubscriptionBanner";
 import { FreeAdBanner } from "@/components/billing/FreeAdBanner";
 import { getSubscription, type SubscriptionDetails } from "@/services/tenant.api";
@@ -147,13 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-    {/* AdSense script — authenticated dashboard only, never on public/homepage */}
-    <Script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9978470190162608"
-      crossOrigin="anonymous"
-      strategy="afterInteractive"
-    />
+    {/* AdSense script is loaded in root layout for verification — no duplicate needed here */}
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
       <Sidebar
         mobileOpen={mobileMenuOpen}

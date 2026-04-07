@@ -125,9 +125,16 @@ export default function RootLayout({
              })
           }}
         />
-        <Script 
-          async 
-          src="https://www.googletagmanager.com/gtag/js?id=G-D8LB3XZ1XQ" 
+        {/* Google AdSense — required in root layout for site verification */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9978470190162608"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+        <Script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-D8LB3XZ1XQ"
           strategy="lazyOnload"
         />
         <Script id="google-analytics" strategy="lazyOnload">
