@@ -782,6 +782,7 @@ export class TenantService {
       membersLimit: rules?.maxMembers ?? null,
       daysLeft: plan.isLifetime ? -1 : daysLeft,
       isLifetime: plan.isLifetime,
+      showAds: plan.isLifetime && plan.level === 0, // FREE plan: show ads to sustain the platform
       endDate: subscription.endDate,
       billingCycle: subscription.billingCycle || 'MONTHLY',
       autoRenew: subscription.autoRenew ?? false,
