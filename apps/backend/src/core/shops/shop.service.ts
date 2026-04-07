@@ -233,6 +233,27 @@ export class ShopService {
     if (!shop) {
       throw new ForbiddenException('Shop not found');
     }
+    // Custom print layout gate — logo, header, footer, terms require CUSTOM_PRINT_LAYOUT feature
+    const wantsCustomPrint =
+      dto.logoUrl !== undefined ||
+      dto.invoiceFooter !== undefined ||
+      dto.terms !== undefined ||
+      dto.headerConfig !== undefined ||
+      dto.tagline !== undefined;
+
+    if (wantsCustomPrint) {
+      const hasFeature = await this.planRulesService.isFeatureEnabledForTenant(
+        tenantId,
+        'CUSTOM_PRINT_LAYOUT' as any,
+        ModuleType.MOBILE_SHOP,
+      );
+      if (!hasFeature) {
+        throw new ForbiddenException(
+          'Custom print layouts are available in Standard plan or higher.',
+        );
+      }
+    }
+
     // GST business rules
 
     if (dto.gstEnabled === true) {

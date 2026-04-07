@@ -184,7 +184,7 @@ export class SubscriptionsService {
     if (existingSub) {
       if (
         existingSub.status === SubscriptionStatus.ACTIVE &&
-        existingSub.endDate > new Date()
+        (!existingSub.endDate || existingSub.endDate > new Date())
       ) {
         throw new BadRequestException(
           `Active subscription already exists. Use upgrade endpoint.`,
@@ -447,13 +447,15 @@ export class SubscriptionsService {
       billingCycle: targetCycle,
     });
 
-    // 💰 CALCULATE PRORATED DELTA
-    const proratedDelta = this.calculateProratedAmount(
-      subscription.priceSnapshot || 0,
-      newPriceResponse.price,
-      subscription.startDate,
-      subscription.endDate,
-    );
+    // 💰 CALCULATE PRORATED DELTA (lifetime subs have no endDate — no proration)
+    const proratedDelta = subscription.endDate
+      ? this.calculateProratedAmount(
+          subscription.priceSnapshot || 0,
+          newPriceResponse.price,
+          subscription.startDate,
+          subscription.endDate,
+        )
+      : 0;
 
     let paymentLink: string | undefined;
 
@@ -822,7 +824,8 @@ export class SubscriptionsService {
     }
 
     // 3. co-terminus: Addon expires with the parent subscription
-    const endDate = parentSub.endDate;
+    // Lifetime subs have no endDate — addons co-terminate at far future
+    const endDate = parentSub.endDate ?? new Date('2099-12-31');
 
     this.logger.log(
       `🛒 Buying addon ${addonPlan.name} for sub ${subscriptionId}. Co-terminus expiry: ${endDate}`,
@@ -959,10 +962,10 @@ export class SubscriptionsService {
       return null;
     }
 
-    // Check if ACTIVE and not expired
+    // Check if ACTIVE and not expired (lifetime subs have no endDate)
     if (
       subscription.status === SubscriptionStatus.ACTIVE &&
-      subscription.endDate > new Date()
+      (!subscription.endDate || subscription.endDate > new Date())
     ) {
       return subscription;
     }
@@ -1167,6 +1170,7 @@ export class SubscriptionsService {
     const sub = await this.getSubscriptionByTenant(tenantId, module);
     if (!sub) return null;
 
+    if (!sub.endDate) return sub; // Lifetime plan — no extension needed
     const newEndDate = new Date(sub.endDate);
     newEndDate.setDate(newEndDate.getDate() + extraDays);
 

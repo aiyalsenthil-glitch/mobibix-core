@@ -7,6 +7,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/dashboard/'],
     },
+    // CRITICAL: Sitemap URL must match the canonical non-www domain
     sitemap: 'https://REMOVED_DOMAIN/sitemap.xml',
   };
 }

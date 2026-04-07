@@ -780,7 +780,8 @@ export class TenantService {
 
       membersUsed,
       membersLimit: rules?.maxMembers ?? null,
-      daysLeft,
+      daysLeft: plan.isLifetime ? -1 : daysLeft,
+      isLifetime: plan.isLifetime,
       endDate: subscription.endDate,
       billingCycle: subscription.billingCycle || 'MONTHLY',
       autoRenew: subscription.autoRenew ?? false,

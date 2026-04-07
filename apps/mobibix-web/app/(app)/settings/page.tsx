@@ -492,9 +492,11 @@ export default function SettingsPage() {
                         {subscription.plan}
                       </h2>
                       <p className="text-gray-500 text-sm mt-1">
-                        {subscription.autoRenew
-                          ? `Renews in ${subscription.daysLeft} days`
-                          : `Expires in ${subscription.daysLeft} days`}
+                        {subscription.daysLeft === -1
+                          ? "Free Forever — no expiry"
+                          : subscription.autoRenew
+                            ? `Renews in ${subscription.daysLeft} days`
+                            : `Expires in ${subscription.daysLeft} days`}
                       </p>
                       {subscription.billingType === "AUTOPAY" && subscription.autopayStatus === "HALTED" && (
                         <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
@@ -512,8 +514,8 @@ export default function SettingsPage() {
                       )}
                     </div>
                     
-                     {/* Auto Renew Toggle */}
-                     <div className="flex items-center gap-3 bg-gray-50 dark:bg-stone-800 px-4 py-2 rounded-lg border border-gray-100 dark:border-stone-700">
+                     {/* Auto Renew Toggle — hidden for lifetime plans */}
+                     {subscription.daysLeft !== -1 && <div className="flex items-center gap-3 bg-gray-50 dark:bg-stone-800 px-4 py-2 rounded-lg border border-gray-100 dark:border-stone-700">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto Renewal</span>
                         <button
                             onClick={handleAutoRenewToggle}
@@ -528,9 +530,9 @@ export default function SettingsPage() {
                                 }`}
                             />
                         </button>
-                     </div>
+                     </div>}
                   </div>
-                  
+
                     <div className="mt-6 pt-6 border-t border-gray-100 dark:border-stone-800 grid grid-cols-2 sm:grid-cols-4 gap-4">
                        <div>
                           <div className="text-xs text-gray-500 uppercase">Shops</div>

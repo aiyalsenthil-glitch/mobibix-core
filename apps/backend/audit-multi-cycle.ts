@@ -97,7 +97,7 @@ async function runMultiCycleTest() {
   }
 
   // Check: no duplicate endDates
-  const endDates = allSubs.map(s => s.endDate.toISOString());
+  const endDates = allSubs.map(s => s.endDate!.toISOString());
   const uniqueEndDates = new Set(endDates);
   if (uniqueEndDates.size === endDates.length) {
     console.log(`✅ No duplicate endDates (${endDates.length} unique cycles)`);
@@ -109,7 +109,7 @@ async function runMultiCycleTest() {
   // Check: dates are sequential (no gaps)
   let sequential = true;
   for (let i = 1; i < allSubs.length; i++) {
-    const prevEnd = allSubs[i - 1].endDate.getTime();
+    const prevEnd = allSubs[i - 1].endDate!.getTime();
     const currStart = allSubs[i].startDate.getTime();
     if (Math.abs(prevEnd - currStart) > 1000) {
       console.error(`❌ Gap detected between cycle ${i-1} and ${i}!`);

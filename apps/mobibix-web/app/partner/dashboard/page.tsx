@@ -331,7 +331,7 @@ export default function PartnerDashboard() {
   ] : [];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0a0f1e]">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
 
       {/* Top Navigation */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0d1220]/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60">

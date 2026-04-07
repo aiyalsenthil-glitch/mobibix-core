@@ -180,6 +180,98 @@ export class AutoRenewCronService {
   }
 
   /**
+   * Daily at 3 AM — downgrade expired TRIAL subscriptions to the FREE lifetime plan
+   * (GYM_FREE for GYM module, MOBIBIX_FREE for MOBILE_SHOP module)
+   * Runs after subscription.cron.ts (1 AM) which marks TRIALs as EXPIRED.
+   */
+  @Cron('0 3 * * *')
+  async downgradeExpiredTrials() {
+    this.logger.log('⬇️ Checking for expired trials to downgrade to FREE...');
+
+    const now = new Date();
+
+    // Find EXPIRED TRIAL subscriptions (level 0, not lifetime) for GYM/MOBILE_SHOP
+    // Only trial plans auto-downgrade — expired STANDARD/PRO should stay expired (user renews manually)
+    const expiredTrials = await this.prisma.tenantSubscription.findMany({
+      where: {
+        status: SubscriptionStatus.EXPIRED,
+        module: { in: [ModuleType.GYM, ModuleType.MOBILE_SHOP] },
+        plan: {
+          isLifetime: false,
+          level: 0,                       // Trial plans are level 0
+          code: { contains: 'TRIAL' },    // Extra safety: only plans with TRIAL in the code
+        },
+      },
+      include: { tenant: true },
+    });
+
+    if (expiredTrials.length === 0) {
+      this.logger.log('No expired trials found.');
+      return;
+    }
+
+    // Fetch FREE plans for each module
+    const [gymFree, mobiFree] = await Promise.all([
+      this.prisma.plan.findFirst({ where: { code: 'GYM_FREE', isActive: true } }),
+      this.prisma.plan.findFirst({ where: { code: 'MOBIBIX_FREE', isActive: true } }),
+    ]);
+
+    let downgraded = 0;
+
+    for (const sub of expiredTrials) {
+      const freePlan =
+        sub.module === ModuleType.GYM ? gymFree :
+        sub.module === ModuleType.MOBILE_SHOP ? mobiFree : null;
+
+      if (!freePlan) {
+        this.logger.warn(`No FREE plan found for module ${sub.module}, skipping tenant ${sub.tenantId}`);
+        continue;
+      }
+
+      // Check if FREE subscription already exists for this tenant+module
+      const existing = await this.prisma.tenantSubscription.findFirst({
+        where: { tenantId: sub.tenantId, module: sub.module, planId: freePlan.id },
+      });
+
+      if (existing) {
+        // Already downgraded — just mark trial as EXPIRED
+        await this.prisma.tenantSubscription.update({
+          where: { id: sub.id },
+          data: { status: SubscriptionStatus.EXPIRED },
+        });
+        continue;
+      }
+
+      // Create FREE lifetime subscription + expire the trial atomically
+      await this.prisma.$transaction([
+        this.prisma.tenantSubscription.update({
+          where: { id: sub.id },
+          data: { status: SubscriptionStatus.EXPIRED },
+        }),
+        this.prisma.tenantSubscription.create({
+          data: {
+            tenantId: sub.tenantId,
+            planId: freePlan.id,
+            module: sub.module,
+            status: SubscriptionStatus.ACTIVE,
+            billingCycle: BillingCycle.MONTHLY,
+            billingType: BillingType.MANUAL,
+            startDate: now,
+            autoRenew: false,
+          },
+        }),
+      ]);
+
+      downgraded++;
+      this.logger.log(
+        `⬇️ Downgraded ${sub.tenant.name}@${sub.module} trial → FREE (${freePlan.name})`,
+      );
+    }
+
+    this.logger.log(`⬇️ Trial downgrade complete: ${downgraded} tenants downgraded.`);
+  }
+
+  /**
    * Manual trigger for testing
    * Can be called by admin endpoint
    */

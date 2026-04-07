@@ -115,8 +115,23 @@ fun PremiumLineChart(
                 fillPath.moveTo(x, size.height)
                 fillPath.lineTo(x, y)
             } else {
-                path.lineTo(x, y)
-                fillPath.lineTo(x, y)
+                val prevX = (index - 1) * stepX
+                val prevY = size.height - (data[index - 1].sales.toFloat() / maxValue) * size.height
+                
+                // Smooth cubic bezier curve
+                val controlPointX1 = prevX + (x - prevX) / 2
+                val controlPointX2 = prevX + (x - prevX) / 2
+                
+                path.cubicTo(
+                    controlPointX1, prevY,
+                    controlPointX2, y,
+                    x, y
+                )
+                fillPath.cubicTo(
+                    controlPointX1, prevY,
+                    controlPointX2, y,
+                    x, y
+                )
             }
             
             if (index == data.size - 1) {
@@ -125,19 +140,26 @@ fun PremiumLineChart(
             }
         }
         
-        // Draw Area Fill
+        // Draw Area Fill with rich gradient
         drawPath(
             path = fillPath,
             brush = Brush.verticalGradient(
-                listOf(accentColor.copy(alpha = 0.2f), Color.Transparent)
+                colors = listOf(
+                    accentColor.copy(alpha = 0.3f),
+                    accentColor.copy(alpha = 0.05f),
+                    Color.Transparent
+                )
             )
         )
         
-        // Draw Line
+        // Draw Line with smooth stroke
         drawPath(
             path = path,
             color = accentColor,
-            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+            style = Stroke(
+                width = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
         )
     }
 }

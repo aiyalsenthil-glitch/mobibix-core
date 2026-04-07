@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   title: "Mobibix — The Retail OS for Mobile Shops",
   description:
     "Run your mobile shop smarter. IMEI tracking, repair management, GST billing and customer records — all in one platform built for Indian mobile retailers.",
+  // CRITICAL: metadataBase must be non-www to match Vercel normalization and sitemap URLs
   metadataBase: new URL("https://REMOVED_DOMAIN"),
   applicationName: "Mobibix",
   manifest: "/manifest.json",
@@ -139,7 +140,10 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className="antialiased bg-background text-foreground transition-colors duration-200">
+      <body 
+        className="antialiased bg-background text-foreground transition-colors duration-200"
+        suppressHydrationWarning
+      >
         <Providers>
           <Suspense fallback={null}>
             <ReferralTracker />

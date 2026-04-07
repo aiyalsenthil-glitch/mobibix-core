@@ -51,7 +51,7 @@ export default function PartnerApplyPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-300">
         <Header />
         <main className="flex-1 flex items-center justify-center p-6">
           <motion.div

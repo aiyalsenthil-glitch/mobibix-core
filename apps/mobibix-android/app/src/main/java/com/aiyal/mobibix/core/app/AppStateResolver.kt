@@ -9,6 +9,9 @@ import com.aiyal.mobibix.data.network.StaffApi
 import com.aiyal.mobibix.data.network.UserApi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.delay
+
+import com.aiyal.mobibix.data.network.UserMeResponse
 
 class AppStateResolver @Inject constructor(
     private val userApi: UserApi,
@@ -17,7 +20,21 @@ class AppStateResolver @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     suspend fun resolve(): AppState {
-        var me = userApi.me()
+        var retryCount = 0
+        var meResult: UserMeResponse? = null
+        
+        while (retryCount < 3) {
+            try {
+                meResult = userApi.me()
+                break
+            } catch (e: Exception) {
+                retryCount++
+                if (retryCount >= 3) throw e
+                delay(1000L * retryCount)
+            }
+        }
+        
+        var me = meResult!!
 
         // If user has a pending invite, accept it and refetch the user profile
         me.inviteToken?.takeIf { it.isNotBlank() }?.let {

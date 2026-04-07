@@ -32,7 +32,7 @@ android {
         buildConfigField(
             "String",
             "API_BASE_URL",
-            "\"${localProperties.getProperty("API_BASE_URL") ?: "https://REMOVED_ENDPOINT/"}\""
+            "\"${localProperties.getProperty("API_BASE_URL") ?: "https://REMOVED_ENDPOINT/"}\"" // TODO: update fallback to MobiBix prod domain when provisioned
         )
         buildConfigField(
             "String",

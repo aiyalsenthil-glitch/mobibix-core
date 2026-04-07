@@ -64,7 +64,7 @@ fun BillingScreen(
     val gracePlan = uiState.currentPlan
     var showGraceDialog by remember { mutableStateOf(false) }
     LaunchedEffect(gracePlan) {
-        if (gracePlan != null) {
+        if (gracePlan != null && !gracePlan.isLifetime && gracePlan.daysLeft != -1) {
             val isPastDue = gracePlan.subscriptionStatus == "PAST_DUE"
             val isExpiringSoon = gracePlan.daysLeft in 0..3
             if (isPastDue || isExpiringSoon) {
@@ -258,7 +258,11 @@ fun SubscriptionStatusCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = if (details.isTrial) "Trial ends in ${details.daysLeft} days" else "Renews in ${details.daysLeft} days",
+                text = when {
+                    details.isLifetime || details.daysLeft == -1 -> "Free Forever — no expiry"
+                    details.isTrial -> "Trial ends in ${details.daysLeft} days"
+                    else -> "Renews in ${details.daysLeft} days"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -415,7 +419,7 @@ fun PlanItem(plan: Plan, formatter: NumberFormat, selectedCycle: String, onUpgra
                     }
                 }
                 val cycleData = plan.billingCycles.find { it.cycle == selectedCycle } ?: plan.billingCycles.first()
-                Text(formatter.format(cycleData.price), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                Text(formatter.format(cycleData.price / 100.0), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             if (selectedCycle == "YEARLY") {
@@ -451,7 +455,7 @@ fun InvoiceItem(invoice: BillingInvoice, formatter: NumberFormat) {
                 Text(invoice.date ?: "", fontWeight = FontWeight.Bold)
                 Text(invoice.status, style = MaterialTheme.typography.bodySmall)
             }
-            Text(formatter.format(invoice.amount), fontWeight = FontWeight.Bold)
+            Text(formatter.format(invoice.amount / 100.0), fontWeight = FontWeight.Bold)
         }
     }
 }

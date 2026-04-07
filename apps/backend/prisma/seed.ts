@@ -104,6 +104,30 @@ const ADDON_PACKS = [
 ];
 
 const V1_PLANS = [
+  // ── GymPilot Free Forever (GYM) ─────────────────────────────────────────
+  {
+    code: 'GYM_FREE',
+    name: 'GymPilot Free',
+    level: 0,
+    features: [],
+    isPublic: false,
+    isLifetime: true,
+    module: 'GYM',
+    maxStaff: 0,
+    maxMembers: 30,         // Up to 30 active members
+    whatsappUtilityQuota: 0,
+    whatsappMarketingQuota: 0,
+    analyticsHistoryDays: 7,
+    maxAiTokens: 0,
+    tagline: 'Free forever for small gyms.',
+    description: 'Manage up to 30 members and track attendance for free. Upgrade to grow.',
+    featuresJson: [
+      'Up to 30 Members',
+      'Attendance Tracking',
+      'Basic Reports (7 days)',
+      'Owner access only',
+    ],
+  },
   // ── GymPilot (GYM) ──────────────────────────────────────────────────────
   {
     code: 'GYM_TRIAL',
@@ -166,6 +190,33 @@ const V1_PLANS = [
       'Unlimited Staff',
       'WhatsApp Marketing (100/mo)',
       'Advanced Analytics',
+    ],
+  },
+  // ── MobiBix Free Forever (MOBILE_SHOP) ──────────────────────────────────
+  {
+    code: 'MOBIBIX_FREE',
+    name: 'MobiBix Free',
+    level: 0,
+    features: [],           // No premium features
+    isPublic: false,        // Not shown on pricing page — assigned programmatically
+    isLifetime: true,       // Never expires
+    module: 'MOBILE_SHOP',
+    maxStaff: 0,            // Owner only, no staff accounts
+    maxMembers: null,
+    maxShops: 1,            // Single shop
+    whatsappUtilityQuota: 0,
+    whatsappMarketingQuota: 0,
+    analyticsHistoryDays: 7,
+    maxAiTokens: 0,
+    tagline: 'Free forever for solo shop owners.',
+    description: 'Core sales, job cards, and inventory for a single shop. Upgrade anytime for staff, WhatsApp, and multi-store.',
+    featuresJson: [
+      'Single Shop',
+      'Sales Invoicing',
+      'Job Cards',
+      'Inventory Tracking',
+      'Last 7 days reports',
+      'Owner access only',
     ],
   },
   // ── MobiBix (MOBILE_SHOP) ────────────────────────────────────────────────
@@ -859,12 +910,14 @@ async function main() {
         module: p.module as any,
         isPublic: p.isPublic ?? true,
         isAddon: (p as any).isAddon ?? false,
+        isLifetime: (p as any).isLifetime ?? false,
         maxStaff: (p as any).maxStaff,
         maxMembers: (p as any).maxMembers,
         maxShops: (p as any).maxShops,
         whatsappUtilityQuota: (p as any).whatsappUtilityQuota,
         whatsappMarketingQuota: (p as any).whatsappMarketingQuota,
         analyticsHistoryDays: (p as any).analyticsHistoryDays,
+        maxAiTokens: (p as any).maxAiTokens ?? 100,
         tagline: (p as any).tagline,
         description: (p as any).description,
         featuresJson: (p as any).featuresJson,
@@ -878,12 +931,14 @@ async function main() {
         isActive: true,
         isPublic: p.isPublic ?? true,
         isAddon: (p as any).isAddon ?? false,
+        isLifetime: (p as any).isLifetime ?? false,
         maxStaff: (p as any).maxStaff,
         maxMembers: (p as any).maxMembers,
         maxShops: (p as any).maxShops,
         whatsappUtilityQuota: (p as any).whatsappUtilityQuota,
         whatsappMarketingQuota: (p as any).whatsappMarketingQuota,
         analyticsHistoryDays: (p as any).analyticsHistoryDays,
+        maxAiTokens: (p as any).maxAiTokens ?? 100,
         tagline: (p as any).tagline,
         description: (p as any).description,
         featuresJson: (p as any).featuresJson,

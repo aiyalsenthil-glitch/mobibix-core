@@ -214,7 +214,7 @@ export default function PublicTrackPage() {
   const isCancelled = ["CANCELLED", "RETURNED"].includes(data.status);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-900 dark:selection:text-emerald-200 pb-32 md:pb-12 overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-emerald-500/30 selection:text-emerald-900 dark:selection:text-emerald-200 pb-32 md:pb-12 overflow-x-hidden transition-colors duration-300">
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 aurora-bg opacity-30 dark:opacity-40 animate-[pulse_10s_ease_in_out_infinite]"></div>

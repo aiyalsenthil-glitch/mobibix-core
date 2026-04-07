@@ -46,7 +46,7 @@ async function main() {
 
   console.log('✅ Created AutoPay test subscription:', sub.id);
   console.log('📜 Billing Type:', sub.billingType);
-  console.log('📅 End Date:', sub.endDate.toISOString());
+  console.log('📅 End Date:', sub.endDate?.toISOString());
   console.log('🚀 Ready to test cron behavior.');
 }
 

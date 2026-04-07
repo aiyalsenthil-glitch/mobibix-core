@@ -20,7 +20,8 @@ export function SubscriptionAlert() {
 
   if (!usage) return null;
 
-  const { status, membersUsed, membersLimit, plan } = usage;
+  const { status, membersUsed, membersLimit, plan, isLifetime } = usage;
+  if (isLifetime) return null; // Free lifetime plan — no alerts
   const isExpired = status === "EXPIRED";
   const isPastDue = status === "PAST_DUE";
 

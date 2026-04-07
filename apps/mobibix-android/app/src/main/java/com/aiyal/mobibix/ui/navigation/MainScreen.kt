@@ -112,7 +112,7 @@ fun MainScreen(
                     navController = mainNavController,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onNavigateToJobs = {
-                        nestedNavController.navigate(BottomNavItem.Repair.route) {
+                        nestedNavController.navigate(BottomNavItem.Tools.route) {
                             nestedNavController.graph.startDestinationRoute?.let { route ->
                                 popUpTo(route) { saveState = true }
                             }
@@ -121,38 +121,33 @@ fun MainScreen(
                         }
                     },
                     onNavigateToInventory = {
-                        nestedNavController.navigate(BottomNavItem.Inventory.route) {
-                            nestedNavController.graph.startDestinationRoute?.let { route ->
-                                popUpTo(route) { saveState = true }
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        // Inventory is now in the drawer or deeper, but for UI design we use Billing/Calendar
+                        mainNavController.navigate("product_list")
                     },
                     onNavigateToNegativeStock = {
                         mainNavController.navigate("negative_stock")
                     }
                 )
             }
-            composable(BottomNavItem.Sales.route) {
-                val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
+            composable(BottomNavItem.Calendar.route) {
                 SalesListScreen(
                     shopContextProvider = shopContextProvider,
                     shopApi = shopApi,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onNewSale = { mainNavController.navigate("new_sale") },
+                    onNewSale = { mainNavController.navigate("billing") },
                     onInvoiceClick = { invoiceId ->
-                        mainNavController.navigate("invoice_details/${activeShopId ?: ""}/$invoiceId")
+                        mainNavController.navigate("invoice_detail/$invoiceId")
                     }
                 )
             }
-            composable(BottomNavItem.Repair.route) {
+            composable(BottomNavItem.Tools.route) {
                 val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
                 val isSystemOwner = when (appState) {
                     is AppState.Owner -> appState.isSystemOwner
                     is AppState.Staff -> appState.isSystemOwner
                     else -> false
                 }
+                // Tools maps to Job/Repair list for now as per prompt "Design"
                 JobListScreen(
                     isOwner = isSystemOwner,
                     navController = mainNavController,
@@ -160,10 +155,9 @@ fun MainScreen(
                     onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
             }
-            composable(BottomNavItem.Inventory.route) {
-                com.aiyal.mobibix.ui.features.products.ProductListScreen(
-                    navController = mainNavController,
-                    onOpenDrawer = { scope.launch { drawerState.open() } }
+            composable(BottomNavItem.Billing.route) {
+                com.aiyal.mobibix.ui.features.billing.BillingScreen(
+                    navController = mainNavController
                 )
             }
         }

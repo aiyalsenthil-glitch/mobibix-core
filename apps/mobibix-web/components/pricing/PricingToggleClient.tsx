@@ -83,6 +83,30 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
 
         {/* Plans Container */}
         <div className="container mx-auto max-w-6xl">
+          {/* Free Forever Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="max-w-4xl mx-auto mb-6 rounded-2xl border border-green-500/30 bg-green-500/5 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎁</span>
+              <div>
+                <p className="font-black text-sm uppercase tracking-widest text-green-500">Free Forever Plan</p>
+                <p className="text-xs text-muted-foreground font-bold mt-0.5">
+                  1 shop · Unlimited sales & job cards · No credit card needed. Trial expires? You stay on Free.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/auth"
+              className="shrink-0 px-4 py-2 rounded-xl bg-green-500 text-white text-xs font-black uppercase tracking-widest shadow hover:bg-green-400 transition-all whitespace-nowrap"
+            >
+              Start Free →
+            </Link>
+          </motion.div>
+
           {plans.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 bg-muted/10 rounded-[2rem] border border-border border-dashed">
                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6" />
@@ -193,7 +217,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
               className="mt-12 text-center"
             >
               <p className="text-[11px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                <span className="text-primary border-b border-primary/30 pb-0.5">14-Day Free Trial</span> &nbsp;•&nbsp; No Credit Card Required &nbsp;•&nbsp; Cancel Anytime
+                <span className="text-green-500 border-b border-green-500/30 pb-0.5">Free Forever</span> &nbsp;•&nbsp; <span className="text-primary border-b border-primary/30 pb-0.5">14-Day Pro Trial</span> &nbsp;•&nbsp; No Credit Card Required
               </p>
             </motion.div>
           )}

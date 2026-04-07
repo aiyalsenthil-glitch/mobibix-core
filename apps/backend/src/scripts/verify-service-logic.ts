@@ -62,7 +62,7 @@ async function verifyServiceLogic() {
 
 
 
-    if (result.endDate.getTime() === sub.endDate.getTime()) {
+    if (result.endDate.getTime() === sub.endDate?.getTime()) {
       console.log(
         '✅ Co-terminus logic verified: Addon expiry matches parent.',
       );

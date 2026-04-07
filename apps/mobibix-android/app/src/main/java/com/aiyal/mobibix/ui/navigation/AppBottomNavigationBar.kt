@@ -20,106 +20,68 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 fun AppBottomNavigationBar(navController: NavController) {
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.Sales,
-        BottomNavItem.Repair,
-        BottomNavItem.Inventory
+        BottomNavItem.Calendar,
+        BottomNavItem.Tools,
+        BottomNavItem.Billing
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val colorScheme = MaterialTheme.colorScheme
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 24.dp),
-        contentAlignment = Alignment.BottomCenter
+    // Full-width flat bottom bar anchored to the bottom
+    Surface(
+        color = Color.White,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp, // No heavy shadow
+        border = BorderStroke(0.5.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // High-End Glassmorphic Surface
-        Surface(
-            color = colorScheme.surface.copy(alpha = 0.7f),
-            shape = RoundedCornerShape(28.dp),
-            tonalElevation = 0.dp,
-            shadowElevation = 12.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(84.dp)
+                .navigationBarsPadding()
+                .height(72.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEach { item ->
-                    val selected = currentRoute == item.route
-                    
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                navController.navigate(item.route) {
-                                    navController.graph.startDestinationRoute?.let { route ->
-                                        popUpTo(route) { saveState = true }
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                    ) {
-                        // Liquid Circle Selection Indicator
-                        if (selected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .background(
-                                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                            colors = listOf(
-                                                colorScheme.primary.copy(alpha = 0.25f),
-                                                colorScheme.primary.copy(alpha = 0.0f)
-                                            )
-                                        )
-                                    )
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(
-                                        color = colorScheme.primary.copy(alpha = 0.12f),
-                                        shape = CircleShape
-                                    )
-                                    .border(0.5.dp, colorScheme.primary.copy(alpha = 0.2f), CircleShape)
-                            )
-                        }
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+            items.forEach { item ->
+                val selected = currentRoute == item.route
+                
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
                         ) {
-                            Icon(
-                                item.icon,
-                                contentDescription = item.label,
-                                modifier = Modifier.size(28.dp),
-                                tint = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                            if (selected) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    item.label,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = colorScheme.primary,
-                                    letterSpacing = 0.2.sp
-                                )
+                            navController.navigate(item.route) {
+                                navController.graph.startDestinationRoute?.let { route ->
+                                    popUpTo(route) { saveState = true }
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
-                    }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.label,
+                        modifier = Modifier.size(24.dp),
+                        tint = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        item.label,
+                        fontSize = 11.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        letterSpacing = 0.1.sp
+                    )
                 }
             }
         }

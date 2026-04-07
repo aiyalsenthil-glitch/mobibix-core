@@ -129,6 +129,15 @@ export class SubscriptionGuard implements CanActivate {
       );
     }
 
+    // Lifetime plans never expire — skip all date/grace checks
+    if (subscription.plan.isLifetime) {
+      request.subscription = subscription;
+      this.logger.debug(
+        `Lifetime plan: tenant ${tenantId} has unrestricted ${moduleScope} access (${subscription.plan.name})`,
+      );
+      return true;
+    }
+
     const now = new Date();
 
     const gracePeriodEnd = new Date(subscription.endDate || now);

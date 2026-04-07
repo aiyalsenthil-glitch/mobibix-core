@@ -11,6 +11,7 @@ interface SubscriptionBannerProps {
 
 export function SubscriptionBanner({ daysLeft, status }: SubscriptionBannerProps) {
   if (status !== "ACTIVE" && status !== "TRIAL") return null;
+  if (daysLeft === -1) return null; // lifetime plan — never expires
   if (daysLeft > 7) return null;
 
   const isExpired = daysLeft <= 0;

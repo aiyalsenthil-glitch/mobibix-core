@@ -789,6 +789,7 @@ model Plan {
   whatsappMarketingQuota Int                  @default(0)
   analyticsHistoryDays   Int                  @default(30)
   maxAiTokens            Int                  @default(100)
+  isLifetime             Boolean              @default(false)
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   planFeatures           PlanFeature[]
@@ -831,7 +832,7 @@ model TenantSubscription {
   module                 ModuleType          @default(MOBILE_SHOP)
   status                 SubscriptionStatus
   startDate              DateTime
-  endDate                DateTime
+  endDate                DateTime?
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt @db.Timestamp(6)
   expiryReminderSentAt   DateTime?           @db.Timestamp(6)

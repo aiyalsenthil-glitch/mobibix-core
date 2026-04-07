@@ -81,7 +81,7 @@ async function simulateWebhook(providerSubId: string) {
     console.log('✅ Cycle history maintained.');
     console.log('✅ Previous Sub ID:', subscription.id, '(EXPIRED)');
     console.log('✅ New Sub ID:', renewed.id, '(ACTIVE)');
-    console.log('📅 New Period:', renewed.startDate.toISOString(), 'to', renewed.endDate.toISOString());
+    console.log('📅 New Period:', renewed.startDate.toISOString(), 'to', renewed.endDate?.toISOString());
   });
 }
 

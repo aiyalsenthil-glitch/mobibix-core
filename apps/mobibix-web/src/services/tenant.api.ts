@@ -344,6 +344,7 @@ export interface TenantUsageResponse {
   membersUsed: number;
   membersLimit: number | null;
   daysLeft: number | null;
+  isLifetime?: boolean;
   whatsappUsage: {
     marketing: number;
     utility: number;

@@ -236,7 +236,7 @@ export class FinancialsAdminService {
 
         for (const sub of overdueRaw) {
           const daysOverdue = Math.floor(
-            (now.getTime() - sub.endDate.getTime()) / (1000 * 60 * 60 * 24),
+            (now.getTime() - (sub.endDate?.getTime() ?? now.getTime())) / (1000 * 60 * 60 * 24),
           );
           const amount = sub.priceSnapshot ?? 0;
           const item = {

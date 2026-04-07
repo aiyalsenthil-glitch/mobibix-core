@@ -15,7 +15,8 @@ data class SubscriptionDetails(
     val maxStaff: Int? = null,
     val maxShops: Int? = null,
     val whatsappAllowed: Boolean = false,
-    val daysLeft: Int = 0,
+    val daysLeft: Int = 0, // -1 = lifetime plan (no expiry)
+    val isLifetime: Boolean = false,
     val isTrial: Boolean = false,
     val subscriptionStatus: String = "ACTIVE", // ACTIVE, TRIAL, PAST_DUE, EXPIRED
     val autoRenew: Boolean = false,

@@ -5,6 +5,7 @@ import { Plus, Trash2, Mail, Phone, Calendar, Shield, Clock, Building2, Check } 
 import { listStaff, addStaff, removeStaff, type Staff } from "@/services/staff.api";
 import { listRoles, type RoleDto } from "@/services/roles.api";
 import { listShops, type Shop } from "@/services/shops.api";
+import { getTenantUsage } from "@/services/tenant.api";
 import { format } from "date-fns";
 import PageTabs from "@/components/layout/PageTabs";
 
@@ -13,6 +14,7 @@ export default function StaffTab() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [planMaxStaff, setPlanMaxStaff] = useState<number | null>(null);
   
   // Modal State
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -30,13 +32,15 @@ export default function StaffTab() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [staffData, rolesData, shopsData] = await Promise.all([
+      const [staffData, rolesData, shopsData, usageData] = await Promise.all([
         listStaff(),
         listRoles(),
         listShops(),
+        getTenantUsage().catch(() => null),
       ]);
       setStaffList(staffData);
-      
+      setPlanMaxStaff(usageData?.plan?.maxStaff ?? null);
+
       const filteredRoles = (rolesData ?? []).filter(role => {
         if (!role.isSystem) return true;
         const hasGym = role.permissions.some(p => p.startsWith('gym.'));
@@ -45,7 +49,7 @@ export default function StaffTab() {
         return true;
       });
       setRoles(filteredRoles);
-      
+
       setShops(shopsData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load staff management data");
@@ -102,16 +106,25 @@ export default function StaffTab() {
   const activeStaff = staffList.filter((s) => s.status === "ACTIVE");
   const invitedStaff = activeTab === "pending" ? staffList.filter((s) => s.status === "INVITED") : [];
 
+  const staffLocked = planMaxStaff === 0;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end mb-4">
-        <button
-          onClick={() => setIsInviteModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
-        >
-          <Plus size={18} />
-          Invite Staff
-        </button>
+        {staffLocked ? (
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-gray-400 text-sm font-medium cursor-not-allowed select-none">
+            🔒 Staff not available
+            <span className="px-1.5 py-0.5 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded font-semibold">Standard plan</span>
+          </div>
+        ) : (
+          <button
+            onClick={() => setIsInviteModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
+          >
+            <Plus size={18} />
+            Invite Staff
+          </button>
+        )}
       </div>
 
       <PageTabs

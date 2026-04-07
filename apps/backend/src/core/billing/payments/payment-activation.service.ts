@@ -204,7 +204,7 @@ export class PaymentActivationService {
                     select: { id: true, endDate: true },
                   });
 
-                  if (sub) {
+                  if (sub && sub.endDate) {
                     const newEndDate = new Date(sub.endDate);
                     newEndDate.setMonth(newEndDate.getMonth() + promo.bonusMonths);
                     await tx.tenantSubscription.update({

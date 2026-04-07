@@ -21,7 +21,7 @@ export function BlogSection({ posts }: { posts: Post[] }) {
           </span>
           <h2 className="text-3xl sm:text-5xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.85] md:leading-[0.8]">
             Retail <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-indigo-500">Insights.</span>
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-blue-500 to-indigo-500">Insights.</span>
           </h2>
         </div>
         <Link href="/blog" className="flex items-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-primary hover:gap-4 transition-all pb-2">
@@ -29,8 +29,8 @@ export function BlogSection({ posts }: { posts: Post[] }) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
-        {posts.slice(0, 3).map((post, idx) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+        {posts.slice(0, 6).map((post, idx) => (
           <motion.div
             key={post.slug}
             initial={{ opacity: 0, y: 30 }}
@@ -39,13 +39,19 @@ export function BlogSection({ posts }: { posts: Post[] }) {
             viewport={{ once: true }}
             className="flex h-full"
           >
-            <Link href={`/blog/${post.slug}`} className="group w-full flex flex-col">
-              <div className="flex-1 bg-card/40 backdrop-blur-2xl border border-border/50 rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 hover:border-primary/50 transition-all duration-500 shadow-2xl group-hover:-translate-y-2">
+            <Link 
+              href={`https://REMOVED_DOMAIN/blog/${post.slug}`} 
+              className="group w-full flex flex-col"
+            >
+              <div className="flex-1 bg-card/40 backdrop-blur-2xl border border-border/50 rounded-4xl md:rounded-[3rem] p-8 md:p-12 hover:border-primary/50 transition-all duration-500 shadow-2xl group-hover:-translate-y-2">
                 <div className="flex justify-between items-start mb-8 md:mb-12">
                   <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
                     Guide
                   </span>
-                  <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  <span 
+                    className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
+                    suppressHydrationWarning
+                  >
                     {new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 </div>

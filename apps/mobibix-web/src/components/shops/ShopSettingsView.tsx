@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getTenantUsage } from "@/services/tenant.api";
 import {
   getShopSettings,
   updateShopSettings,
@@ -176,6 +177,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const [shop, setShop] = useState<Shop | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasPrintLayout, setHasPrintLayout] = useState(true); // default true, corrected after load
 
   const [formData, setFormData] = useState({
     name: "",
@@ -203,6 +205,12 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
     repairInvoiceNumberingMode: RepairInvoiceNumberingMode.SHARED,
     repairGstDefault: false,
   });
+
+  useEffect(() => {
+    getTenantUsage()
+      .then(u => setHasPrintLayout((u.plan?.features ?? []).includes('CUSTOM_PRINT_LAYOUT')))
+      .catch(() => {}); // keep default true on error (graceful degradation)
+  }, []);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -701,30 +709,39 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
 
                 {/* Branding */}
                 <div className="space-y-4">
+                  {!hasPrintLayout && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+                      🔒 Custom branding (logo, footer, header) requires <span className="font-bold">Standard plan</span> or higher.
+                    </div>
+                  )}
                   <div>
-                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-stone-400 mb-1">
                       Logo URL
+                      {!hasPrintLayout && <span className="px-1.5 py-0.5 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded font-semibold">Standard plan</span>}
                     </label>
                     <input
                       type="url"
                       name="logoUrl"
                       value={formData.logoUrl}
                       onChange={handleChange}
+                      disabled={!hasPrintLayout}
                       placeholder="https://..."
-                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                      className={`w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none ${!hasPrintLayout ? "opacity-50 cursor-not-allowed" : ""}`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-stone-400 mb-1">
                       Invoice Footer Text
+                      {!hasPrintLayout && <span className="px-1.5 py-0.5 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded font-semibold">Standard plan</span>}
                     </label>
                     <input
                       type="text"
                       name="invoiceFooter"
                       value={formData.invoiceFooter}
                       onChange={handleChange}
+                      disabled={!hasPrintLayout}
                       placeholder="Thank you for your business!"
-                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                      className={`w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none ${!hasPrintLayout ? "opacity-50 cursor-not-allowed" : ""}`}
                     />
                   </div>
 
@@ -774,16 +791,18 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-stone-400 mb-1">
                       Terms & Conditions
+                      {!hasPrintLayout && <span className="px-1.5 py-0.5 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded font-semibold">Standard plan</span>}
                     </label>
                     <textarea
                       name="terms"
                       value={formData.terms}
                       onChange={handleChange}
+                      disabled={!hasPrintLayout}
                       rows={4}
                       placeholder="Terms..."
-                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none"
+                      className={`w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none ${!hasPrintLayout ? "opacity-50 cursor-not-allowed" : ""}`}
                     />
                   </div>
                 </div>

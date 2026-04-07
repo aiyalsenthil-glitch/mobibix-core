@@ -9,11 +9,6 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -28,9 +23,26 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.runtime.collectAsState
 import com.aiyal.mobibix.core.ui.UiMessageType
 import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.*
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.core.auth.AuthEntryPoint
 import com.aiyal.mobibix.ui.features.finance.FinanceLandingScreen
@@ -83,10 +95,14 @@ fun AppNavGraph(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
-    val appState by produceState<AppState?>(initialValue = null, activeShopId) {
-        value = try { appStateResolver.resolve() } catch (e: Exception) {
+    var retryKey by remember { mutableStateOf(0) }
+    
+    val appState by produceState<AppState?>(initialValue = null, activeShopId, retryKey) {
+        value = try { 
+            appStateResolver.resolve() 
+        } catch (e: Exception) {
             android.util.Log.e("AppNavGraph", "resolve failed: ${e.message}")
-            null
+            AppState.Error(e.message ?: "Unknown Error")
         }
     }
 
@@ -188,24 +204,31 @@ fun AppNavGraph(
                 }
             }
 
-            appState?.let { state ->
-                when (state) {
-                    is AppState.ComingSoonBusiness -> LaunchedEffect(state) {
-                        navController.navigate("coming_soon_business") { popUpTo(0) }
+            if (appState == null) {
+                LoadingPlaceholder()
+            } else {
+                appState?.let { state ->
+                    when (state) {
+                        is AppState.ComingSoonBusiness -> LaunchedEffect(state) {
+                            navController.navigate("coming_soon_business") { popUpTo(0) }
+                        }
+                        is AppState.TenantRequired -> LaunchedEffect(state) {
+                            navController.navigate("tenant_required") { popUpTo(0) }
+                        }
+                        is AppState.Distributor -> LaunchedEffect(state) {
+                             navController.navigate("distributor_dashboard") { popUpTo(0) }
+                        }
+                        is AppState.Error -> ErrorRecoveryScreen(
+                            message = state.message,
+                            onRetry = { retryKey += 1 }
+                        )
+                        else -> MainScreen(
+                            mainNavController = navController,
+                            appState = state,
+                            shopContextProvider = shopContextProvider,
+                            shopApi = shopApi
+                        )
                     }
-                    is AppState.TenantRequired -> LaunchedEffect(state) {
-                        navController.navigate("tenant_required") { popUpTo(0) }
-                    }
-                    is AppState.Distributor -> LaunchedEffect(state) {
-                        // Pure distributor — no ERP — go to distributor hub
-                        navController.navigate("distributor_dashboard") { popUpTo(0) }
-                    }
-                    else -> MainScreen(
-                        mainNavController = navController,
-                        appState = state,
-                        shopContextProvider = shopContextProvider,
-                        shopApi = shopApi
-                    )
                 }
             }
         }
@@ -899,4 +922,62 @@ fun AppNavGraph(
     } // NavHost
     } // Box
     } // Scaffold
+}
+
+@Composable
+private fun LoadingPlaceholder() {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 3.dp
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Setting up MobiBix...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorRecoveryScreen(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.White).padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.CloudOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                "Connection Error",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                message,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(32.dp))
+            Button(
+                onClick = onRetry,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Retry Connection", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
 }

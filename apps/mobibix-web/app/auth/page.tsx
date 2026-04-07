@@ -245,7 +245,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-zinc-950 flex items-center justify-center relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-900 dark:selection:text-emerald-200">
+    <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-900 dark:selection:text-emerald-200">
       
       {/* Back to Home Navigation */}
       <Link 

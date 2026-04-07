@@ -20,9 +20,9 @@ fun AppNavigationRail(
 ) {
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.Sales,
-        BottomNavItem.Repair,
-        BottomNavItem.Inventory
+        BottomNavItem.Calendar,
+        BottomNavItem.Tools,
+        BottomNavItem.Billing
     )
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -58,11 +58,11 @@ fun AppNavigationRail(
                     )
                 },
                 colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = Color(0xFF6366F1),
-                    selectedTextColor = Color(0xFF6366F1),
+                    selectedIconColor = Color(0xFF00C896),
+                    selectedTextColor = Color(0xFF00C896),
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = Color(0xFF6366F1).copy(alpha = 0.12f)
+                    indicatorColor = Color(0xFF00C896).copy(alpha = 0.12f)
                 )
             )
         }

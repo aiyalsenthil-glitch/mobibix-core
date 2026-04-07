@@ -13,6 +13,7 @@ object UserRole {
 sealed class AppState {
     object TenantRequired : AppState()
     object ComingSoonBusiness : AppState()
+    data class Error(val message: String) : AppState()
 
     data class Owner(
         val role: String,
@@ -45,6 +46,7 @@ sealed class AppState {
         is Owner -> "owner_dashboard"
         is Staff -> "staff_dashboard/$shopId"
         is Distributor -> "distributor_dashboard"
+        is Error -> "home"
     }
 
     fun hasPermission(action: String): Boolean = when (this) {

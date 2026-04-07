@@ -29,6 +29,7 @@ fun HomeScreen(
             onNavigateToNegativeStock = onNavigateToNegativeStock,
             onNavigateToNewSale = { navController.navigate("new_sale") },
             onNavigateToNewPurchase = { navController.navigate("create_purchase") },
+            onNavigateToAddCustomer = { navController.navigate("add_customer") },
             onNavigateToReports = { navController.navigate("reports") },
             onOpenDrawer = onOpenDrawer
         )

@@ -86,7 +86,7 @@ async function testAddonSystem() {
 
     if (addonRecord) {
 
-      if (addonRecord.endDate.getTime() !== sub.endDate.getTime()) {
+      if (addonRecord.endDate.getTime() !== sub.endDate?.getTime()) {
         console.error('❌ Co-terminus logic failed! End dates do not match.');
       } else {
 

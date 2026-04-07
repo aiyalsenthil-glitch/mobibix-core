@@ -2,6 +2,8 @@ import { MetadataRoute } from 'next';
 import { getAllPosts } from '../lib/blog';
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  // CRITICAL: Ensure baseUrl NEVER includes 'www'. 
+  // Google indexing errors occur if sitemap links trigger Vercel redirects (www -> non-www).
   const baseUrl = 'https://REMOVED_DOMAIN';
   const now = new Date();
 

@@ -4,22 +4,19 @@ import type { Metadata } from "next";
 import { getAllPosts } from "../lib/blog";
 
 export const metadata: Metadata = {
-  title: "Mobibix — The Retail OS for Mobile Shops",
+  title: "MobiBix — All-in-One POS & Billing for Indian Mobile Shops",
   description:
-    "India's best mobile shop POS. Track IMEI, manage repairs, and generate GST bills in seconds. Trusted by 5000+ Indian mobile retailers. Start your free trial.",
+    "The #1 Mobile Shop Management Software in India. Manage billing, repairs, IMEI tracking, and customers in one place. Trusted by 500+ mobile retailers. Start your free trial.",
   keywords: [
-    "mobile shop software",
-    "mobile shop POS India",
-    "IMEI tracking software",
-    "mobile repair management",
-    "GST billing mobile shop",
-    "mobile shop ERP India",
-    "cell phone store software",
-    "mobile shop inventory management",
-    "billing app for mobile shop",
-    "mobile distributor software India",
-    "B2B wholesale platform mobile shops",
-    "distributor network mobile shop",
+    "mobile shop management software India",
+    "mobile repair POS software",
+    "IMEI tracking software for shops",
+    "billing software for mobile shops",
+    "mobile shop GST billing app",
+    "POS for mobile shops India",
+    "cell phone store management software",
+    "mobile repair shop billing software",
+    "IMEI inventory management",
   ],
   alternates: { canonical: "/" },
   openGraph: {

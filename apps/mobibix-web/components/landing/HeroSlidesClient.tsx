@@ -23,20 +23,28 @@ function StatItem({ value, unit, label }: { value: string; unit: string; label: 
 }
 
 export function HeroSlidesClient({ posts }: { posts: any[] }) {
+  const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const scrollCooldown = useRef(0);
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
 
   const sections = [
     { id: "hero", label: "Hero" },
-    { id: "features", label: "Features" },
-    { id: "stats", label: "Impact" },
-    { id: "testimonials", label: "Wall of Love" },
+    { id: "problem", label: "The Problem" },
+    { id: "features", label: "Solution" },
+    { id: "stats", label: "Showcase" },
     { id: "blog", label: "Insights" },
+    { id: "testimonials", label: "Trust" },
+    { id: "pricing", label: "Pricing" },
     { id: "faq", label: "FAQ" },
-    { id: "cta", label: "Launch" },
-    { id: "footer", label: "Closure" },
+    { id: "cta", label: "Start" },
+    { id: "footer", label: "Links" },
   ];
 
   const goNext = () => setActiveSection(prev => Math.min(prev + 1, sections.length - 1));
@@ -92,6 +100,18 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
     };
   }, [activeSection, sections.length]);
 
+  if (!mounted) {
+    return (
+      <div className="bg-background text-foreground h-svh w-screen overflow-hidden">
+        <Header />
+         {/* Placeholder to match structure but avoid interactive mismatch */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center p-5">
+           <div className="w-16 h-16 animate-pulse bg-muted rounded-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-background text-foreground selection:bg-primary/30 h-svh w-screen overflow-hidden transition-colors duration-500">
       <Header />
@@ -121,14 +141,14 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
             </div>
 
             <h2 className="text-4xl sm:text-6xl md:text-[8rem] font-black mb-6 md:mb-10 tracking-tighter leading-[0.85] md:leading-[0.8] text-foreground uppercase italic text-glow-indigo">
-              Run Your <br />
+              All-in-One <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-blue-500 to-indigo-500 drop-shadow-2xl">
-                Mobile Shop.
+                POS for Mobile Shops.
               </span>
             </h2>
 
             <p className="text-muted-foreground text-base md:text-xl lg:text-2xl font-bold max-w-2xl mx-auto mb-8 md:mb-16 leading-relaxed italic opacity-80">
-              The SaaS-grade Retail OS. Stop losing track of IMEIs, repairs, and stock.
+              Manage sales, repairs, IMEI tracking, and customers in one place.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-8">
@@ -152,108 +172,187 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           <div className="absolute bottom-[10%] -right-[10%] w-[500px] md:w-[700px] h-[500px] md:h-[700px] bg-blue-500/20 rounded-full blur-[180px] animate-pulse pointer-events-none delay-1000" />
         </div>
 
-        {/* ── Section 2: Features ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-muted/5 relative overflow-hidden">
+        {/* ── Section 2: Problem ── */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
           <motion.div
-            animate={activeSection === 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
+            animate={activeSection === 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+            className="w-full max-w-5xl text-center z-10"
+          >
+            <span className="text-red-500 text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] mb-4 block">
+              The Reality
+            </span>
+            <h2 className="text-4xl sm:text-6xl md:text-[7rem] font-black text-foreground mb-8 md:mb-12 tracking-tighter leading-[0.85] uppercase italic">
+              Running a mobile <br />shop is <span className="text-red-500">messy.</span>
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+              {[
+                { q: "Manual Errors", a: "Tired of billing mistakes and inventory issues?" },
+                { q: "No IMEI Tracking", a: "Losing track of device serial numbers?" },
+                { q: "Lost Repairs", a: "Missing job status or customer follow-ups?" },
+                { q: "Revenue Leakage", a: "Unaware of your daily profit or expenses?" }
+              ].map((p, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-card border border-border shadow-sm">
+                  <h3 className="text-sm font-black uppercase mb-2 text-foreground">{p.q}</h3>
+                  <p className="text-xs font-bold text-muted-foreground leading-relaxed">{p.a}</p>
+                </div>
+              ))}
+            </div>
+            
+            <p className="mt-12 text-muted-foreground font-bold italic opacity-60">
+              Stop using generic apps. Use a software built for YOUR shop.
+            </p>
+          </motion.div>
+          <div className="absolute inset-0 bg-red-500/10 blur-[120px] rounded-full -translate-y-1/2 pointer-events-none" />
+        </div>
+
+        {/* ── Section 3: Features (Solution) ── */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
+          <motion.div
+            animate={activeSection === 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
             className="w-full max-w-7xl relative z-10"
           >
             <div className="mb-8 md:mb-16 lg:mb-20 text-center">
               <span className="text-primary text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] mb-3 block">
-                Engineered for Growth
+                The Solution
               </span>
               <h2 className="text-3xl sm:text-5xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-[0.85] md:leading-[0.8]">
-                Protect <br className="hidden md:block" />Inventory.
+                Everything your <br className="hidden md:block" />shop needs.
               </h2>
             </div>
 
-            {/* Mobile: horizontal scroll carousel | Desktop: 5-col grid */}
             <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none lg:grid lg:grid-cols-5 lg:gap-6 lg:overflow-visible lg:pb-0">
               {[
-                { title: "IMEI TRACK", desc: "Digital ownership.", icon: "/assets/landing/inventory-icon.png" },
-                { title: "REPAIR HUB", desc: "Live job tracking.", icon: "/assets/landing/repairs-icon.png" },
-                { title: "GST READY", desc: "Auto-tax calc.", icon: "/assets/landing/billing-icon.png" },
-                { title: "HYPER CRM", desc: "WhatsApp reach.", icon: "/assets/landing/marketing-icon.png" },
-                { title: "B2B SYNC", desc: "Stock sharing.", icon: "/assets/landing/inventory-icon.png" },
+                { title: "IMEI TRACKING", desc: "Track every device serial-perfect.", icon: "/assets/landing/inventory-icon.png" },
+                { title: "REPAIR HUB", desc: "Manage jobs, status & delivery.", icon: "/assets/landing/repairs-icon.png" },
+                { title: "BILLING & GST", desc: "Generate GST bills in 5 seconds.", icon: "/assets/landing/billing-icon.png" },
+                { title: "HYPER CRM", desc: "Automatic WhatsApp follow-ups.", icon: "/assets/landing/marketing-icon.png" },
+                { title: "DASHBOARD", desc: "Daily profit & sales at a glance.", icon: "/assets/landing/inventory-icon.png" },
               ].map((feat, i) => (
                 <motion.div
                   key={i}
-                  animate={activeSection === 1
+                  animate={activeSection === 2
                     ? { opacity: 1, y: 0, scale: 1 }
                     : { opacity: 0, y: 30, scale: 0.9 }}
                   transition={{ delay: i * 0.1 }}
-                  className="shrink-0 snap-center w-48 sm:w-56 lg:w-auto p-6 md:p-10 rounded-4xl md:rounded-[3rem] bg-card/40 backdrop-blur-2xl border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center"
+                  className="shrink-0 snap-center w-52 sm:w-64 lg:w-auto p-6 md:p-10 rounded-4xl bg-card border border-border/50 hover:border-primary/50 transition-all duration-500 group text-center shadow-sm"
                 >
-                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-primary/10 flex items-center justify-center mb-4 md:mb-8 mx-auto border border-primary/20 overflow-hidden p-3 md:p-4 group-hover:scale-110 transition-transform">
-                    <NextImage src={feat.icon} alt={feat.title} width={80} height={80} className="object-contain filter drop-shadow-xl" />
+                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 md:mb-8 mx-auto border border-primary/20 p-3 md:p-4 group-hover:scale-110 transition-transform">
+                    <NextImage src={feat.icon} alt={feat.title} width={80} height={80} className="object-contain" />
                   </div>
-                  <h3 className="text-sm md:text-lg font-black uppercase tracking-tight mb-1 md:mb-2 leading-none">{feat.title}</h3>
-                  <p className="text-muted-foreground font-bold text-[8px] md:text-[9px] uppercase tracking-widest opacity-60 leading-relaxed">{feat.desc}</p>
+                  <h3 className="text-sm md:text-lg font-black uppercase tracking-tight mb-2 leading-none">{feat.title}</h3>
+                  <p className="text-muted-foreground font-bold text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 leading-relaxed">{feat.desc}</p>
                 </motion.div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* ── Section 3: Stats ── */}
-        <div className="h-svh w-screen flex items-center justify-center px-5 md:px-6 shrink-0 bg-background">
+        {/* ── Section 4: Showcase ── */}
+        <div className="h-svh w-screen flex items-center justify-center px-5 md:px-6 shrink-0 bg-background transition-colors duration-500">
           <motion.div
-            animate={activeSection === 2 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+            animate={activeSection === 3 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
             className="w-full max-w-7xl"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 lg:gap-32 items-center">
               <div>
                 <span className="text-primary text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] mb-4 md:mb-6 block">
-                  The Multiplier
+                  Built for Reality
                 </span>
                 <h2 className="text-4xl sm:text-6xl md:text-[8rem] font-black text-foreground mb-8 md:mb-12 tracking-tighter leading-[0.85] md:leading-[0.8] uppercase italic">
-                  3x ROI.
+                  Visual <br />Profit.
                 </h2>
                 <div className="grid grid-cols-2 gap-6 md:gap-12">
-                  <StatItem value="5" unit="min" label="Setup" />
-                  <StatItem value="100" unit="%" label="Uptime" />
-                  <StatItem value="3x" unit="" label="Turnover" />
-                  <StatItem value="0" unit="₹" label="Leads" />
+                  <StatItem value="10" unit="sec" label="Billing" />
+                  <StatItem value="100" unit="%" label="IMEI Safe" />
+                  <StatItem value="50" unit="+" label="Daily Jobs" />
+                  <StatItem value="0" unit="₹" label="Loss" />
                 </div>
               </div>
 
-              <div className="relative p-6 md:p-12 rounded-4xl md:rounded-[4rem] border border-border/60 bg-muted/10 backdrop-blur-3xl shadow-2xl">
-                <h3 className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-primary mb-6 md:mb-10 text-center">
-                  Efficiency Growth
-                </h3>
-                <div className="space-y-6 md:space-y-8">
-                  {["Billing", "Repairs", "Inventory"].map((l, i) => (
-                    <div key={i} className="space-y-2 md:space-y-3">
-                      <div className="flex justify-between text-[9px] md:text-[10px] font-black uppercase tracking-widest text-foreground/70">
-                        <span>{l}</span>
-                        <span>{75 + i * 10}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all duration-1500 ease-out delay-500"
-                          style={{ width: activeSection === 2 ? `${75 + i * 10}%` : '0%' }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+              <div className="relative p-6 md:p-8 rounded-4xl border border-border/60 bg-muted/20 shadow-2xl">
+                <div className="bg-card p-6 rounded-2xl shadow-inner border border-border/20 mb-6 font-bold tracking-tight">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Empty State UX</p>
+                   <p className="text-2xl font-black text-foreground leading-tight italic">"No sales yet. Start by adding your first customer."</p>
+                   <div className="mt-4 flex gap-2">
+                      <div className="h-8 w-24 bg-primary/10 rounded-lg animate-pulse" />
+                      <div className="h-8 w-24 bg-primary/5 rounded-lg animate-pulse" />
+                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="h-32 bg-card rounded-2xl border border-border/20 p-4">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Repair Jobs</p>
+                      <p className="text-2xl font-black text-foreground">12</p>
+                   </div>
+                   <div className="h-32 bg-primary rounded-2xl p-4 text-white">
+                      <p className="text-[8px] font-black uppercase tracking-widest opacity-80">Total Sales</p>
+                      <p className="text-2xl font-black">₹ 1.2L</p>
+                   </div>
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* ── Section 4: Testimonials ── */}
-        <div className="h-svh w-screen flex items-start justify-center shrink-0 bg-muted/5 overflow-y-auto pt-4">
-          <TestimonialsSection />
+        {/* ── Section 5: Insights (Blog) ── */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-background relative overflow-hidden">
+          <motion.div
+            animate={activeSection === 4 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+            className="w-full max-w-7xl pt-20 pb-10 overflow-y-auto scrollbar-none"
+          >
+             <BlogSection posts={posts} />
+          </motion.div>
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         </div>
 
-        {/* ── Section 5: Blog ── */}
-        <div className="h-svh w-screen px-4 md:px-6 shrink-0 flex items-center justify-center bg-background overflow-y-auto">
-          <BlogSection posts={posts} />
+        {/* ── Section 6: Trust ── */}
+        <div className="h-svh w-screen flex items-start justify-center shrink-0 bg-background transition-colors duration-500 overflow-y-auto pt-4">
+          <motion.div
+            animate={activeSection === 5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+            className="w-full flex flex-col items-center"
+          >
+            <TestimonialsSection />
+          </motion.div>
         </div>
 
-        {/* ── Section 6: FAQ ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-muted/5 relative overflow-hidden">
+        {/* ── Section 7: Pricing ── */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
+          <motion.div
+            animate={activeSection === 6 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+            className="w-full max-w-5xl z-10"
+          >
+            <div className="text-center mb-12 md:mb-20">
+               <span className="text-primary text-[9px] font-black uppercase tracking-[0.4em] mb-4 block">Fair & Simple</span>
+               <h2 className="text-4xl sm:text-6xl md:text-[7rem] font-black text-foreground tracking-tighter uppercase italic leading-none">Starting at ₹ 299</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+               <div className="p-10 rounded-4xl bg-card border border-border shadow-2xl text-center">
+                  <h3 className="text-xl font-black uppercase mb-2">Basic</h3>
+                  <p className="text-4xl font-black text-foreground mb-6">₹ 299<span className="text-xs text-muted-foreground">/mo</span></p>
+                  <ul className="text-left space-y-4 mb-10 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                     <li>• Full Inventory & IMEI</li>
+                     <li>• Repair Job Manager</li>
+                     <li>• Professional GST Billing</li>
+                  </ul>
+                  <Link href="/auth" className="block w-full py-4 rounded-2xl bg-muted hover:bg-muted font-black uppercase tracking-widest transition-all">Start Trial</Link>
+               </div>
+               <div className="p-10 rounded-4xl bg-primary text-white text-center shadow-2xl shadow-primary/20">
+                  <h3 className="text-xl font-black uppercase mb-2">Pro</h3>
+                  <p className="text-4xl font-black mb-6">₹ 499<span className="text-xs opacity-70">/mo</span></p>
+                  <ul className="text-left space-y-4 mb-10 text-xs font-black uppercase tracking-widest">
+                     <li>• Everything in Basic</li>
+                     <li>• WhatsApp Automation</li>
+                     <li>• Payment Reminders</li>
+                  </ul>
+                  <Link href="/auth" className="block w-full py-4 rounded-2xl bg-white text-primary font-black uppercase tracking-widest transition-all">Go Professional</Link>
+               </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* ── Section 8: FAQ ── */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
           <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
           <div className="w-full max-w-4xl relative z-10 overflow-y-auto max-h-[90svh] py-4">
             <div className="mb-8 md:mb-16 text-center">
@@ -266,14 +365,14 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 md:gap-x-20 gap-y-8 md:gap-y-16">
               {[
-                { q: "How long does it take to setup MobiBix?", a: "You can be fully set up in under 5 minutes. We support simple data import from Excel, ensuring zero downtime for your retail operations." },
-                { q: "How does MobiBix protect my inventory?", a: "MobiBix uses a serial-locked inventory system (IMEI/SN). Every device is tracked from purchase to sale, ensuring 100% accuracy and preventing stock leakage." },
-                { q: "Which devices are compatible with MobiBix?", a: "MobiBix is a web-native Retail OS. It runs seamlessly on any device with a browser, including laptops, tablets, and Android smartphones." },
-                { q: "How much does WhatsApp integration cost?", a: "MobiBix provides built-in WhatsApp automation at no extra cost. You can send payment reminders and repair status updates for free." },
+                { q: "Is this built for mobile shops?", a: "Yes, specifically. We have native support for IMEI tracking and repair job-cards which generic billing apps lack." },
+                { q: "Can I track repairs and pending jobs?", a: "Absolutely. You can see live status of every repair and even send automatic updates to customers on WhatsApp." },
+                { q: "Is it easy to use for shop managers?", a: "MobiBix is built with a focus on speed. Generating a full GST-compliant invoice takes only 5-10 seconds." },
+                { q: "Can I import my existing product data?", a: "Yes. You can upload your current stock via Excel and start your first sale within 5 minutes of setup." },
               ].map((faq, i) => (
                 <motion.div
                   key={i}
-                  animate={activeSection === 5 ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+                  animate={activeSection === 7 ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
                   transition={{ delay: i * 0.1 }}
                   className="group border-l-4 border-primary/20 pl-5 md:pl-8 hover:border-primary transition-colors"
                 >
@@ -289,10 +388,10 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           </div>
         </div>
 
-        {/* ── Section 7: CTA ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center relative shrink-0 overflow-hidden px-5">
+        {/* ── Section 9: CTA ── */}
+        <div className="h-svh w-screen flex flex-col items-center justify-center relative shrink-0 bg-background overflow-hidden px-5 transition-colors duration-500">
           <motion.div
-            animate={activeSection === 6
+            animate={activeSection === 8
               ? { opacity: 1, scale: 1, y: 0 }
               : { opacity: 0, scale: 1.1, y: 50 }}
             className="flex flex-col items-center justify-center text-center relative z-10 w-full"
@@ -357,7 +456,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               className="px-2 py-4"
             >
               <div 
-                className={`h-2 rounded-full transition-all duration-500 ${activeSection === index ? "w-8 bg-primary" : "w-2 bg-white/20"}`}
+                className={`h-2 rounded-full transition-all duration-500 ${activeSection === index ? "w-8 bg-primary" : "w-2 bg-foreground/20"}`}
               />
             </button>
           ))}

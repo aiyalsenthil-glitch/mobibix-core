@@ -17,8 +17,8 @@ const testimonials: Testimonial[] = [
     lang: "Tamil",
     text: "மொபிபிக்ஸ் எமது கடையின் விற்பனையை மற்றும் IMEI விவரங்களை மிக துல்லியமாக கண்காணிக்க உதவுகிறது. மிகவும் பயனுள்ள மென்பொருள்!",
     name: "Rajesh Kannan",
-    shop: "AR Mobiles",
-    location: "Chennai, TN",
+    shop: "RK Mobiles",
+    location: "Mobile Shop Owner – Tirupur",
     image: "/assets/testimonials/owner1.png"
   },
   {
@@ -33,8 +33,8 @@ const testimonials: Testimonial[] = [
     lang: "English",
     text: "The repair job pipeline is a lifesaver. Customers get automatic updates on WhatsApp, which they absolutely love.",
     name: "Vikram Mehta",
-    shop: "TechHub Mumbai",
-    location: "Mumbai, MH",
+    shop: "Coimbatore Tech",
+    location: "Repair Technician – Coimbatore",
     image: "/assets/testimonials/owner6.png"
   },
   {
@@ -57,8 +57,8 @@ const testimonials: Testimonial[] = [
     lang: "English",
     text: "Switched from a traditional register to MobiBix. The analytics dashboard gives me a clear picture of my daily profit.",
     name: "Anjali Gupta",
-    shop: "Mobile Point",
-    location: "Pune, MH",
+    shop: "Store Manager",
+    location: "Madurai, TN",
     image: "/assets/testimonials/owner3.png"
   }
 ];
@@ -77,7 +77,7 @@ export function TestimonialsSection() {
 
         <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-foreground tracking-tighter uppercase leading-none mb-3 md:mb-4">
           Trusted <br className="hidden sm:block" /> Across{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-orange-500/90 dark:via-white to-green-600 font-black italic">
+          <span className="text-transparent bg-clip-text bg-linear-to-r from-orange-500 via-orange-500/90 dark:via-white to-green-600 font-black italic">
             Bharat.
           </span>
         </h2>
@@ -94,14 +94,14 @@ export function TestimonialsSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.08 }}
-            className="flex-shrink-0 snap-center w-[78vw] sm:w-[60vw] md:w-auto
+            className="shrink-0 snap-center w-[78vw] sm:w-[60vw] md:w-auto
                        p-4 md:p-6 rounded-[1.75rem] md:rounded-[2.5rem]
                        bg-card/40 backdrop-blur-2xl border border-border/50
                        hover:border-primary/40 transition-all duration-500 shadow-xl"
           >
             <div className="flex justify-between items-start mb-3 md:mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl border-2 border-primary/20 shadow-lg relative overflow-hidden flex-shrink-0">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl border-2 border-primary/20 shadow-lg relative overflow-hidden shrink-0">
                   <Image
                     src={t.image}
                     alt={t.name}

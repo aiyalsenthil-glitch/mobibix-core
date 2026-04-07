@@ -37,7 +37,7 @@ export function useTheme() {
   };
 
   return { 
-    theme: (resolvedTheme || "light") as Theme, 
+    theme: (resolvedTheme || "dark") as Theme, 
     toggleTheme 
   };
 }

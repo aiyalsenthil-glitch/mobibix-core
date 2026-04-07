@@ -1,10 +1,14 @@
 package com.aiyal.mobibix.ui.features.home
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -26,17 +30,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import com.aiyal.mobibix.data.network.Shop
 import com.aiyal.mobibix.ui.components.GlassCard
 import com.aiyal.mobibix.ui.components.PremiumTopBar
 import java.text.NumberFormat
 import java.util.*
 
-enum class DashboardCategory { Marketing, Sales, Finance, Inventory, Staff }
+enum class DashboardCategory { Sales, Repairs, Inventory, Staff, Finance }
 
 @Composable
 fun OwnerDashboardScreen(
@@ -47,6 +54,7 @@ fun OwnerDashboardScreen(
     onNavigateToNegativeStock: () -> Unit = {},
     onNavigateToNewSale: () -> Unit,
     onNavigateToNewPurchase: () -> Unit,
+    onNavigateToAddCustomer: () -> Unit = {},
     onNavigateToReports: () -> Unit = {},
     onOpenDrawer: () -> Unit = {}
 ) {
@@ -56,7 +64,7 @@ fun OwnerDashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorScheme.background)
+            .background(Color(0xFFF8FAFC)) // High-end soft background
     ) {
         // --- Compact Integrated Header ---
         PremiumTopBar(
@@ -82,27 +90,58 @@ fun OwnerDashboardScreen(
             thickness = 0.5.dp
         )
 
-        // --- Scrollable Analytics Section ---
+        // --- Adaptive Analytics Section ---
+        val isEmpty = state.monthSales == 0.0
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            // Category Specific Content
-            when (selectedCategory) {
-                DashboardCategory.Sales -> salesDashboardContent(state, onNavigateToReports)
-                DashboardCategory.Finance -> financeDashboardContent(state)
-                else -> {
-                    item {
-                        MainBalanceDisplay(
-                            amount = state.monthSales,
-                            percentageChange = state.percentageChange,
-                            changeAmount = (state.monthSales * (state.percentageChange / 100))
-                        )
-                        Spacer(Modifier.height(32.dp))
-                        TimeFilterTabs()
-                        Spacer(Modifier.height(32.dp))
-                        PremiumBarChart(data = state.salesTrend)
-                    }
+            item {
+                MainBalanceDisplay(
+                    amount = state.monthSales,
+                    percentageChange = state.percentageChange,
+                    changeAmount = (state.monthSales * (state.percentageChange / 100)),
+                    isEmpty = isEmpty,
+                    onAddSale = onNavigateToNewSale,
+                    onAddCustomer = onNavigateToAddCustomer
+                )
+            }
+
+            if (isEmpty) {
+                // --- EMPTY STATE CONTENT ---
+                item {
+                    MiniStatsRow()
+                }
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    EmptyStateGuidance()
+                }
+                item {
+                    QuickActionsGrid(
+                        onAddSale = onNavigateToNewSale,
+                        onAddCustomer = onNavigateToAddCustomer,
+                        onViewReports = onNavigateToReports,
+                        onSendReminder = { /* Placeholder */ }
+                    )
+                }
+            } else {
+                // --- DATA STATE CONTENT ---
+                item {
+                    CategoryTabs(
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = { selectedCategory = it },
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                    )
+                }
+
+                // Category Specific Content
+                when (selectedCategory) {
+                    DashboardCategory.Sales -> salesDashboardContent(state, onNavigateToReports)
+                    DashboardCategory.Repairs -> repairsDashboardContent(state, onNavigateToJobs)
+                    DashboardCategory.Inventory -> inventoryDashboardContent(state, onNavigateToInventory)
+                    DashboardCategory.Staff -> staffDashboardContent(state)
+                    DashboardCategory.Finance -> financeDashboardContent(state)
                 }
             }
             
@@ -130,40 +169,103 @@ private fun LazyListScope.salesDashboardContent(
     onNavigateToReports: () -> Unit
 ) {
     item {
-        MainBalanceDisplay(
-            amount = state.monthSales,
-            percentageChange = state.percentageChange,
-            changeAmount = (state.monthSales * (state.percentageChange / 100))
-        )
-        Spacer(Modifier.height(32.dp))
+        Column(Modifier.padding(horizontal = 24.dp)) {
+            TimeFilterTabs()
+            Spacer(Modifier.height(32.dp))
+            ConversionMetricCard()
+            Spacer(Modifier.height(32.dp))
+            PremiumBarChart(data = state.salesTrend)
+            Spacer(Modifier.height(32.dp))
+            Button(
+                onClick = onNavigateToReports,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text("View Detailed Reports", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        }
     }
+}
 
+private fun LazyListScope.repairsDashboardContent(
+    state: OwnerDashboardState,
+    onNavigateToJobs: () -> Unit
+) {
     item {
-        TimeFilterTabs()
-        Spacer(Modifier.height(32.dp))
+        Column(Modifier.padding(horizontal = 24.dp)) {
+            Text("REPAIR PIPELINE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MetricCard(Modifier.weight(1f), "12", "Pending", Color(0xFFF59E0B))
+                MetricCard(Modifier.weight(1f), "5", "Ready", Color(0xFF10B981))
+                MetricCard(Modifier.weight(1f), "8", "Delivered", Color(0xFF3B82F6))
+            }
+            Spacer(Modifier.height(32.dp))
+            Button(
+                onClick = onNavigateToJobs,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Manage Repair Jobs", fontWeight = FontWeight.Bold)
+            }
+        }
     }
+}
 
+private fun LazyListScope.inventoryDashboardContent(
+    state: OwnerDashboardState,
+    onNavigateToInventory: () -> Unit
+) {
     item {
-        ConversionMetricCard()
-        Spacer(Modifier.height(32.dp))
+        Column(Modifier.padding(horizontal = 24.dp)) {
+            Text("STOCK SUMMARY", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(16.dp))
+            DepartmentProgressItem("Premium Phones", "12 Units", 0.4f)
+            Spacer(Modifier.height(12.dp))
+            DepartmentProgressItem("Accessories", "450 Units", 0.9f)
+            Spacer(Modifier.height(12.dp))
+            DepartmentProgressItem("Spare Parts", "1,200 Units", 0.7f)
+            
+            Spacer(Modifier.height(32.dp))
+            Button(
+                onClick = onNavigateToInventory,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+            ) {
+                Text("View Full Inventory", fontWeight = FontWeight.Bold)
+            }
+        }
     }
+}
 
+private fun LazyListScope.staffDashboardContent(state: OwnerDashboardState) {
     item {
-        PremiumBarChart(data = state.salesTrend)
-        Spacer(Modifier.height(32.dp))
-    }
-
-    item {
-        Button(
-            onClick = onNavigateToReports,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text("View Detailed Reports", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Column(Modifier.padding(horizontal = 24.dp)) {
+            Text("STAFF ACTIVITY", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(16.dp))
+            repeat(3) { i ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(32.dp).background(Color.LightGray, CircleShape))
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(if (i == 0) "Arun Kumar" else if (i == 1) "Suresh" else "Priya", fontWeight = FontWeight.Bold)
+                            Text("Last active: 10m ago", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        }
+                    }
+                    Text(if (i == 0) "12 Sales" else if (i == 1) "5 Repairs" else "8 Invoices", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                if (i < 2) HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            }
         }
     }
 }
@@ -177,6 +279,21 @@ private fun LazyListScope.financeDashboardContent(state: OwnerDashboardState) {
     item {
         IncomeChartCard(data = state.salesTrend)
         Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun MetricCard(modifier: Modifier, value: String, label: String, color: Color) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, fontSize = 24.sp, fontWeight = FontWeight.Black, color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.8f))
+        }
     }
 }
 
@@ -226,8 +343,9 @@ fun ConversionMetricCard() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        color = Color.White, // Pure white for premium feel
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -284,9 +402,9 @@ fun ConversionMetricCard() {
             
             Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                MetricItem("3,280", "Visitors")
-                MetricItem("394", "Leads")
-                MetricItem("280", "Payment")
+                MetricItem("3,280", "Enquiries")
+                MetricItem("394", "Repairs")
+                MetricItem("280", "Collections")
             }
         }
     }
@@ -310,17 +428,17 @@ fun DepartmentCostsCard() {
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Costs by department", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("Income by Category", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.height(24.dp))
             
-            DepartmentProgressItem("Development", "₹ 16,56,000", 0.8f)
+            DepartmentProgressItem("Retail Sales", "₹ 16,56,000", 0.8f)
             Spacer(Modifier.height(16.dp))
-            DepartmentProgressItem("Management", "₹ 12,37,000", 0.6f)
+            DepartmentProgressItem("Repair Services", "₹ 12,37,000", 0.6f)
             Spacer(Modifier.height(16.dp))
-            DepartmentProgressItem("Inventory", "₹ 5,67,000", 0.3f)
+            DepartmentProgressItem("Part Sales", "₹ 5,67,000", 0.3f)
         }
     }
 }
@@ -372,7 +490,9 @@ private fun ShopSelector(
     onShopSelected: (String?) -> Unit
 ) {
     var showShopSelector by remember { mutableStateOf(false) }
-    val selectedShopName = shops.find { it.id == selectedShopId }?.name ?: "All Businesses"
+    val selectedShopName = shops.find { it.id == selectedShopId }?.name 
+        ?: shops.firstOrNull()?.name 
+        ?: "My Shop"
     val colorScheme = MaterialTheme.colorScheme
 
     Row(
@@ -386,7 +506,7 @@ private fun ShopSelector(
             selectedShopName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
-            color = colorScheme.onBackground,
+            color = Color.Black, // Explicit black for contrast
             maxLines = 1
         )
         Icon(
@@ -401,10 +521,6 @@ private fun ShopSelector(
             onDismissRequest = { showShopSelector = false },
             modifier = Modifier.background(colorScheme.surface)
         ) {
-            DropdownMenuItem(
-                text = { Text("All Businesses") }, 
-                onClick = { onShopSelected(null); showShopSelector = false }
-            )
             shops.forEach { shop ->
                 DropdownMenuItem(
                     text = { Text(shop.name) }, 
@@ -419,7 +535,10 @@ private fun ShopSelector(
 fun MainBalanceDisplay(
     amount: Double,
     percentageChange: Double,
-    changeAmount: Double
+    changeAmount: Double,
+    isEmpty: Boolean = false,
+    onAddSale: () -> Unit = {},
+    onAddCustomer: () -> Unit = {}
 ) {
     val currencyFormatter = remember {
         NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-IN")).apply {
@@ -427,24 +546,255 @@ fun MainBalanceDisplay(
         }
     }
     
-    Column {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(Modifier.padding(horizontal = 24.dp, vertical = 32.dp)) {
+        // --- Dominant Revenue Figure ---
         Text(
             currencyFormatter.format(amount).replace("₹", "₹ "),
-            style = MaterialTheme.typography.displayMedium.copy(
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-1.5).sp
+            style = MaterialTheme.typography.displayLarge.copy(
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-2).sp,
+                fontSize = 56.sp
             ),
-            color = MaterialTheme.colorScheme.onBackground
+            color = Color.Black
         )
-        Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val isPositive = percentageChange >= 0
-            val color = if (isPositive) MaterialTheme.colorScheme.primary else Color(0xFFEF4444)
+        
+        Text(
+            "THIS MONTH REVENUE",
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.5.sp
+        )
+
+        if (isEmpty) {
+            Spacer(Modifier.height(32.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Button(
+                    onClick = onAddSale,
+                    modifier = Modifier.weight(1.2f).height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add Sale", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                }
+                OutlinedButton(
+                    onClick = onAddCustomer,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.5.dp, colorScheme.primary)
+                ) {
+                    Text("Add Customer", color = colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+            }
+        } else {
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val isPositive = percentageChange >= 0
+                val color = if (isPositive) colorScheme.primary else Color(0xFFEF4444)
+                Icon(
+                    if (isPositive) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                    null,
+                    tint = color,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "${if (isPositive) "+" else ""}${currencyFormatter.format(changeAmount).replace("₹", "₹ ")} (${String.format("%.1f", percentageChange)}%)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyStateGuidance() {
+    Surface(
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp).fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0xFFE8F5E9), // Premium soft green tint
+        border = BorderStroke(1.dp, Color(0xFFC8E6C9))
+    ) {
+        Row(
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.6f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = Color(0xFF2E7D32),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.width(20.dp))
             Text(
-                "${if (isPositive) "+" else ""}${currencyFormatter.format(changeAmount).replace("₹", "₹ ")} (${String.format("%.1f", percentageChange)}%)",
-                style = MaterialTheme.typography.titleSmall,
+                "Start by adding your first customer to track sales and repair jobs precisely.",
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
+                color = Color(0xFF1B5E20),
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun MiniStatsRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        MiniStatItem(Modifier.weight(1f), "0", "Sales")
+        MiniStatItem(Modifier.weight(1f), "0", "Customers")
+        MiniStatItem(Modifier.weight(1f), "0", "Repairs")
+    }
+}
+
+@Composable
+fun MiniStatItem(modifier: Modifier, value: String, label: String) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value, 
+            style = MaterialTheme.typography.headlineSmall, 
+            fontWeight = FontWeight.Black,
+            color = Color.Black
+        )
+        Text(
+            label.uppercase(), 
+            style = MaterialTheme.typography.labelSmall, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+fun QuickActionsGrid(
+    onAddSale: () -> Unit,
+    onAddCustomer: () -> Unit,
+    onViewReports: () -> Unit,
+    onSendReminder: () -> Unit
+) {
+    Column(Modifier.padding(24.dp)) {
+        Text(
+            "QUICK ACTIONS",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.2.sp
+        )
+        Spacer(Modifier.height(16.dp))
+        
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            QuickActionItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AddShoppingCart,
+                label = "Add Sale",
+                onClick = onAddSale
+            )
+            QuickActionItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.PersonAdd,
+                label = "Add Customer",
+                onClick = onAddCustomer
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            QuickActionItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Assessment,
+                label = "View Reports",
+                onClick = onViewReports
+            )
+            QuickActionItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.NotificationsActive,
+                label = "Send Reminder",
+                onClick = onSendReminder
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickActionItem(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val elevation by animateDpAsState(if (isPressed) 8.dp else 2.dp, label = "elevation")
+    val scale by animateFloatAsState(if (isPressed) 0.98f else 1f, label = "scale")
+
+    Surface(
+        modifier = modifier
+            .height(125.dp)
+            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        shadowElevation = elevation,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val tintColor = when (label) {
+                "Add Sale" -> Color(0xFFE3F2FD)
+                "Add Customer" -> Color(0xFFF3E5F5)
+                "View Reports" -> Color(0xFFFFF3E0)
+                else -> Color(0xFFF1F8E9)
+            }
+            val iconColor = when (label) {
+                "Add Sale" -> Color(0xFF1976D2)
+                "Add Customer" -> Color(0xFF7B1FA2)
+                "View Reports" -> Color(0xFFE65100)
+                else -> Color(0xFF388E3C)
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(tintColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    null,
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

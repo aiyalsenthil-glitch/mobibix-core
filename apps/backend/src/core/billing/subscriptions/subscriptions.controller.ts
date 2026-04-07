@@ -115,16 +115,14 @@ export class SubscriptionsController {
     }
 
     const now = new Date();
-    const endDate = new Date(sub.endDate);
-    const daysLeft = Math.max(
-      Math.ceil(
-        (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-      ),
-      0,
-    );
+    // Lifetime subs have no endDate — treat as far future
+    const endDate = sub.endDate ? new Date(sub.endDate) : new Date(9999, 11, 31);
+    const daysLeft = sub.endDate
+      ? Math.max(Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)), 0)
+      : -1; // -1 signals lifetime (no expiry)
 
     const subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'EXPIRED' =
-      endDate < now
+      (sub.endDate && endDate < now)
         ? 'EXPIRED'
         : sub.status === 'TRIAL'
           ? 'TRIAL'
