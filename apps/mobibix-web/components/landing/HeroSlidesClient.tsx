@@ -9,8 +9,8 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 
 const Footer = dynamic(() => import("../layout/Footer").then((m) => m.Footer));
-const BlogSection = dynamic(() => import("./BlogSection").then((m) => m.BlogSection));
-const TestimonialsSection = dynamic(() => import("./TestimonialsSection").then((m) => m.TestimonialsSection));
+import { BlogSection } from "./BlogSection";
+import { TestimonialsSection } from "./TestimonialsSection";
 
 function StatItem({ value, unit, label }: { value: string; unit: string; label: string }) {
   return (
@@ -250,7 +250,8 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 4: Showcase ── */}
-        <div className="h-svh w-screen flex items-center justify-center px-5 md:px-6 shrink-0 bg-background transition-colors duration-500">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background transition-colors duration-500 overflow-y-auto">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 3 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
             className="w-full max-w-7xl"
@@ -296,10 +297,11 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 5: Insights (Blog) ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-4 md:px-6 shrink-0 bg-background relative overflow-hidden">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-4 md:px-6 shrink-0 bg-background relative overflow-hidden">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 4 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-            className="w-full max-w-7xl pt-20 pb-10 overflow-y-auto scrollbar-none"
+            className="w-full max-w-7xl pb-10 overflow-y-auto scrollbar-none"
           >
              <BlogSection posts={posts} />
           </motion.div>
@@ -307,7 +309,8 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 6: Trust ── */}
-        <div className="h-svh w-screen flex items-start justify-center shrink-0 bg-background transition-colors duration-500 overflow-y-auto pt-4">
+        <div className="h-svh w-screen flex flex-col items-center justify-start shrink-0 bg-background transition-colors duration-500 overflow-y-auto">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             className="w-full flex flex-col items-center"
@@ -317,10 +320,11 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 7: Pricing ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500 overflow-y-auto">
+          <div className="h-28 md:h-44 w-full shrink-0" />
           <motion.div
             animate={activeSection === 6 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-            className="w-full max-w-5xl z-10"
+            className="w-full max-w-5xl z-10 pb-10"
           >
             <div className="text-center mb-12 md:mb-20">
                <span className="text-primary text-[9px] font-black uppercase tracking-[0.4em] mb-4 block">Fair & Simple</span>
@@ -353,9 +357,10 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </div>
 
         {/* ── Section 8: FAQ ── */}
-        <div className="h-svh w-screen flex flex-col items-center justify-center px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500">
+        <div className="h-svh w-screen flex flex-col items-center justify-start px-5 md:px-6 shrink-0 bg-background relative overflow-hidden transition-colors duration-500 overflow-y-auto">
           <div className="absolute top-0 right-0 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-          <div className="w-full max-w-4xl relative z-10 overflow-y-auto max-h-[90svh] py-4">
+          <div className="h-28 md:h-44 w-full shrink-0" />
+          <div className="w-full max-w-4xl relative z-10 max-h-[90svh] pb-10">
             <div className="mb-8 md:mb-16 text-center">
               <span className="text-primary text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.6em] mb-3 block">
                 Operations Mastery

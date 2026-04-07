@@ -65,7 +65,7 @@ const testimonials: Testimonial[] = [
 
 export function TestimonialsSection() {
   return (
-    <div className="w-full flex flex-col items-center justify-start px-4 md:px-6 pt-6 md:pt-0 pb-16 md:pb-0 md:justify-center">
+    <div className="w-full flex flex-col items-center justify-start px-4 md:px-6 pt-24 md:pt-40 pb-16 md:pb-32 md:justify-center scroll-mt-24" id="testimonials">
       <div className="text-center mb-5 md:mb-10 relative z-10 max-w-2xl px-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

@@ -10,7 +10,14 @@ export function Footer({ compact = false }: { compact?: boolean }) {
         <div className={`grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-16 ${compact ? "mb-10" : "mb-20"}`}>
           <div className="md:col-span-2 space-y-4 md:space-y-8">
             <div className="flex items-center gap-4">
-              <Image src="/assets/mobibix-main-logo.png" alt="Mobibix" width={100} height={32} className="h-8 w-auto opacity-90 dark:brightness-200" />
+              <Image
+                src="/assets/mobibix-main-logo.png"
+                alt="Mobibix"
+                width={100}
+                height={32}
+                className="h-8 w-auto opacity-90 dark:brightness-200"
+                style={{ height: "auto" }}
+              />
               <span className="text-xl font-black tracking-tighter uppercase text-foreground">Mobibix</span>
             </div>
             {!compact && (
