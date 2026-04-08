@@ -1,25 +1,5 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
-import { catchError, timeout } from 'rxjs/operators';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
-
-export interface AiTaskRequest {
-  tenantJwt: string;
-  agentRole: string;
-  message: string;
-  sessionId?: string;
-  language?: string;
-  context?: Record<string, unknown>;
-  modelConfig?: {
-    provider: string;
-    baseUrl: string | null;
-    apiKey: string | null;
-    model: string;
-  };
-}
 
 export interface AiTaskResult {
   requestId: string;
@@ -34,74 +14,42 @@ export interface AiTaskResult {
     source: string;
   };
   latencyMs: number;
+  upgrade?: string;
 }
 
+/**
+ * 🧱 MOBIBIX OPEN CORE STUB: AI Intelligence Engine
+ * 
+ * This client is a functional stub for the MobiBix Cloud AI Engine.
+ * It provides a standardized interface for core-triggered AI tasks while
+ * redirecting intelligence-heavy operations to the cloud monetization layer.
+ */
 @Injectable()
 export class AiCoreClient {
-  private readonly logger = new Logger(AiCoreClient.name);
-  private readonly aiCoreUrl: string;
-  private readonly internalToken: string;
+  private readonly logger = new Logger('AiCoreClient');
 
-  constructor(
-    private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
-  ) {
-    this.aiCoreUrl = this.configService.get<string>('AI_CORE_INTERNAL_URL') || this.configService.get<string>('AI_CORE_URL') || 'http://localhost_REPLACED:3002';
-    const token = this.configService.get<string>('INTERNAL_SERVICE_TOKEN') || this.configService.get<string>('INTERNAL_API_KEY');
-    if (!token && process.env.NODE_ENV === 'production') {
-      this.logger.warn('INTERNAL_API_KEY is not set — AI Core requests will fail in production');
-    }
-    this.internalToken = token || 'dev-internal-key';
-  }
-
-  async sendTask(dto: AiTaskRequest): Promise<AiTaskResult> {
+  async sendTask(dto: any): Promise<AiTaskResult> {
     const requestId = randomUUID();
-    this.logger.debug(`Sending task ${requestId} to ai-core`);
+    
+    console.log('\n--- [MobiBix Core] AI Intelligence Triggered ---');
+    console.log(`🤖 Role: ${dto.agentRole}`);
+    console.log(`💬 Message: ${dto.message.substring(0, 100)}...`);
+    console.log('--- [MobiBix Core] AI Feature available in Cloud v1 ---\n');
 
-    // Fetch dynamic AI Config globally configured via Admin Panel
-    const config = await this.prisma.systemAiConfig.findFirst();
-    if (config && config.isActive) {
-      dto.modelConfig = {
-        provider: config.provider,
-        baseUrl: config.baseUrl,
-        apiKey: config.apiKey,
-        model: config.defaultModel,
-      };
-    } else if (config && !config.isActive) {
-      throw new HttpException(
-        'AI Services are currently disabled across the platform by the administrator.',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
-    try {
-      const { data } = await firstValueFrom(
-        this.httpService.post<AiTaskResult>(
-          `${this.aiCoreUrl}/task`,
-          dto,
-          {
-            headers: {
-              'x-internal-token': this.internalToken,
-              'x-request-id': requestId,
-            },
-          }
-        ).pipe(
-          timeout(20000), // 20s timeout for LLM reasoning
-          catchError((error) => {
-            this.logger.error(`AI Core request failed: ${error.message}`, error.stack);
-            throw new HttpException(
-              error.response?.data?.message || 'AI Service Unavailable',
-              error.response?.status || HttpStatus.SERVICE_UNAVAILABLE,
-            );
-          }),
-        ),
-      );
-
-      return data;
-    } catch (error) {
-      this.logger.error(`Failed to execute AI task: ${error.message}`);
-      throw error;
-    }
+    return {
+      requestId,
+      sessionId: dto.sessionId || randomUUID(),
+      agentRole: dto.agentRole,
+      response: "MobiBix Core: Intelligence features are handled by the Cloud Integration Layer. Please upgrade to MobiBix Cloud for advanced AI assistance, shop diagnostics, and automated workflows.",
+      toolsUsed: [],
+      tokenUsage: {
+        input: 0,
+        output: 0,
+        total: 0,
+        source: 'stub-v1'
+      },
+      latencyMs: 10,
+      upgrade: 'https://mobibix.in/upgrade?feature=ai_engine'
+    };
   }
 }
