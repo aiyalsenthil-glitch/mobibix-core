@@ -1,74 +1,81 @@
 # 🚀 MobiBix Open Core
 
-**The OS for Modern Shop & Fitness Management.**
+**The Open Source OS for Modern Shops & Offline Businesses.**
 
-MobiBix is a production-grade, open-source engine for running high-performance shop management, inventory, CRM, and fitness business operations. It is built as an **Open Core** platform, providing a robust locally-hostable engine with seamless hooks into the **MobiBix Cloud Intelligence Layer**.
+MobiBix Core is a high-performance engine for managing inventory, billing, CRM, and shop diagnostics. Locally hostable, privacy-first, and built for businesses that cannot afford downtime.
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Built with NestJS](https://img.shields.io/badge/Built%20with-NestJS-E0234E?logo=nestjs)](https://nestjs.com/)
-[![Powered by Next.js](https://img.shields.io/badge/Powered%20by-Next.js-000000?logo=nextdotjs)](https://nextjs.org/)
+---
+
+## ⚡ Quick Start (Get Running in 2 Minutes)
+
+```bash
+# 1. Clone & Enter
+git clone https://github.com/mobibix/mobibix-core.git && cd mobibix-core
+
+# 2. Config
+cp .env.example .env
+
+# 3. Launch
+docker-compose up -d
+```
+
+**🔑 Default Demo Login:**
+- **Email**: `admin@demo.com`
+- **Password**: `password123`
+
+---
+
+## 📸 Sneak Peek
+
+![Dashboard Preview](docs/media/dashboard.png)
+*Professional UI for modern shop owners.*
 
 ---
 
 ## ✨ Features
 
-- 📦 **Inventory Management**: Real-time stock tracking, HSN support, and supplier management.
-- 💳 **Sales & Billing**: Tax-compliant invoicing, receipt generation, and ledger tracking.
-- 👥 **CRM & Membership**: Advanced customer/member profiles, follow-ups, and interaction history.
-- 📱 **Omnichannel**: Desktop Web, Mobile Web, and Native Android support.
-- 🔌 **Intelligence Layer**: Pluggable cloud intelligence for AI diagnostics and automated marketing.
+- 📦 **Inventory & Stock**: Smart tracking with barcode support.
+- 💳 **Billing & GST**: Tax-compliant invoicing & ledgers.
+- 🏋️ **Gym Management**: Member profiles & follow-ups.
+- 📶 **Offline-First**: Reliable even with spotty internet.
 
 ---
 
-## ⚡ Quick Start (2-Minute Setup)
+## ☁️ Core vs. Cloud
 
-Get up and running locally with Docker:
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/mobibix/mobibix-core.git && cd mobibix-core
-
-# 2. Configure environment
-cp .env.example .env
-
-# 3. Boot the engine
-docker-compose up -d
-```
-
-Access the dashboard at `http://localhost_REPLACED:3000`.
-
----
-
-## 🏛️ Repository Architecture: Core vs. Cloud
-
-MobiBix follows an Open Core model to ensure the core engine remains free and self-hostable while supporting commercial-grade intelligence.
-
-| Feature | MobiBix Core (OSS) | MobiBix Cloud (SaaS) |
+| Feature | MobiBix Core (OSS) | MobiBix Cloud (Managed) |
 | :--- | :---: | :---: |
-| Self-Hosting | ✅ Yes | Managed |
-| Shop Inventory | ✅ Yes | ✅ Yes |
-| Local Auth | ✅ Yes | ✅ Yes (Firebase/OAuth) |
-| WhatsApp Automation | 🧱 Stubbed | ✅ Yes |
-| AI Shop Diagnostics | 🧱 Stubbed | ✅ Yes |
-| Global Reporting | ✅ Yes | ✅ Yes |
+| Self-Hosting | ✅ | ✅ |
+| Shop Inventory | ✅ | ✅ |
+| WhatsApp Automation | ❌ | 💎 Yes |
+| AI Repair Assistant | ❌ | 💎 Yes |
 | Automated Backups | Manual | ✅ Managed |
+| API Access | ✅ | High Performance |
 
 ---
 
-## 📖 Documentation
+## ☁️ Upgrade to MobiBix Cloud
 
-Detailed documentation can be found in the [`/docs`](/docs) folder:
-- [Self-Hosting Guide](/docs/OPEN_CORE_GUIDE.md)
-- [Architecture & Tech Stack](/docs/ARCHITECTURE.md)
-- [Contributing Guidelines](/docs/CONTRIBUTING.md)
+Unlock advanced automation and intelligence for your business.
 
----
-
-## 🤝 Community & Support
-
-- **Commercial Licensing**: For white-label or custom enterprise deployments, contact [contact@mobibix.com](mailto:contact@mobibix.com).
-- **Security**: Please report security vulnerabilities to [security@mobibix.com](mailto:security@mobibix.com).
+👉 [**Go to mobibix.in**](https://mobibix.in)
 
 ---
 
-© 2026 MobiBix Enterprise. Code licensed under **AGPL-3.0**.
+## 🛠 Tech Stack
+
+- **Backend**: NestJS, Prisma, PostgreSQL
+- **Frontend**: Next.js, Tailwind CSS
+- **Mobile**: Kotlin, Jetpack Compose
+- **Infra**: Docker, Redis, BullMQ
+
+---
+
+## 📦 Documentation
+
+- [Self-Hosting Guide](docs/OPEN_CORE_GUIDE.md)
+- [Technical Architecture](docs/ARCHITECTURE.md)
+- [Contributing](docs/CONTRIBUTING.md)
+- [Security Policy](docs/SECURITY.md)
+
+© 2026 MobiBix Enterprise. Licensed under **AGPL-3.0**.
