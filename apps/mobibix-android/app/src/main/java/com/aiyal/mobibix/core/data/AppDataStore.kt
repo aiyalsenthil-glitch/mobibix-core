@@ -3,6 +3,7 @@ package com.aiyal.mobibix.core.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 
@@ -15,4 +16,5 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 object PrefKeys {
     val JWT_TOKEN = stringPreferencesKey("jwt_token")
     val ACTIVE_SHOP_ID = stringPreferencesKey("active_shop_id")
+    val DARK_MODE = booleanPreferencesKey("dark_mode")
 }
